@@ -199,3 +199,41 @@ def ingest_bhavcopy_dates(conn: sqlite3.Connection, trade_dates: list[date], del
             time.sleep(delay_seconds)
         outcomes.append(ingest_bhavcopy_date(conn, trade_date, fetch_fn=fetch_fn))
     return outcomes
+
+# P2-005: reporting a "gap" for every requested date whose own direct fetch didn't match conflates
+# two entirely different situations -- a weekend/holiday (NSE never had a trading day there, not a
+# problem) and a genuine trading day that ingestion failed to retrieve (a real anomaly worth
+# investigating). Both previously showed up as "GAP" (weekends, via an HTML error) or "ingested"
+# (holidays and Sundays, via a small fallback) depending on which specific artifact NSE happened to
+# serve -- neither label was actually correct for a non-trading day. This function derives which
+# requested dates are genuine trading days FROM THE OBSERVED EVIDENCE ITSELF (every outcome's own
+# actual_event_date, whether obtained directly or via someone else's fallback) rather than from an
+# external holiday calendar, and reclassifies accordingly. No new network calls.
+INGESTED = "ingested"
+NOT_A_TRADING_DAY = "not_a_trading_day"
+GAP = "gap"
+
+def classify_against_observed_trading_calendar(outcomes: list[DateIngestionOutcome]) -> dict[str, str]:
+    """Returns {requested_date_iso: classification}, classification in
+    {INGESTED, GAP, NOT_A_TRADING_DAY}.
+
+    - INGESTED: the date's own direct fetch matched itself exactly -- a confirmed real trading day
+      with data.
+    - GAP: some OTHER outcome in this batch confirms the date is a real trading day (its own
+      actual_event_date), but this date's own direct fetch did not retrieve it -- a genuine
+      anomaly worth investigating.
+    - NOT_A_TRADING_DAY: nothing in this batch's evidence suggests the date was ever a real
+      trading day (the ordinary, expected case for weekends and holidays alike).
+    """
+    observed_trading_calendar = {o.actual_event_date for o in outcomes if o.actual_event_date}
+
+    classification = {}
+    for o in outcomes:
+        requested = o.trade_date.isoformat()
+        if o.actual_event_date == requested:
+            classification[requested] = INGESTED
+        elif requested in observed_trading_calendar:
+            classification[requested] = GAP
+        else:
+            classification[requested] = NOT_A_TRADING_DAY
+    return classification

@@ -10,6 +10,7 @@ honesty rule.
 | P2-002 | Ph. 2 (NSE ingestion, pre-implementation) | High | `sqlite3` silently binds a `numpy.int64`/`numpy.float64` parameter as a raw BLOB instead of an integer/float — no exception, no warning, and the store's own `numbers.Integral`/`numbers.Real` type check does not catch it (numpy scalars correctly satisfy those ABCs). | Fixed — store coerces to native `int`/`float` before binding |
 | P2-003 | Ph. 2 (NSE ingestion, real-data verification) | High | NSE's bhavcopy archive can return HTTP 200 with well-formed CSV content for a **different date** than the one requested, under the requested date's own URL. For weekends/holidays this is a sane 1-3 day fallback to the nearest prior trading day; for 2019-09-30 specifically, the returned content was for 2019-06-27 — a 95-day anomaly, not a holiday fallback. This also invalidated this project's own earlier "earliest available date: 2019-09-30" claim, which had only checked "is this real CSV," not "is this CSV actually dated 2019-09-30." | Fixed — corrected earliest date to 2019-10-01; ingestion now compares the response's own DATE1 to the requested date and rejects (as a gap) any mismatch beyond a small fallback window |
 | P2-004 | Ph. 2 (NSE ingestion, real-data verification) | Medium | A real NSE bhavcopy file can have a genuinely blank `SERIES` for some rows (observed: 30 of 43,942 rows in the 2019-10-01 file, all bond/NCD-like instruments — DHFL, HUDCO, IBULHSGFIN, IRFC). The parser's `str(nan_value).strip()` silently turned this into the literal text `"nan"` — a valid-looking, non-null string that passed the store's type check and would have corrupted the business key `(symbol, event_date, series)`. | Fixed — rows missing SYMBOL or SERIES are skipped (not force-labeled) and counted in `rows_skipped_invalid`, never silently stored |
+| P2-005 | Ph. 2 (NSE ingestion, reporting review) | Medium | Gap reporting conflated "weekend/holiday, not a trading day" with "genuine ingestion failure on a real trading day" — a Saturday (hard HTML error) reported as "GAP" and a Sunday (small fallback to Friday's data) reported as "ingested," purely because of which artifact NSE happened to serve, not because of anything meaningfully different about the two dates. | Fixed — outcomes reclassified against a trading calendar derived from the batch's own observed `actual_event_date` evidence; GAP now means a date some other outcome confirms is real, but whose own fetch failed |
 
 ## P2-001 — `full_bhavcopy_save` silent failure on HTTP error
 
@@ -149,3 +150,37 @@ increments a `skipped_invalid` counter returned alongside the valid rows, surfac
 
 **Re-verification.** `tests/test_nse_ingestion.py::ParseBhavcopyRowsTest::test_row_with_missing_series_is_skipped_not_labeled_literal_nan`.
 Pasted with the Phase 2 test run.
+
+## P2-005 — gap reporting conflated "not a trading day" with "genuine ingestion failure"
+
+**Root cause.** The first real ingestion run reported 2026-08-29 (a Saturday) as a "GAP" and
+2026-08-30 (a Sunday) as "ingested," even though neither date is a real trading day. The
+difference was purely an artifact of NSE's own serving behavior: a weekend sometimes returns a
+flat HTML error (→ `BhavcopyFetchError` → status "gap"), and sometimes returns a small fallback to
+the nearest prior trading day's file (→ status "ingested," with a mismatched `actual_event_date`
+nobody was checking against the label). Neither label was actually correct: "gap" implies
+something needs investigating; "ingested" implies the requested date itself had real data. A
+weekend has neither problem — it's simply not a trading day.
+
+**How it was found.** Pointed out directly: "Same situation, different outcome — the behaviour
+depends on what NSE happens to serve, not on anything we control." Confirmed by inspecting the
+per-date report from the first real run: 2026-08-29/2026-09-05 (Saturdays) labeled "GAP",
+2026-08-30/2026-09-06 (Sundays) and 2022-03-01 (Holi, a real holiday) labeled "ingested" — despite
+all five being equally non-trading-days.
+
+**Fix.** `classify_against_observed_trading_calendar()` (`src/ingestion/nse_market_data/bhavcopy.py`)
+derives which requested dates are genuine trading days purely from the batch's own evidence — the
+set of `actual_event_date` values observed across every outcome (whether obtained directly or via
+a neighbor's fallback) — with no new network calls and no external holiday calendar dependency.
+Three outcomes, not two: `INGESTED` (a date's own direct fetch matched itself — real data for that
+date), `NOT_A_TRADING_DAY` (nothing in the batch confirms the date was ever a real trading day —
+the ordinary case for weekends and holidays alike), and `GAP` (some OTHER outcome confirms the
+date is real, but this date's own fetch failed to retrieve it — a genuine anomaly). Coverage
+reporting is now expressed against the derived trading calendar, not the raw calendar sweep.
+
+**Re-verification.** `tests/test_nse_ingestion.py::TradingCalendarClassificationTest` — five cases,
+including a synthetic true-gap (a neighbor's fallback confirms a date that its own fetch failed to
+retrieve) and a reproduction of the exact real Aug29-Sep7 2026 pattern this project observed,
+asserting zero genuine anomalies and the correct three not-a-trading-day dates. Re-run against the
+real sample: 12 confirmed trading days, all 12 ingested, 0 gaps, 5 correctly excluded as
+not-a-trading-day (`2022-03-01`, both Saturdays, both Sundays). Pasted with the Phase 2 test run.

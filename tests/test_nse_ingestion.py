@@ -11,7 +11,8 @@ import unittest
 from src.bitemporal.connection import get_connection, init_db
 from src.bitemporal.guard import latest_as_of, read_as_of
 from src.ingestion.nse_market_data.bhavcopy import (
-    BhavcopyFetchError, FetchResult, ingest_bhavcopy_date, ingest_bhavcopy_dates,
+    BhavcopyFetchError, DateIngestionOutcome, FetchResult, GAP, INGESTED, NOT_A_TRADING_DAY,
+    classify_against_observed_trading_calendar, ingest_bhavcopy_date, ingest_bhavcopy_dates,
     last_modified_to_ist_date, parse_bhavcopy_rows, validate_csv_content,
 )
 
@@ -183,6 +184,57 @@ class DateMismatchTest(unittest.TestCase):
             fetch_fn=lambda d: make_fetch_result(raw_text=mixed_csv, trade_date=d))
         self.assertEqual(outcome.status, "gap")
         self.assertIn("distinct event_dates", outcome.reason)
+
+class TradingCalendarClassificationTest(unittest.TestCase):
+    """P2-005: a weekend (hard HTML error, no actual_event_date at all) and a holiday (small
+    fallback to a different actual_event_date) both mean 'not a trading day' -- neither should be
+    reported as a GAP (that label must mean 'a confirmed trading day we failed to retrieve').
+    """
+
+    def test_weekend_hard_error_is_not_a_trading_day_not_a_gap(self):
+        outcomes = [DateIngestionOutcome(trade_date=date(2026, 8, 29), status="gap", reason="HTML error page")]
+        result = classify_against_observed_trading_calendar(outcomes)
+        self.assertEqual(result["2026-08-29"], NOT_A_TRADING_DAY)
+
+    def test_holiday_fallback_is_not_a_trading_day_not_ingested(self):
+        # requested Sunday 2026-08-30, archive fell back to Friday 2026-08-28
+        outcomes = [DateIngestionOutcome(trade_date=date(2026, 8, 30), status="ingested",
+                                          actual_event_date="2026-08-28", rows_inserted=100)]
+        result = classify_against_observed_trading_calendar(outcomes)
+        self.assertEqual(result["2026-08-30"], NOT_A_TRADING_DAY)
+
+    def test_genuine_trading_day_direct_match_is_ingested(self):
+        outcomes = [DateIngestionOutcome(trade_date=date(2026, 8, 31), status="ingested",
+                                          actual_event_date="2026-08-31", rows_inserted=3000)]
+        result = classify_against_observed_trading_calendar(outcomes)
+        self.assertEqual(result["2026-08-31"], INGESTED)
+
+    def test_date_confirmed_real_by_a_neighbors_fallback_but_own_fetch_failed_is_a_real_gap(self):
+        outcomes = [
+            # 2026-08-31's own direct request failed outright
+            DateIngestionOutcome(trade_date=date(2026, 8, 31), status="gap", reason="simulated outage"),
+            # but 2026-09-01's fallback independently confirms 2026-08-31 IS a real trading day
+            DateIngestionOutcome(trade_date=date(2026, 9, 1), status="ingested", actual_event_date="2026-08-31"),
+        ]
+        result = classify_against_observed_trading_calendar(outcomes)
+        self.assertEqual(result["2026-08-31"], GAP)
+        self.assertEqual(result["2026-09-01"], NOT_A_TRADING_DAY)  # 2026-09-01 itself was never confirmed as its own trading day
+
+    def test_full_window_reclassification_matches_expected_real_pattern(self):
+        # Reproduces the exact Aug29-Sep7 2026 pattern this project observed against real NSE data.
+        outcomes = [
+            DateIngestionOutcome(trade_date=date(2026, 8, 29), status="gap", reason="HTML error page"),
+            DateIngestionOutcome(trade_date=date(2026, 8, 30), status="ingested", actual_event_date="2026-08-28"),
+            DateIngestionOutcome(trade_date=date(2026, 8, 31), status="ingested", actual_event_date="2026-08-31"),
+            DateIngestionOutcome(trade_date=date(2026, 9, 1), status="ingested", actual_event_date="2026-09-01"),
+            DateIngestionOutcome(trade_date=date(2026, 9, 5), status="gap", reason="HTML error page"),
+            DateIngestionOutcome(trade_date=date(2026, 9, 6), status="ingested", actual_event_date="2026-09-04"),
+            DateIngestionOutcome(trade_date=date(2026, 9, 7), status="ingested", actual_event_date="2026-09-07"),
+        ]
+        result = classify_against_observed_trading_calendar(outcomes)
+        trading_days = {d: c for d, c in result.items() if c != NOT_A_TRADING_DAY}
+        self.assertEqual(trading_days, {"2026-08-31": INGESTED, "2026-09-01": INGESTED, "2026-09-07": INGESTED})
+        self.assertEqual(sum(1 for c in result.values() if c == GAP), 0)  # no genuine anomalies in this window
 
 class IngestBhavcopyDatesTest(unittest.TestCase):
     def test_reports_one_outcome_per_date_including_gaps(self):

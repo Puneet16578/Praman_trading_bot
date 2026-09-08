@@ -37,51 +37,49 @@
 | P2-002 | `sqlite3` silently binds `numpy.int64`/`float64` as a raw BLOB, not caught by the store's `numbers.Integral`/`Real` type check (numpy scalars satisfy those ABCs). Fixed: store coerces to native `int`/`float` before binding. |
 | P2-003 | NSE's archive can return HTTP 200 CSV for a **different date** than requested. Weekends/holidays sanely fall back ≤3 days to the last trading day; 2019-09-30 specifically returned data 95 days stale — invalidating this project's own earlier "earliest date" claim. Fixed: earliest date corrected to 2019-10-01; ingestion now checks response-date-vs-requested-date and rejects (as a gap) anything beyond a 7-day fallback window. |
 | P2-004 | A real NSE file can have a genuinely blank `SERIES` for some rows (30 of 43,942, all NCD/bond instruments). Naive stringification turned this into the literal text `"nan"` — valid-looking, non-null, and silently corrupting the business key. Fixed: such rows are skipped and counted (`rows_skipped_invalid`), never mislabeled. |
+| P2-005 | Gap reporting conflated "not a trading day" with "genuine ingestion failure": a Saturday (hard HTML error) was labeled "GAP", a Sunday (small fallback to Friday) was labeled "ingested" — same situation (neither is a real trading day), different label, purely because of which artifact NSE happened to serve. Fixed: outcomes reclassified against a trading calendar derived from the batch's own observed evidence; three outcomes now — `INGESTED`, `NOT_A_TRADING_DAY`, `GAP` (reserved for a confirmed-real trading day that ingestion genuinely failed to retrieve). |
 
-All four found by direct verification against real data/real code behavior, not assumed —
+All five found by direct verification against real data/real code behavior, not assumed —
 consistent with this project's verification-honesty rule.
 
-## Coverage report — real ingestion sample
+## Coverage report — real ingestion sample (corrected for P2-005)
 
 17 calendar dates requested (2019-10-01 as earliest reference date, one reference date per
-calendar year through 2025, plus a 10-day recent window ending 2026-09-07):
+calendar year through 2025, plus a 10-day recent window ending 2026-09-07). Reported against the
+**observed trading calendar** (`classify_against_observed_trading_calendar`), not the raw calendar
+sweep — see P2-005:
 
 ```
-Ingested: 15 date(s), Gaps: 2 date(s)
-Total rows inserted: 43912
-Total rows skipped as duplicate: 0
+Requested calendar dates: 17
+Observed trading calendar (dates confirmed to be real trading days): 12
+  Ingested: 12
+  GAP (confirmed trading day, ingestion failed -- real anomaly): 0
+Not a trading day (weekend/holiday, excluded from the trading-day denominator): 5
+  -> ['2022-03-01', '2026-08-29', '2026-08-30', '2026-09-05', '2026-09-06']
+
+Total rows inserted: 43912 (first run) / 0 (re-run, all skipped_duplicate)
 Total rows skipped as invalid (missing symbol/series, P2-004): 30
-
-  2019-10-01  ingested  rows_inserted=1936
-  2020-03-02  ingested  rows_inserted=1983
-  2021-03-01  ingested  rows_inserted=2062
-  2022-03-01  ingested  rows_inserted=2185  [actual_event_date=2022-02-28]   <- holiday fallback
-  2023-03-01  ingested  rows_inserted=2335
-  2024-03-01  ingested  rows_inserted=2623
-  2025-03-03  ingested  rows_inserted=2854
-  2026-08-29  GAP       HTML error page (Saturday)
-  2026-08-30  ingested  rows_inserted=3460  [actual_event_date=2026-08-28]   <- weekend fallback
-  2026-08-31  ingested  rows_inserted=3475
-  2026-09-01  ingested  rows_inserted=3495
-  2026-09-02  ingested  rows_inserted=3482
-  2026-09-03  ingested  rows_inserted=3490
-  2026-09-04  ingested  rows_inserted=3506
-  2026-09-05  GAP       HTML error page (Saturday)
-  2026-09-06  ingested  rows_inserted=3506  [actual_event_date=2026-09-04]   <- weekend fallback
-  2026-09-07  ingested  rows_inserted=3520
 ```
 
-Both gaps are real weekends (2026-08-29 and 2026-09-05 are Saturdays) — not averaged over, listed
-explicitly as required.
+All 12 confirmed real trading days were successfully ingested; **0 genuine gaps** (anomalies).
+The 5 excluded dates are exactly what they should be: two Saturdays, two Sundays, and 2022-03-01
+(Holi — a real market holiday, previously mislabeled "ingested" because NSE's archive fell back
+to 2022-02-28's file rather than erroring).
 
 **Idempotency, real data**: re-running the identical script a second time inserted **0** new rows;
 all 43,912 rows reported `skipped_duplicate`. Confirmed twice.
 
-**Universe check (no active-listing filter)**: comparing the earliest (2019-10-01, 1,788 symbols)
-and latest (2026-09-07, 3,520 symbols) sample dates: **436 symbols present in 2019-10-01 are absent
-from 2026-09-07** — a real, non-zero count, confirming the source is not survivorship-biased.
-Sample includes recognizable real delistings/mergers/renames: `3IINFOTECH`, `ALBK` (Allahabad
-Bank, merged into Indian Bank 2020), `ADANIGAS`/`ADANITRANS` (renamed), `8KMILES`.
+**Survivorship spot-check — qualified, not a coverage claim.** Comparing the earliest
+(2019-10-01, 1,788 symbols) and latest (2026-09-07, 3,520 symbols) sample dates: 436 symbols
+present in 2019-10-01 are absent from 2026-09-07. **This is a lower bound on a survivorship check
+across a single 7-year gap, explicitly NOT a delisted-company count** — it misses every symbol
+that both listed and delisted somewhere in between those two dates (arguably the population most
+relevant to this project), since neither endpoint would ever see it. The true count of
+listed-then-delisted symbols over 2019–2026 is unknown and is certainly higher than 436. **This
+figure must not be quoted later as coverage or as "the delisted-company count."** It only
+establishes, non-zero, that the source is not pure-survivorship — recognizable real cases in the
+436: `3IINFOTECH`, `ALBK` (Allahabad Bank, merged into Indian Bank 2020), `ADANIGAS`/`ADANITRANS`
+(renamed), `8KMILES`.
 
 ## Guard re-test against real data
 
@@ -111,14 +109,28 @@ custom scraper against NSE's other (undocumented) endpoints for these two data t
 different, broader decision than what was approved, so it is not done and not started pending
 your direction.
 
+## Corporate actions block Phase 3 substantively — not a missing test, a correctness blocker
+
+This is stronger than "a guard case is unverified." **Without corporate-actions data, there is no
+adjusted price series, and without an adjusted price series, any return spanning a split or bonus
+is wrong in exactly the direction that fabricates an extreme move.** A 1-for-1 bonus computed
+naively from raw close prices shows as a ~50% overnight "crash" — precisely the shape of a false
+positive this project exists to distinguish from genuine manipulation-consistent signatures. The
+event catalogue (Phase 3, next) is built on returns. **It cannot be trusted — not "should be
+double-checked," cannot be trusted — until corporate-actions ingestion exists and adjustment is
+wired into signal computation.** Recorded here so nobody downstream assumes returns are adjusted
+when they are not; also recorded as a hard constraint in `CLAUDE.md`.
+
 ## Tests
 
-`python -m unittest discover -s tests -v` → **62 tests, 0 failures** (59 fixture/structural +
+`python -m unittest discover -s tests -v` → **67 tests, 0 failures** (64 fixture/structural +
 3 real-data-gated, run against the live sample DB this session).
 `python -m py_compile` across `src/`, `tests/`, `scripts/` → clean.
 
 ## Open items carried forward
 
-1. Corporate-actions and ASM/GSM sourcing decision (jugaad-data doesn't cover them — needs your call).
+1. Corporate-actions and ASM/GSM sourcing decision (jugaad-data doesn't cover them — source
+   evaluation requested for next session, see below; **this blocks Phase 3 substantively**, not
+   just one guard test).
 2. Real republished-file correction instance still unverified (mechanism proven, real occurrence not observed).
 3. Corporate-action knowledge-date-ordering guard test against real data — blocked on (1).

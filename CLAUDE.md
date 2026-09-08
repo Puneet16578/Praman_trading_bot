@@ -100,6 +100,17 @@ system). Its architectural disciplines carry over unchanged.
   `event_date`/period must be parsed from each order's own text and is flagged `needs_review`
   until a human confirms it — never trusted from regex alone.
 
+## Hard blocker — adjusted price series does not exist yet (as of 2026-09-08)
+
+`jugaad-data` has no corporate-actions endpoint (discovered during Phase 2). **Consequence: there
+is no adjusted price series in this project, and any return computed across a split/bonus ex-date
+is wrong in exactly the direction that fabricates an extreme move** (a 1-for-1 bonus looks like a
+~50% overnight crash on unadjusted closes) — precisely the shape of false positive this project
+exists to distinguish from a genuine manipulation-consistent signature. **No return-based signal
+or event catalogue may be treated as trustworthy until corporate-actions ingestion exists and
+adjustment is wired into signal computation at query time (Section 11).** This is a substantive
+correctness blocker on Phase 3, not a missing test case.
+
 ## Verification honesty
 
 Never claim a test passed without running it and pasting output. Label anything you could not
