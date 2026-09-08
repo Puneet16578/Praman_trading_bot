@@ -1,0 +1,7 @@
+jugaad-data==0.35.5
+requests
+beautifulsoup4
+pdfplumber
+pandas==3.0.5
+pydantic
+mcp
