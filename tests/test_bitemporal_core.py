@@ -264,7 +264,7 @@ class CorporateActionKnowledgeDateOrderingTest(unittest.TestCase):
         write_fact(self.conn, "corporate_actions", {
             "symbol": "FIXTURECO", "action_type": "BONUS", "event_date": "2021-01-10",
             "knowledge_date": "2021-01-15", "ratio_numerator": 1.0, "ratio_denominator": 1.0,
-            "details": "1:1 bonus (fixture)", "source_file": "fixture_corp_actions.csv",
+            "confidence_tier": "CONFIRMED", "details": "1:1 bonus (fixture)", "source_file": "fixture_corp_actions.csv",
         })
 
     def test_invisible_between_ex_date_and_announcement(self):

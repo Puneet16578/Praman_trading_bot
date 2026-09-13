@@ -97,6 +97,13 @@ BHAVCOPY = FactTable(
     nullable_columns=frozenset({"delivery_qty", "delivery_pct"}),
 )
 
+# confidence_tier records HOW this row's knowledge_date/ratio were established -- see
+# src/ingestion/nse_market_data/corporate_actions.py for the full scheme (CONFIRMED,
+# MATCHED_UNCONFIRMED, EX_DATE_FALLBACK, QUARANTINE-never-written, DEMERGER_EXCLUSION). Any
+# timing-sensitive signal (e.g. pre-announcement accumulation detection) MUST filter out
+# EX_DATE_FALLBACK rows explicitly -- their knowledge_date is a safe stand-in for adjustment
+# purposes only, not a real announcement date. Enforced by
+# tests/test_corporate_actions_ingestion.py, not left to a future caller to remember.
 CORPORATE_ACTIONS = FactTable(
     name="corporate_actions",
     ddl="""
@@ -108,6 +115,7 @@ CORPORATE_ACTIONS = FactTable(
             knowledge_date TEXT NOT NULL,
             ratio_numerator REAL,
             ratio_denominator REAL,
+            confidence_tier TEXT NOT NULL,
             details TEXT,
             source_file TEXT NOT NULL,
             recorded_at TEXT NOT NULL,
@@ -115,11 +123,12 @@ CORPORATE_ACTIONS = FactTable(
         )
     """,
     columns=frozenset({"row_id", "symbol", "action_type", "event_date", "knowledge_date",
-                        "ratio_numerator", "ratio_denominator", "details", "source_file", "recorded_at"}),
+                        "ratio_numerator", "ratio_denominator", "confidence_tier", "details",
+                        "source_file", "recorded_at"}),
     business_key=("symbol", "action_type", "event_date"),
     column_types={
         "row_id": INTEGER, "symbol": str, "action_type": str, "event_date": str, "knowledge_date": str,
-        "ratio_numerator": REAL, "ratio_denominator": REAL, "details": str,
+        "ratio_numerator": REAL, "ratio_denominator": REAL, "confidence_tier": str, "details": str,
         "source_file": str, "recorded_at": str,
     },
     nullable_columns=frozenset({"ratio_numerator", "ratio_denominator", "details"}),

@@ -111,6 +111,30 @@ or event catalogue may be treated as trustworthy until corporate-actions ingesti
 adjustment is wired into signal computation at query time (Section 11).** This is a substantive
 correctness blocker on Phase 3, not a missing test case.
 
+## Scope boundary — demergers are unadjustable, not merely unparsed
+
+Demergers are explicitly out of scope for automated price adjustment, permanently, not just until
+better parsing arrives. Two independent reasons, found during Phase 3 source evaluation:
+
+1. **No reliable data path exists.** Announcements for a demerger scatter across at least six
+   `desc` categories (`Scheme of Arrangement`, `Record Date`, `Updates`, `General updates`,
+   `Press Release`, `News Verification`, occasionally `Demerger` itself) with no category that
+   reliably carries the entitlement terms. RELIANCE's 2023 demerger — the largest sampled — had
+   **zero** demerger-related hits across 296 announcements in the window checked. No sampled
+   announcement across 10 real cases stated an entitlement ratio in parseable text at all.
+2. **Even a perfect parser could not compute the adjustment factor.** A demerger's price
+   adjustment depends on the relative market valuation the demerged entity receives on its own
+   first day of trading — a fact that does not exist at announcement time and appears in no
+   announcement, ever. This is not a parsing gap; it is information that isn't there to parse.
+
+**Consequence for the event catalogue (Phase 3):** a demerger is stored as an EXCLUSION MARKER
+(symbol + ex-date from the corporate-actions endpoint) — no ratio, no adjustment factor, not an
+adjustable action. Any return window spanning a demerger ex-date is EXCLUDED from the catalogue,
+not adjusted with a guessed factor. An unadjustable window flagged as unadjustable is honest; one
+silently adjusted with a wrong factor manufactures exactly the extreme move this project exists to
+detect. The number of catalogued events this excludes must be reported once the catalogue exists —
+the cost of this boundary should stay visible, not be absorbed silently into a lower event count.
+
 ## Verification honesty
 
 Never claim a test passed without running it and pasting output. Label anything you could not
