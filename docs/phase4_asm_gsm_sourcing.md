@@ -68,9 +68,84 @@ follow-up questions below, which found it substantially overcounts the periodic 
 circulars specifically (many hits are per-stock intimations that merely mention ASM/GSM in
 passing).
 
-## Open item flagged, not yet resolved
+## Follow-up 1 — is 5,909 the real number of periodic circulars?
 
-`gsmStage` in the live API ("LXII", "LVIII") does not match the stated 0–6 GSM stage scale — it
-looks like a running composite-surveillance-code sequence number, not a stage. `survCode`/`survDesc`
-mentioning "GSM stage 0" separately suggests the real stage lives in `survDesc` text instead.
-Confirmed at scale in the follow-up below.
+No. That count was every SURV circular whose subject merely *mentions* ASM/GSM/"surveillance
+measure" — it includes framework-policy updates, promoter-pledge/encumbrance surveillance
+(a different, unrelated mechanism), Deep-OTM contract surveillance, and one-off SEBI-order
+notices, none of which are the periodic entry/exit/stage circulars this project needs.
+
+Re-fetched and cached all 7,936 SURV circulars 2019-10 to 2026-09 to disk, then classified by
+normalized (whitespace/typo-collapsed) subject text:
+
+| Category | Count |
+|---|---|
+| Periodic ASM/ST-ASM applicability circulars | 3,773 |
+| Periodic GSM stage-move/update circulars | 1,127 |
+| **Total periodic (the number that matters)** | **~4,900** |
+| Policy/framework/unrelated-mechanism circulars (real noise) | 108 |
+| Still-unclassified residual | 903 |
+| Non-ASM/GSM-mentioning at all | 2,029 |
+
+The 903 residual is itself instructive, not just noise: manually inspecting it turned up (a) more
+typo variants of the same periodic subject line my classifier still missed ("Applicabilty",
+"Aaddtional", "Surveillanvce", "Sage II" for "Stage II" — real, observed spelling variants across
+7 years of manual titling) and (b) genuinely different, adjacent surveillance mechanisms
+(**ESM** — Enhanced Surveillance Measure — plus IBC-specific and "Persistent Noise Creator"
+circulars) that are NOT ASM/GSM and were correctly excluded. **Best honest estimate: roughly
+4,900–5,500 genuinely periodic ASM/GSM circulars**, not a single precise number — subject-line
+typo variance is real and a production parser needs fuzzy matching, not exact-string matching,
+against known title templates.
+
+## Follow-up 2 — consolidated snapshot + deltas, or every circular?
+
+Opened 5 real circulars in full, spread 2019/2021/2023/2025/2026 (`SURV42545`, `SURV48779`,
+`SURV57402`, `SURV68952`, `SURV74211`): **the consolidated sheet is reliably present in all 5** —
+viable to use as a periodic full-snapshot anchor. But its exact sheet name is not stable:
+`"Consolidated - ASM"` (2019, 2021) vs. `"Consolidated - ST ASM"` (2023) vs. `"Consolidated ASM"`
+— no hyphen (2025, 2026). A parser needs prefix/fuzzy sheet-name matching, not an exact name.
+
+**Answer: yes, viable** — periodic consolidated snapshots plus the delta sheets between them is a
+much smaller ingestion than every circular, since the consolidated sheet alone gives full
+membership + stage at each anchor point, and deltas fill the gaps between anchors.
+
+## Follow-up 3 — is the annexure format stable across 7 years?
+
+Same 5 circulars. Column layout is the one thing that held perfectly: `Sr. No., Symbol, Security
+Name, ISIN` (delta sheets) and `Sr. No., Symbol, Security Name, ISIN, Stage` (consolidated
+sheets) across all 5, spanning 2019–2026. Everything else varies:
+- **Sheet names**: `"Annexure I-A"/"I-B"/"II"` (2019, 2021 — includes IBC carve-out sheets) vs.
+  the simpler `"Annexure I"/"II"` (2023, 2025, 2026 — no IBC split observed in the ST-ASM samples).
+- **Row layout**: a blank row between the title and header row in 2019/2021/2023, but title
+  directly followed by the header row with no blank in 2025/2026.
+- **File naming**: `Annexure_LT.xlsx` (2019) vs. bare `Annexure.xlsx` (2021) vs. `Annexure_ST.xlsx`
+  (2023/2025/2026).
+
+**Conclusion: one parser per era, or one sufficiently fuzzy parser** (match sheets by prefix/
+keyword, locate the header row by content rather than fixed offset, don't assume a fixed
+filename) — not a single rigid template. This is a bigger real cost driver than the document
+count.
+
+**GSM specifically is a separate, harder problem discovered along the way**: ASM circulars are
+ZIP+Excel throughout. GSM stage-move circulars are **plain PDFs**, and checked across
+2019/2022/all of 2023 (Jan/Jul/Dec) they are **scanned images** (5 real characters, 60–85
+embedded images per page, `extract_text()` returns nothing) — genuine OCR would be needed for
+those years. Checked Dec 2024 and Sep 2026: **real, selectable text**, clean and directly
+extractable. The transition happened somewhere in 2024 (bracketed between Dec-2023
+image-only and Dec-2024 real-text; not narrowed further this session). GSM history before that
+transition needs an OCR step ASM never will.
+
+## Also confirmed — the GSM stage field is unreliable, exactly as suspected
+
+Pulled 15 real live-API rows and compared `gsmStage` against the stage stated in `survDesc`
+text. For **simple, non-overlapping GSM rows**, `gsmStage` happens to match
+(`gsmStage='VI'` ↔ `survDesc='...Stage VI'`; `gsmStage='III'` ↔ `'...Stage III'`). But for
+**composite rows** — a scrip simultaneously under GSM and IBC or ASM, which is common in the
+sample — `gsmStage` diverges completely: `gsmStage='LXII'` while `survDesc` says *"GSM stage
+0"* — because `gsmStage` is actually the Roman-numeral rendering of the parenthetical composite
+surveillance-code number in `survCode` (`"IBC - Receipt & GSM 0 (62)"` → 62 → "LXII"), not a GSM
+stage at all. It only coincidentally equals the true stage when the composite code number and
+the GSM stage number happen to be the same integer, which is only true in the pure/simple case.
+**Confirmed: `gsmStage` must never be stored as the stage. The real stage has to be parsed out of
+`survDesc` text** (e.g. matching "GSM stage N" / "GSM - Stage N" / "Graded Surveillance Measure -
+Stage N"). Storing `gsmStage` directly would have stored garbage for every composite-code row.
