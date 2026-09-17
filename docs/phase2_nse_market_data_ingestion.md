@@ -134,3 +134,85 @@ when they are not; also recorded as a hard constraint in `CLAUDE.md`.
    just one guard test).
 2. Real republished-file correction instance still unverified (mechanism proven, real occurrence not observed).
 3. Corporate-action knowledge-date-ordering guard test against real data — blocked on (1).
+
+## Full-history ingestion (completed 2026-09-16) — the sample was mistaken for the real thing
+
+**What happened.** WP-1's actual scope was always "2019-10-01 through today" — the 17-date sample
+above was explicitly built as a Phase 2 *verification* harness (fast, cheap, enough real dates to
+exercise every code path: P2-001 through P2-005, the guard re-tests, idempotency). It was never
+the real ingestion. By the time Phase 5 (the event catalogue) started, `surveillance_flags` and
+`corporate_actions` were both fully populated across 2019-2026 from later phases' own full sweeps
+— and a store where two of three fact tables span seven full years looks complete. `bhavcopy`
+quietly did not: querying it directly showed 15 distinct trading dates, not ~1,700. **A store with
+several populated tables can still have one that is a sample** — completeness of one table is
+never evidence for another's; this project verifies each one, it doesn't infer from adjacency.
+Caught only because Phase 5's own pre-flight check (an event catalogue needs a real trailing
+window) queried `bhavcopy` directly before building anything on top of it.
+
+**Design changes made before running it:**
+- **WAL mode** (`PRAGMA journal_mode = WAL`, `src/bitemporal/connection.py`) — not a restoration
+  of a prior setting (none existed), a new addition justified by the real scale (~4.5M rows
+  projected, a single long-running writer, wanting to check progress from a separate process
+  while it ran).
+- **Resumable, idempotent-by-construction**: `ingest_bhavcopy_date()` gained an optional
+  `already_confirmed: set[str]` parameter (extended, not forked) — when a request's response
+  resolves to an `event_date` already confirmed earlier in the run (a weekday that turned out to
+  be a holiday, falling back to an already-ingested trading day), the write is skipped before it
+  ever reaches `write_facts`. This isn't needed for correctness (`write_facts` already
+  deduplicates byte-identical rows) — it's what makes the guarantee independent of an assumption
+  that NSE's `Last-Modified` header stays byte-stable for the whole run, which is exactly the
+  mechanism that produced the sample data's one real artifact: 3,506 rows, all one pattern
+  (2026-09-04 requested by two separate real invocations of the sample script, days apart, whose
+  `Last-Modified` reading apparently drifted between those two real-world calls).
+- **Weekday-only requests** (Mon-Fri) plus a startup check against the store's own already-present
+  `event_date`s — an interrupted run (this project's ASM/GSM sweep needed two restarts) can simply
+  be re-invoked; it recomputes the gap and requests only that.
+- A 3-week real-network smoke test (2019-10-01 to 2019-10-20, spanning a real October festival
+  window) ran first and confirmed resumability, the redundant-fallback skip, and holiday
+  classification all behaved correctly before committing to the full ~1,790-request sweep.
+
+**Real run result:**
+
+```
+Weekdays requested this run: 1,790 (1,816 total in range, 26 already resumed from the sample)
+Confirmed trading days (direct): 1,688
+Redundant-fallback skips (holiday re-serving an already-confirmed day): 81
+GAP: 1 (see below — resolves to a labeling artifact, not missing data)
+Not a trading day: 101
+New rows written: 4,131,046
+Rows skipped as invalid (P2-004, blank SYMBOL/SERIES): 5,796
+
+Store, all-time: 4,199,116 rows, 4,804 distinct symbols, 1,719 distinct trading days,
+2019-10-01 .. 2026-09-15
+```
+
+**The one GAP, traced to ground truth, not left as a bare label.** `2021-11-04` (Diwali Muhurat
+trading — a real, short special session) was flagged GAP. Investigated directly rather than
+reported as-is: the store already holds 2,010 real rows for `event_date='2021-11-04'`
+(`knowledge_date='2021-11-05'`) — the data is present and looks legitimate. Re-fetching
+`trade_date=2021-11-04` live, right now, returns `2021-11-03`'s data instead (NSE's archive does
+not serve the special Muhurat-session file under its own date when requested directly — it falls
+back an extra day, past the special session, to the ordinary prior trading day). The real Nov-4
+data was captured only because the *next* request (`2021-11-05`, evidently also not independently
+servable) fell back correctly to it. Net effect: `2021-11-04`'s own direct request landed on an
+already-covered neighbor (correctly redundant-skipped, not written twice), while `2021-11-05`'s
+request is what actually captured the real day — leaving `2021-11-04` classified GAP purely
+because its *own* request didn't match itself, not because the day's data is missing. **Zero
+genuine, unresolved data gaps across the full 1,719-day history.**
+
+**Guard re-test on the full dataset**: all 3 cases in `tests/test_bhavcopy_real_data_guard.py`
+(mid-series delisting/ALBK, multiple-series-same-date/DHFL, no-duplicate-vintage) re-run against
+4.2M real rows instead of 15 dates' worth — **still pass** (46s, vs. under a second on the sample;
+the no-duplicate-vintage check scans every row). Full suite: 158 tests, 0 failures.
+
+**Delivery-percentage missing rate, full history (not a single day's sample).** P2-004 found 30
+blank rows in one day; across seven years: 392,953 of 4,199,116 rows (9.36%) have `NULL
+delivery_pct` overall — but that figure is almost entirely the `BE`/`BZ` (trade-for-trade/
+restricted) series, which carry a materially different delivery concept. For the `EQ` series
+specifically — the series this project's signal code actually uses (`price_adjustment.py`'s
+default) — missing `delivery_pct` is **8 rows out of 3,151,709 (0.000%)**, effectively complete.
+
+## Tests (updated)
+
+`python -m unittest discover -s tests -q` → **158 tests, 0 failures**, including the full-history
+guard re-test. `python -m py_compile` across `src/`, `tests/`, `scripts/` → clean.

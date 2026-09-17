@@ -156,9 +156,23 @@ class DateIngestionOutcome:
     rows_skipped_invalid: int = 0  # missing SYMBOL/SERIES, can't form a business key (P2-004)
 
 def ingest_bhavcopy_date(conn: sqlite3.Connection, trade_date: date,
-                          fetch_fn: Callable[[date], FetchResult] = fetch_bhavcopy) -> DateIngestionOutcome:
+                          fetch_fn: Callable[[date], FetchResult] = fetch_bhavcopy,
+                          already_confirmed: set[str] | None = None) -> DateIngestionOutcome:
     """`fetch_fn` defaults to the real network fetch; tests inject a fixture-returning callable
-    instead so the unit suite never depends on NSE being reachable."""
+    instead so the unit suite never depends on NSE being reachable.
+
+    `already_confirmed`: an optional, caller-maintained set of actual_event_date strings already
+    written earlier in the same run. If this request's response resolves to a date already in
+    that set (a weekday that turned out to be a holiday, falling back to a trading day this run
+    already ingested directly), the write is skipped -- not because `write_facts` would get it
+    wrong (an identical row collides on the UNIQUE constraint and is silently skipped either way),
+    but so a full multi-year sweep never depends on NSE's Last-Modified header staying byte-stable
+    for the whole run to avoid re-creating a duplicate knowledge_date vintage of the same day
+    (the real, harmless-but-avoidable pattern found in `scripts/ingest_bhavcopy_sample.py`'s own
+    sample data -- see `scripts/ingest_bhavcopy_full_history.py`'s module docstring). Callers that
+    don't pass this (the existing test suite, `ingest_bhavcopy_dates`) get the original behavior
+    exactly -- every date is written through `write_facts` normally.
+    """
     try:
         fetch_result = fetch_fn(trade_date)
     except BhavcopyFetchError as exc:
@@ -183,6 +197,11 @@ def ingest_bhavcopy_date(conn: sqlite3.Connection, trade_date: date,
                      f"{actual_event_date.isoformat()} ({day_gap} day(s) off) -- beyond the "
                      f"{MAX_FALLBACK_DAYS}-day holiday/weekend fallback window, treated as an "
                      "anomalous/misrouted archive entry (P2-003), not ingested."))
+
+    if already_confirmed is not None and actual_event_date.isoformat() in already_confirmed:
+        return DateIngestionOutcome(trade_date=trade_date, status="ingested",
+                                     actual_event_date=actual_event_date.isoformat(), rows_inserted=0,
+                                     rows_skipped_invalid=parsed.skipped_invalid)
 
     result = write_facts(conn, "bhavcopy", parsed.rows)
     return DateIngestionOutcome(trade_date=trade_date, status="ingested", actual_event_date=actual_event_date.isoformat(),

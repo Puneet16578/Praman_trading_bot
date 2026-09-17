@@ -131,6 +131,25 @@ class IngestBhavcopyDateTest(unittest.TestCase):
         self.assertEqual(second.rows_skipped_duplicate, 4)
         self.assertEqual(len(read_as_of(self.conn, "bhavcopy", "2099-01-01")), 4)  # no new rows
 
+    def test_already_confirmed_date_skips_the_write_entirely(self):
+        """Full-history run support: a weekday that turns out to be a holiday falls back to a day
+        this run already confirmed and wrote -- the write must be skipped BEFORE it ever reaches
+        write_facts (not merely deduplicated by it), so this never depends on NSE's Last-Modified
+        header staying byte-stable across the whole run (scripts/ingest_bhavcopy_full_history.py)."""
+        fetch_fn = lambda d: make_fetch_result()
+        outcome = ingest_bhavcopy_date(self.conn, date(2019, 10, 1), fetch_fn=fetch_fn,
+                                        already_confirmed={"2019-10-01"})
+        self.assertEqual(outcome.status, "ingested")
+        self.assertEqual(outcome.rows_inserted, 0)
+        self.assertEqual(outcome.rows_skipped_duplicate, 0)  # never called write_facts at all
+        self.assertEqual(len(read_as_of(self.conn, "bhavcopy", "2099-01-01")), 0)
+
+    def test_already_confirmed_does_not_affect_a_genuinely_new_date(self):
+        fetch_fn = lambda d: make_fetch_result()
+        outcome = ingest_bhavcopy_date(self.conn, date(2019, 10, 1), fetch_fn=fetch_fn,
+                                        already_confirmed={"2020-01-01"})  # unrelated date
+        self.assertEqual(outcome.rows_inserted, 4)
+
     def test_corrected_republished_file_produces_new_row_with_later_knowledge_date(self):
         original = ingest_bhavcopy_date(self.conn, date(2019, 10, 1),
                                          fetch_fn=lambda d: make_fetch_result(knowledge_date="2019-10-02"))

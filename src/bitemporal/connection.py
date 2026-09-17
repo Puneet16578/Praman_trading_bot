@@ -10,6 +10,13 @@ def get_connection(db_path: str | Path = ":memory:") -> sqlite3.Connection:
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    if db_path != ":memory:":
+        # WAL (write-ahead log) is a per-database-file setting, not per-connection -- set once here
+        # so it applies to every future connection to this file. Added for Phase 5's full bhavcopy
+        # history ingestion (~4.5M rows projected, single long-running writer): WAL lets a separate
+        # read-only process (a progress-check script) query the DB concurrently without blocking or
+        # being blocked by the writer, which the default rollback-journal mode does not allow.
+        conn.execute("PRAGMA journal_mode = WAL")
     return conn
 
 def init_db(conn: sqlite3.Connection) -> None:
