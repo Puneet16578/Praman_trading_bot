@@ -1,6 +1,13 @@
 """NSE corporate-actions ingestion: bonus issues and stock splits, tiered by knowledge_date
-confidence. Demergers are ingested separately, as exclusion markers only (see CLAUDE.md's
-"demergers are unadjustable" scope boundary) -- they never get a ratio or a tier from this scheme.
+confidence. Demergers and capital reductions are ingested separately, as exclusion markers only
+(see CLAUDE.md's "demergers are unadjustable" scope boundary) -- they never get a ratio or a tier
+from this scheme. These are two distinct, accurately-labeled real action types (DEMERGER,
+CAPITAL_REDUCTION), not one type standing in for the other -- both share the same underlying
+reason for exclusion (a real, structural, mechanical price-level break for which NSE discloses no
+adjustment ratio at announcement time; see is_capital_reduction_subject's docstring and
+docs/phase5_event_catalogue.md Sec.4j for why "no disclosed ratio" is the actual shared criterion,
+not "is a demerger" specifically), but action_type always records what actually happened, never
+which one it was excluded alongside.
 
 Two NSE endpoints, neither individually sufficient (found and measured during Phase 3 source
 evaluation, this session's transcript):
@@ -32,10 +39,16 @@ MATCHED_UNCONFIRMED = "MATCHED_UNCONFIRMED"
 EX_DATE_FALLBACK = "EX_DATE_FALLBACK"
 QUARANTINE = "QUARANTINE"  # never written to the store -- logged only
 DEMERGER_EXCLUSION = "DEMERGER_EXCLUSION"  # not part of the confidence scheme; see module docstring
+CAPITAL_REDUCTION_EXCLUSION = "CAPITAL_REDUCTION_EXCLUSION"  # same handling as DEMERGER_EXCLUSION
+                                                              # (no ratio, excluded not adjusted),
+                                                              # named for its own action_type so a
+                                                              # capital-reduction row never carries
+                                                              # a demerger-shaped tier
 
 BONUS = "BONUS"
 SPLIT = "SPLIT"
 DEMERGER = "DEMERGER"
+CAPITAL_REDUCTION = "CAPITAL_REDUCTION"
 
 # Measured from the 253 cases where v1 (earliest-in-a-200-day-window) matching agreed with
 # `subject` -- see docs/phase3_corporate_actions.md for the full distribution
@@ -68,8 +81,52 @@ def parse_subject_ratio(subject: str) -> dict | None:
         return {"type": SPLIT, "numerator": old_fv, "denominator": new_fv, "factor": old_fv / new_fv, "raw": f"{old_fv}->{new_fv}"}
     return None
 
-def is_demerger_subject(subject: str) -> bool:
-    return "demerger" in (subject or "").lower()
+# Explicit, enumerated exceptions -- NOT a general pattern -- for real demergers whose NSE subject
+# text has no safe generalizable substring. "Scheme Of Arrangement" was considered and rejected as
+# a general pattern: it also matches real, ratio-bearing, non-demerger actions in this same store
+# (e.g. "Scheme Of Arrangement - Bonus Ncrps 4:1" for RADIOCITY/TVSMOTOR/SIYSIL/TVSHLTD), so
+# widening the substring would misclassify those as unadjustable demergers instead of leaving them
+# correctly unhandled. Confirmed real demergers (docs/phase5_event_catalogue.md Sec.4d/4e),
+# externally verified: IIFL Holdings' 2019 three-way split, and the KPIT/Birlasoft composite
+# scheme's demerger-of-engineering-business component. Both predate bhavcopy's own data start
+# (2019-10-01) and are therefore currently inert for every computed number in this project --
+# recorded for completeness and in case the ingested history is ever extended backward.
+_KNOWN_DEMERGER_EXCEPTIONS: frozenset[tuple[str, str]] = frozenset({
+    ("IIFL", "2019-05-30"),
+    ("BSOFT", "2019-01-24"),
+})
+
+def is_demerger_subject(subject: str, symbol: str | None = None, ex_date: str | None = None) -> bool:
+    """`symbol`/`ex_date` are optional and only consulted against the enumerated exception list
+    above -- every other case is decided purely from `subject` text, unchanged from before.
+    Deliberately narrow: "demerger" (the vast majority, all 90 currently-detected real cases) and
+    the hyphenated "de-merger"/"de merger" variant (TTML, 2019-07-11 -- the one real, safely
+    generalizable phrasing gap found by direct audit; occurs exactly once in the full 17,827-row
+    raw source, docs/phase5_event_catalogue.md Sec.4e). Does NOT match "reduction of capital" --
+    that is a distinct real action type with its own accurate label; see
+    is_capital_reduction_subject below, not folded in here."""
+    s = (subject or "").lower()
+    if "demerger" in s or "de-merger" in s or "de merger" in s:
+        return True
+    if symbol is not None and ex_date is not None and (symbol, ex_date) in _KNOWN_DEMERGER_EXCEPTIONS:
+        return True
+    return False
+
+def is_capital_reduction_subject(subject: str) -> bool:
+    """A capital reduction -- shares extinguished or face value cut, whether to return value to
+    shareholders, write off accumulated losses, or (per a share-swap capital reduction) transfer
+    value out to another entity's shareholders -- is unadjustable for the same underlying reason
+    a demerger is: NSE discloses no ratio for it, because none is fixed at announcement time in
+    the way a bonus/split ratio is (docs/phase5_event_catalogue.md Sec.4j). Deliberately a
+    SEPARATE classifier from is_demerger_subject, not folded into it: a capital reduction is a
+    real, distinct action type (recorded as CAPITAL_REDUCTION, never mislabeled DEMERGER) that
+    happens to need the same exclude-don't-adjust treatment. Checked directly against the full
+    17,827-row raw source before being enabled: exactly 3 real rows anywhere in this project's
+    ingested data use this phrase (MAXIND 2022-07-26, MELSTAR 2024-08-16, EASTSILK 2024-11-22) --
+    low enough that even if none of the three specific historical cases were demergers or
+    share-swaps, the over-exclusion cost of matching this phrase generally is negligible."""
+    s = (subject or "").lower()
+    return "reduction of capital" in s or "capital reduction" in s
 
 def parse_announcement_ratio(text: str, hint: str) -> dict | None:
     """Corroboration only -- see module docstring. Never the source of the stored ratio."""
@@ -228,7 +285,7 @@ def build_rows_and_report(actions: list[dict], announcements_by_key: dict[str, l
         ex_date = datetime.strptime(action["exDate"], "%d-%b-%Y").date()
         subject = action.get("subject", "") or ""
 
-        if is_demerger_subject(subject):
+        if is_demerger_subject(subject, symbol=symbol, ex_date=ex_date.isoformat()):
             rows.append({
                 "symbol": symbol, "action_type": DEMERGER, "event_date": ex_date.isoformat(),
                 "knowledge_date": ex_date.isoformat(),  # no reliable announcement path exists; see CLAUDE.md
@@ -236,6 +293,16 @@ def build_rows_and_report(actions: list[dict], announcements_by_key: dict[str, l
                 "confidence_tier": DEMERGER_EXCLUSION, "details": subject.strip(), "source_file": source_file,
             })
             tier_counts[DEMERGER_EXCLUSION] = tier_counts.get(DEMERGER_EXCLUSION, 0) + 1
+            continue
+
+        if is_capital_reduction_subject(subject):
+            rows.append({
+                "symbol": symbol, "action_type": CAPITAL_REDUCTION, "event_date": ex_date.isoformat(),
+                "knowledge_date": ex_date.isoformat(),  # no reliable announcement path exists; see CLAUDE.md
+                "ratio_numerator": None, "ratio_denominator": None,
+                "confidence_tier": CAPITAL_REDUCTION_EXCLUSION, "details": subject.strip(), "source_file": source_file,
+            })
+            tier_counts[CAPITAL_REDUCTION_EXCLUSION] = tier_counts.get(CAPITAL_REDUCTION_EXCLUSION, 0) + 1
             continue
 
         subj_parsed = parse_subject_ratio(subject)

@@ -9,7 +9,7 @@ import unittest
 from src.bitemporal.connection import get_connection, init_db
 from src.bitemporal.dates import DateValidationError, parse_date_str
 from src.bitemporal.guard import TemporalGuardError, latest_as_of, read_as_of
-from src.bitemporal.schema import BITEMPORAL_TABLES, FactTable
+from src.bitemporal.schema import BHAVCOPY, BITEMPORAL_TABLES, FactTable
 from src.bitemporal.store import StoreValidationError, write_fact, write_facts
 
 def make_bhavcopy_row(**overrides) -> dict:
@@ -50,6 +50,54 @@ class SchemaRegistrySelfCheckTest(unittest.TestCase):
         for table in BITEMPORAL_TABLES.values():
             self.assertIn("event_date", table.columns)
             self.assertIn("knowledge_date", table.columns)
+
+class DeclaredIndicesTest(unittest.TestCase):
+    """Indices are derived, query-speed-only structures (schema.py's note on FactTable.indices) --
+    this only checks that init_db() actually creates what a table declares, not that any
+    particular index exists (that's a query-shape decision, measured per table -- see
+    docs/phase2_nse_market_data_ingestion.md's Phase 5 pre-flight index benchmark)."""
+
+    def test_init_db_creates_every_declared_index(self):
+        conn = get_connection(":memory:")
+        init_db(conn)
+        existing_indices = {row["name"] for row in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='index'")}
+        for table in BITEMPORAL_TABLES.values():
+            for index_ddl in table.indices:
+                index_name = index_ddl.split("IF NOT EXISTS")[1].split("ON")[0].strip()
+                self.assertIn(index_name, existing_indices,
+                              f"{table.name}'s declared index {index_name!r} was not created by init_db().")
+
+    def test_init_db_adds_a_missing_index_to_a_table_that_already_existed(self):
+        """The regression this guards against: an old DB file whose table was created (by an
+        earlier version of this codebase, or a prior init_db() call before an index was added to
+        FactTable.indices) has the table but not the index. init_db() must not skip index
+        creation just because `table.name not in existing` is False -- unlike table DDL, which is
+        genuinely CREATE-IF-NOT-EXISTS-and-never-migrate (P4-005's shape), index creation in
+        connection.py runs unconditionally every call, specifically to avoid that trap."""
+        conn = get_connection(":memory:")
+        # Create the table directly, bypassing init_db entirely, so no index exists yet --
+        # simulating a DB file from before BHAVCOPY.indices had any entries.
+        conn.execute(BHAVCOPY.ddl)
+        conn.commit()
+        existing_before = {row["name"] for row in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='bhavcopy'")}
+        # The UNIQUE constraint's own sqlite_autoindex is created as part of the table DDL itself --
+        # only the explicitly-declared idx_bhavcopy_event_date is what init_db() is responsible for.
+        self.assertNotIn("idx_bhavcopy_event_date", existing_before,
+                          "test setup should start without the explicitly-declared index")
+
+        init_db(conn)  # table already exists; must still retroactively add its declared index
+
+        existing_after = {row["name"] for row in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='bhavcopy'")}
+        self.assertIn("idx_bhavcopy_event_date", existing_after,
+                      "init_db() must add a declared index even to a table that already existed.")
+
+    def test_init_db_is_idempotent_with_indices_present(self):
+        conn = get_connection(":memory:")
+        init_db(conn)
+        init_db(conn)  # must not raise on a second call now that indices already exist
 
 class DateValidatorTest(unittest.TestCase):
     def test_accepts_iso_string(self):

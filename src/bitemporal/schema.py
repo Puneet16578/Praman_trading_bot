@@ -36,6 +36,10 @@ class FactTable:
     business_key: tuple[str, ...]  # columns identifying "the same fact" across knowledge_date restatements
     column_types: dict[str, type]  # every column in `columns` -> its declared Python type marker
     nullable_columns: frozenset[str] = frozenset()  # subset of columns allowed to be None
+    # Extra CREATE INDEX statements beyond whatever the DDL's own UNIQUE constraint already
+    # provides -- see the note above BHAVCOPY's definition for why this is a derived-structure
+    # decision (measured per query shape), not a default every table gets speculatively.
+    indices: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if "event_date" not in self.columns or "knowledge_date" not in self.columns:
@@ -62,6 +66,19 @@ class FactTable:
 # as-of, corporate-action-adjusted price series (Section 11), which this raw column deliberately
 # does not encode. Using prev_close directly for a return calculation silently reintroduces
 # look-ahead/adjustment bugs this project exists to avoid.
+#
+# `indices`: measured, not speculative (Phase 5 pre-flight, docs/phase2_nse_market_data_ingestion.md).
+# The table's own UNIQUE constraint already gives a covering (symbol, event_date, knowledge_date,
+# series) autoindex, which a per-symbol history fetch (WHERE symbol=? ...) already uses well on
+# its own -- an additional (symbol, event_date, series) index was tried and measured to give ZERO
+# benefit over that autoindex for this query shape (and a slight regression), so it is deliberately
+# NOT added. A cross-sectional query (one trading day, every symbol -- WHERE event_date=? ...,
+# needed for the event catalogue's per-day/market-cap-band breakdowns) has no equality prefix to
+# use that autoindex at all and was a full 4.2M-row table scan (~1.7s); a plain index on
+# `event_date` alone measured a ~150-300x speedup for exactly that query, real rows, real timing.
+# Indices are a derived, query-speed-only structure -- they never change what a query returns, only
+# how fast, and therefore sit entirely outside this project's bitemporal guarantees (Section 7/8
+# constrain what is visible and when a fact can change, not how it's physically looked up).
 BHAVCOPY = FactTable(
     name="bhavcopy",
     ddl="""
@@ -84,6 +101,7 @@ BHAVCOPY = FactTable(
             UNIQUE (symbol, event_date, knowledge_date, series)
         )
     """,
+    indices=("CREATE INDEX IF NOT EXISTS idx_bhavcopy_event_date ON bhavcopy(event_date)",),
     columns=frozenset({"row_id", "symbol", "event_date", "knowledge_date", "open_price", "high_price",
                         "low_price", "close_price", "prev_close", "traded_qty", "delivery_qty",
                         "delivery_pct", "series", "source_file", "recorded_at"}),
@@ -134,26 +152,43 @@ CORPORATE_ACTIONS = FactTable(
     nullable_columns=frozenset({"ratio_numerator", "ratio_denominator", "details"}),
 )
 
+# Extended (never forked) once the real ASM/GSM circular shape was understood -- Phase 1's
+# original stub (symbol, stage, event_date) predates any real surveillance ingestion and was
+# never populated (confirmed empty before this change). A placement is a TRANSITION event, not a
+# static tag: ENTRY (from_stage null), EXIT (to_stage null), or STAGE_CHANGE (both set) -- verified
+# against real, consecutive circulars (docs/phase4_asm_gsm_sourcing.md) where a symbol's actual
+# movement (e.g. Stage I -> Stage IV directly, per the annexure's own "Criteria VII" footnote) can
+# skip stages; storing only a bare "current stage" would lose exactly that signal. `mechanism`
+# keeps ASM long-term, ASM short-term, and GSM as distinct series (a symbol can be in more than one
+# simultaneously, and moves between ASM_ST and ASM_LT are real, observed events, not exclusive).
 SURVEILLANCE_FLAGS = FactTable(
     name="surveillance_flags",
     ddl="""
         CREATE TABLE surveillance_flags (
             row_id INTEGER PRIMARY KEY AUTOINCREMENT,
             symbol TEXT NOT NULL,
-            stage TEXT NOT NULL,
+            mechanism TEXT NOT NULL,
+            action_type TEXT NOT NULL,
+            from_stage TEXT,
+            to_stage TEXT,
             event_date TEXT NOT NULL,
             knowledge_date TEXT NOT NULL,
+            source_circular TEXT NOT NULL,
+            details TEXT,
             source_file TEXT NOT NULL,
             recorded_at TEXT NOT NULL,
-            UNIQUE (symbol, stage, event_date, knowledge_date)
+            UNIQUE (symbol, mechanism, event_date, knowledge_date)
         )
     """,
-    columns=frozenset({"row_id", "symbol", "stage", "event_date", "knowledge_date", "source_file", "recorded_at"}),
-    business_key=("symbol", "stage", "event_date"),
+    columns=frozenset({"row_id", "symbol", "mechanism", "action_type", "from_stage", "to_stage",
+                        "event_date", "knowledge_date", "source_circular", "details", "source_file", "recorded_at"}),
+    business_key=("symbol", "mechanism", "event_date"),
     column_types={
-        "row_id": INTEGER, "symbol": str, "stage": str, "event_date": str,
-        "knowledge_date": str, "source_file": str, "recorded_at": str,
+        "row_id": INTEGER, "symbol": str, "mechanism": str, "action_type": str,
+        "from_stage": str, "to_stage": str, "event_date": str, "knowledge_date": str,
+        "source_circular": str, "details": str, "source_file": str, "recorded_at": str,
     },
+    nullable_columns=frozenset({"from_stage", "to_stage", "details"}),
 )
 
 SEBI_ORDERS = FactTable(

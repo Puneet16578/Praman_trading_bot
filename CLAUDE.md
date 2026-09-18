@@ -100,6 +100,36 @@ system). Its architectural disciplines carry over unchanged.
   `event_date`/period must be parsed from each order's own text and is flagged `needs_review`
   until a human confirms it — never trusted from regex alone.
 
+## Surveillance mechanisms — ASM/GSM ingested, four others deliberately not (decided 2026-09-13/15)
+
+NSE runs several separate, independently-circular'd surveillance mechanisms. This project ingests
+**ASM** (Additional Surveillance Measure, long-term and short-term — full range, 2019-10-01
+onward) and **GSM** (Graded Surveillance Measure — **2025-01-01 onward only**; pre-2025 GSM
+circulars are scanned images with no extractable text, see `docs/phase4_asm_gsm_sourcing.md` for
+the full scope reasoning: a silent OCR misread on a ticker is worse than a documented gap, GSM is
+a secondary signal for this project's actual question, and the gap is a stated, scoped limitation
+with OCR as a possible future follow-on).
+
+**Four further mechanisms are known, recognized, and deliberately NOT ingested** — real sections
+this project's parser recognizes as sections (never silently skipped as a parse failure) but
+excludes on purpose, listed together so a future reader who notices any one of them finds a
+complete, deliberate list rather than a surprise:
+
+1. **IBC** (Insolvency and Bankruptcy Code) — insolvency-proceeding-triggered placement, a
+   different criterion from the numbered Stage I-IV surveillance criteria. Present since 2019.
+2. **ICA** (Inter Creditor Agreement) — a debt-restructuring-triggered placement, the same
+   structural category as IBC.
+3. **ESM** (Enhanced Surveillance Measure) — an entirely separate NSE surveillance program. When a
+   symbol exits ASM *because* it moved to ESM, that exit is a real, in-scope ASM event and IS
+   ingested (e.g. `details` text like `"Moved from STASM to ESM framework"`, real, observed,
+   preserved verbatim) — only ESM's own placements/circulars are not tracked.
+4. **Encumbrance** (SEBI SAST Regulation 28(3)) — a promoter-shareholding-pledge-triggered
+   surveillance category, unrelated to ASM's volume/price criteria.
+
+See `docs/phase4_asm_gsm_sourcing.md`'s "Four excluded surveillance mechanisms" section for real
+section counts and exact observed title wording for each. Ingesting any of the four as its own
+mechanism is a scoped future follow-on, not a defect.
+
 ## Hard blocker — adjusted price series does not exist yet (as of 2026-09-08)
 
 `jugaad-data` has no corporate-actions endpoint (discovered during Phase 2). **Consequence: there
@@ -140,6 +170,28 @@ the cost of this boundary should stay visible, not be absorbed silently into a l
 Never claim a test passed without running it and pasting output. Label anything you could not
 verify as DOCUMENTED, NOT VERIFIED. Log every defect you find with an ID, root cause, fix, and
 re-verification evidence — including ones you introduced yourself.
+
+## Recurring failure modes — learned from P4-004/P4-005, will recur if not watched for
+
+1. **A counter increments AFTER the operation it counts succeeds, never before.** A success count
+   that increments optimistically is not a success count — it is a claim the rest of the run has
+   not yet earned. If the operation can raise, the increment goes after the call that can raise,
+   not before it "for tidiness." (P4-005: `circulars_processed += 1` sat before `write_facts()`;
+   when every write failed, circulars were still counted as processed.)
+2. **`init_db()`'s `CREATE TABLE IF NOT EXISTS` never migrates an existing table.** Any change to
+   a fact table's DDL in `schema.py` requires either a real migration or an explicit
+   drop-and-rebuild — and the drop must be preceded by a row-count assertion (`SELECT COUNT(*) = 0`
+   or an explicit reviewed backfill plan), never assumed safe. (P4-004: the real DB's
+   `surveillance_flags` table predated this session's schema extension and was silently never
+   updated; every write against it failed.) We got lucky this time: the change was additive enough
+   to fail loudly on INSERT (`no column named action_type`). A renamed column or a widened/narrowed
+   type on an existing column would fail silently or corrupt data instead — check this explicitly,
+   don't rely on the failure being loud again.
+3. **A "rows processed" or "events ingested" summary is not trustworthy on its own** — assert it
+   against the store directly (`sum(counts) == SELECT COUNT(*)`) before reporting it. This is what
+   would have caught P4-004/P4-005 immediately instead of requiring a human to notice
+   `circulars_processed: 2883` and `total_rows: 0` disagreeing in two different sections of the
+   same report.
 
 ## Working procedure
 

@@ -212,7 +212,46 @@ restricted) series, which carry a materially different delivery concept. For the
 specifically — the series this project's signal code actually uses (`price_adjustment.py`'s
 default) — missing `delivery_pct` is **8 rows out of 3,151,709 (0.000%)**, effectively complete.
 
+## Indices — measured, not guessed (Phase 5 pre-flight, 2026-09-17)
+
+Before building the event catalogue (which hits `bhavcopy` far harder than any guard test —
+a trailing-window lookup per (symbol, day) across 1,719 days and ~3,300 EQ symbols), checked what
+indices actually existed: **one** — `sqlite_autoindex_bhavcopy_1`, SQLite's own automatic index
+backing the table's `UNIQUE (symbol, event_date, knowledge_date, series)` constraint. Nothing else.
+
+Two representative queries were timed for real, before guessing at a fix:
+
+| Query shape | Before | After | Index that actually helped |
+|---|---|---|---|
+| Per-symbol full history (`symbol=? AND series=?`, no `event_date` bound) | 13.65ms | 14.53ms (no real change) | none needed — the existing autoindex already serves `symbol=?` as a leading-column search |
+| One trading day, every symbol (`event_date=? AND series=?`) | 1,738ms (full table scan) | 5.18ms | a plain `CREATE INDEX ON bhavcopy(event_date)` |
+
+**The speculated `(symbol, event_date, series)` composite index was tried first and measured to
+give zero benefit over the existing autoindex for the per-symbol query (and a slight regression) —
+it was dropped, not kept "just in case."** Only the single-column `event_date` index survived
+measurement, because it's the one query shape (cross-sectional: one day, every symbol — exactly
+what the event catalogue's per-day/market-cap-band breakdowns need) that had no usable equality
+prefix in any existing index at all. Added to `schema.py` as `BHAVCOPY.indices` (a new field on
+`FactTable`, defaulting to empty for every other table — nothing else gets a speculative index
+without its own measurement) and created by `init_db()` via `CREATE INDEX IF NOT EXISTS`, so an
+already-existing database file picks it up on its next connection, not only a fresh one.
+
+Also confirmed, honestly, what indices do *not* fix: the real-data guard test's own full,
+unfiltered `SELECT *` (32.5 real seconds against 4.2M rows) is unaffected by any index, by
+construction — a query with no `WHERE` clause has no equality prefix to search on, so it must read
+every row regardless of what indices exist. Its cost is Python-side (materializing ~4.2M dict
+rows), not SQL execution strategy. Reported so this isn't reintroduced later as "add an index to
+speed up the guard test" — that specific test's cost is not an indexing problem.
+
+**Indices are a derived, physical-lookup structure, not a fact — they sit outside this project's
+bitemporal guarantees entirely.** Section 7/8's guarantees are about *what* is visible as of a
+given date and *that* a fact is never overwritten, only restated; an index changes none of that —
+it only changes how fast a query that returns the identical result set executes. Adding, dropping,
+or redesigning an index can never be a bitemporal-correctness change, only a performance one, and
+should be reasoned about (and measured) purely as such.
+
 ## Tests (updated)
 
-`python -m unittest discover -s tests -q` → **158 tests, 0 failures**, including the full-history
-guard re-test. `python -m py_compile` across `src/`, `tests/`, `scripts/` → clean.
+`python -m unittest discover -s tests -q` → **160 tests, 0 failures**, including the full-history
+guard re-test and the new declared-indices test. `python -m py_compile` across `src/`, `tests/`,
+`scripts/` → clean.

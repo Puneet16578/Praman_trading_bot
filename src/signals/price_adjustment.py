@@ -8,13 +8,15 @@ from __future__ import annotations
 from datetime import date
 
 from ..bitemporal.guard import latest_as_of
-from ..ingestion.nse_market_data.corporate_actions import BONUS, DEMERGER, SPLIT
+from ..ingestion.nse_market_data.corporate_actions import BONUS, CAPITAL_REDUCTION, DEMERGER, SPLIT
+
+UNADJUSTABLE_ACTION_TYPES = (DEMERGER, CAPITAL_REDUCTION)
 
 class UnadjustableWindowError(ValueError):
-    """Raised when a demerger ex-date falls inside (price_date, as_of] for this symbol. A
-    demerger has no adjustment factor (CLAUDE.md's scope boundary) -- silently ignoring it here
-    would compute a confidently wrong adjusted price. The caller must exclude this window, not
-    receive a number.
+    """Raised when a demerger or capital-reduction ex-date falls inside (price_date, as_of] for
+    this symbol. Neither has an adjustment factor (CLAUDE.md's scope boundary: NSE discloses no
+    ratio for either at announcement time) -- silently ignoring it here would compute a
+    confidently wrong adjusted price. The caller must exclude this window, not receive a number.
     """
 
 def factor_for_action(action_type: str, ratio_numerator: float, ratio_denominator: float) -> float:
@@ -44,10 +46,11 @@ def compute_adjustment_factor(conn, symbol: str, price_date: str, as_of: str) ->
     for row in rows:
         if not (price_date < row["event_date"] <= as_of):
             continue
-        if row["action_type"] == DEMERGER:
+        if row["action_type"] in UNADJUSTABLE_ACTION_TYPES:
             raise UnadjustableWindowError(
-                f"{symbol}: a demerger ex-date ({row['event_date']}) falls within ({price_date}, {as_of}] -- "
-                "this window has no adjustment factor and must be excluded, not adjusted.")
+                f"{symbol}: a {row['action_type'].lower().replace('_', ' ')} ex-date ({row['event_date']}) "
+                f"falls within ({price_date}, {as_of}] -- this window has no adjustment factor and must be "
+                "excluded, not adjusted.")
         if row["action_type"] in (BONUS, SPLIT):
             factor *= factor_for_action(row["action_type"], row["ratio_numerator"], row["ratio_denominator"])
     return factor

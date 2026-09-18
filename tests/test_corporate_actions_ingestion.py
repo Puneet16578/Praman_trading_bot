@@ -11,10 +11,11 @@ import unittest
 from src.bitemporal.connection import get_connection, init_db
 from src.bitemporal.guard import read_as_of
 from src.ingestion.nse_market_data.corporate_actions import (
-    BONUS, CONFIRMED, DEMERGER, DEMERGER_EXCLUSION, EX_DATE_FALLBACK, MATCHED_UNCONFIRMED,
-    QUARANTINE, SPLIT, announcement_cache_key, build_rows_and_report, classify_bonus_split,
-    collapse_clusters, find_announcement, ingest_corporate_actions, is_deferred_text,
-    is_demerger_subject, parse_announcement_ratio, parse_subject_ratio,
+    BONUS, CAPITAL_REDUCTION, CAPITAL_REDUCTION_EXCLUSION, CONFIRMED, DEMERGER, DEMERGER_EXCLUSION,
+    EX_DATE_FALLBACK, MATCHED_UNCONFIRMED, QUARANTINE, SPLIT, announcement_cache_key,
+    build_rows_and_report, classify_bonus_split, collapse_clusters, find_announcement,
+    ingest_corporate_actions, is_capital_reduction_subject, is_deferred_text, is_demerger_subject,
+    parse_announcement_ratio, parse_subject_ratio,
 )
 
 def ann(sort_date: str, desc: str, text: str) -> dict:
@@ -39,6 +40,41 @@ class ParseSubjectRatioTest(unittest.TestCase):
     def test_demerger_detected(self):
         self.assertTrue(is_demerger_subject("Demerger"))
         self.assertFalse(is_demerger_subject("Bonus 1:1"))
+
+    def test_hyphenated_demerger_variant_detected(self):
+        """Real gap found by audit (docs/phase5_event_catalogue.md Sec.4e): TTML's real subject
+        is ' De-Merger', which the bare 'demerger' substring check misses."""
+        self.assertTrue(is_demerger_subject(" De-Merger"))
+        self.assertTrue(is_demerger_subject("De Merger"))
+
+    def test_scheme_of_arrangement_not_generally_treated_as_demerger(self):
+        """Deliberately NOT a general pattern: it also matches real, ratio-bearing, non-demerger
+        rows in this store (e.g. RADIOCITY's 'Scheme Of Arrangement - Bonus Ncrps 1:10')."""
+        self.assertFalse(is_demerger_subject("Scheme Of Arrangement - Bonus Ncrps 1:10"))
+        self.assertFalse(is_demerger_subject(" Scheme Of Arrangement"))
+
+    def test_known_demerger_exception_requires_exact_symbol_and_date(self):
+        """IIFL's 2019-05-30 'Scheme Of Arrangement' is a confirmed real demerger with no safe
+        general pattern -- handled by exact (symbol, ex_date) enumeration, not a text match."""
+        self.assertTrue(is_demerger_subject(" Scheme Of Arrangement", symbol="IIFL", ex_date="2019-05-30"))
+        self.assertTrue(is_demerger_subject(" Composite Scheme Of Arrangement", symbol="BSOFT", ex_date="2019-01-24"))
+        # same subject, different symbol or date -- must NOT match; this is an enumerated
+        # exception, not a license to treat every "scheme of arrangement" as a demerger.
+        self.assertFalse(is_demerger_subject(" Scheme Of Arrangement", symbol="IIFL", ex_date="2020-01-01"))
+        self.assertFalse(is_demerger_subject(" Scheme Of Arrangement", symbol="OTHERCO", ex_date="2019-05-30"))
+
+    def test_reduction_of_capital_not_treated_as_demerger(self):
+        """A capital reduction is a distinct, accurately-labeled action type -- never classified
+        as DEMERGER even though both share the same exclusion treatment (see
+        is_capital_reduction_subject and docs/phase5_event_catalogue.md Sec.4j)."""
+        self.assertFalse(is_demerger_subject("Capital Reduction Pursuant To Nclt Order"))
+        self.assertFalse(is_demerger_subject("Reduction Of Capital"))
+
+    def test_capital_reduction_subject_detected(self):
+        self.assertTrue(is_capital_reduction_subject("Capital Reduction Pursuant To Nclt Order"))
+        self.assertTrue(is_capital_reduction_subject("Reduction Of Capital"))
+        self.assertFalse(is_capital_reduction_subject("Bonus 1:1"))
+        self.assertFalse(is_capital_reduction_subject("Demerger"))
 
 class ParseAnnouncementRatioTest(unittest.TestCase):
     def test_bonus_colon_form(self):
@@ -174,6 +210,20 @@ class BuildRowsAndReportTest(unittest.TestCase):
         self.assertIsNone(rows[0]["ratio_denominator"])
         self.assertEqual(rows[0]["knowledge_date"], "2023-07-20")
         self.assertEqual(report.tier_counts[DEMERGER_EXCLUSION], 1)
+
+    def test_capital_reduction_becomes_exclusion_marker_accurately_labeled(self):
+        """Same exclusion treatment as a demerger (no ratio, excluded not adjusted), but a
+        distinct, accurate action_type -- never written as DEMERGER."""
+        actions = [{"symbol": "MAXIND", "series": "EQ", "exDate": "26-Jul-2022",
+                    "subject": "Capital Reduction Pursuant To Nclt Order"}]
+        rows, report = build_rows_and_report(actions, {}, "test.json")
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["action_type"], CAPITAL_REDUCTION)
+        self.assertNotEqual(rows[0]["action_type"], DEMERGER)
+        self.assertEqual(rows[0]["confidence_tier"], CAPITAL_REDUCTION_EXCLUSION)
+        self.assertIsNone(rows[0]["ratio_numerator"])
+        self.assertIsNone(rows[0]["ratio_denominator"])
+        self.assertEqual(report.tier_counts[CAPITAL_REDUCTION_EXCLUSION], 1)
 
     def test_unhandled_action_type_counted_not_written(self):
         actions = [{"symbol": "MAZDOCK", "series": "EQ", "exDate": "06-Jan-2022", "subject": "Interim Dividend - Rs 7.10 Per Share"}]

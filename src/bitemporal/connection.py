@@ -24,4 +24,9 @@ def init_db(conn: sqlite3.Connection) -> None:
     for table in BITEMPORAL_TABLES.values():
         if table.name not in existing:
             conn.execute(table.ddl)
+        # Indices are derived, query-speed-only structures (schema.py's note on FactTable.indices)
+        # -- created every call via IF NOT EXISTS regardless of whether the table itself is new, so
+        # an index added to an existing FactTable definition still gets created on an old DB file.
+        for index_ddl in table.indices:
+            conn.execute(index_ddl)
     conn.commit()
