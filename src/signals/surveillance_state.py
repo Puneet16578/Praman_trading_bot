@@ -18,12 +18,16 @@ NSE source inconsistencies, not parsing errors. Gating on both conditions indepe
 module is correct regardless of which order a given real row's two dates happen to be in.
 """
 from __future__ import annotations
+from dataclasses import dataclass
 
 from ..bitemporal.guard import read_as_of
 
 ENTRY = "ENTRY"
 STAGE_CHANGE = "STAGE_CHANGE"
 EXIT = "EXIT"
+
+FAR_FUTURE_AS_OF = "2099-01-01"  # same "give me everything, filter in memory" convention as
+                                 # event_catalogue.py -- see build_surveillance_timeline below
 
 def current_surveillance_state(conn, symbol: str, as_of: str) -> dict[str, str | None]:
     """Returns {mechanism: current_stage} for every mechanism (ASM_LT, ASM_ST, GSM) with at least
@@ -49,3 +53,34 @@ def current_surveillance_state(conn, symbol: str, as_of: str) -> dict[str, str |
                 stage = None
         state[mechanism] = stage
     return state
+
+@dataclass
+class SurveillanceTimeline:
+    """Precomputed per-symbol ENTRY timeline for a question `current_surveillance_state()` cannot
+    answer on its own: not "what was the state as of T" but "when, if ever, was this symbol FIRST
+    flagged after T." Built once per symbol (one query) from every ENTRY transition, not
+    per-question -- the same batch-then-replay shape as event_catalogue.py's SymbolHistory.
+
+    Deliberately retrospective (FAR_FUTURE_AS_OF, full/later knowledge), like Phase 6's outcome
+    labels -- this answers "what actually happened later," not a live-as-of-T signal, so using
+    complete knowledge is correct here and would NOT be for a predictive signal (see
+    event_catalogue.py's module docstring for that distinction, which is why this class lives
+    next to current_surveillance_state() rather than replacing its bitemporal-correct behavior)."""
+    entries: list[dict]  # every ENTRY row, any mechanism, sorted by event_date
+
+    def first_entry_after(self, date: str) -> dict | None:
+        """Earliest ENTRY strictly after `date`, or None if this symbol was never (subsequently)
+        flagged. Takes the min by event_date rather than assuming `entries` arrives pre-sorted --
+        real per-symbol ENTRY counts are small (a handful at most), so this is cheap regardless."""
+        candidates = [row for row in self.entries if row["event_date"] > date]
+        if not candidates:
+            return None
+        return min(candidates, key=lambda r: r["event_date"])
+
+def build_surveillance_timeline(conn, symbol: str) -> SurveillanceTimeline:
+    rows = read_as_of(conn, "surveillance_flags", FAR_FUTURE_AS_OF, symbol=symbol)
+    entries = sorted(
+        (r for r in rows if r["action_type"] == ENTRY),
+        key=lambda r: (r["event_date"], r["knowledge_date"]),
+    )
+    return SurveillanceTimeline(entries=entries)

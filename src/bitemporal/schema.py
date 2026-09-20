@@ -191,6 +191,50 @@ SURVEILLANCE_FLAGS = FactTable(
     nullable_columns=frozenset({"from_stage", "to_stage", "details"}),
 )
 
+# Phase 7: general-purpose NSE corporate-announcement cache, for the Disclosure agent's "was there
+# a substantive disclosure before this move" question. This is a DIFFERENT use of the same real
+# `corporate-announcements` endpoint corporate_actions.py already calls (Phase 3) to cross-check
+# bonus/split ratios -- that usage filters to desc in {"bonus","stock split"} only and never
+# persists the result; this table stores EVERY announcement returned for a symbol, any `desc`
+# category, because the Disclosure agent needs to know about ordinary/no disclosure just as much
+# as a bonus/split one. Cached locally specifically so report generation never hits NSE live
+# (non-reproducible output, real rate-limit risk -- see docs/phase7_*.md).
+#
+# event_date == knowledge_date == the announcement's own real disclosure timestamp (`sort_date`'s
+# date part): unlike a bonus/split ex-date, an announcement has no separate "thing that happened
+# earlier and was only announced later" structure -- the disclosure IS the event, the same
+# reasoning DEMERGER_EXCLUSION rows already use for event_date=knowledge_date. The full timestamp
+# (with time-of-day) lives in `details` for same-day ordering.
+CORPORATE_ANNOUNCEMENTS = FactTable(
+    name="corporate_announcements",
+    ddl="""
+        CREATE TABLE corporate_announcements (
+            row_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            symbol TEXT NOT NULL,
+            event_date TEXT NOT NULL,
+            knowledge_date TEXT NOT NULL,
+            seq_id TEXT NOT NULL,
+            category TEXT NOT NULL,
+            description TEXT,
+            sort_timestamp TEXT NOT NULL,
+            source_file TEXT NOT NULL,
+            recorded_at TEXT NOT NULL,
+            UNIQUE (symbol, seq_id, knowledge_date)
+        )
+    """,
+    indices=("CREATE INDEX IF NOT EXISTS idx_corporate_announcements_symbol_event_date "
+             "ON corporate_announcements(symbol, event_date)",),
+    columns=frozenset({"row_id", "symbol", "event_date", "knowledge_date", "seq_id", "category",
+                        "description", "sort_timestamp", "source_file", "recorded_at"}),
+    business_key=("symbol", "seq_id"),
+    column_types={
+        "row_id": INTEGER, "symbol": str, "event_date": str, "knowledge_date": str,
+        "seq_id": str, "category": str, "description": str, "sort_timestamp": str,
+        "source_file": str, "recorded_at": str,
+    },
+    nullable_columns=frozenset({"description"}),
+)
+
 SEBI_ORDERS = FactTable(
     name="sebi_orders",
     ddl="""
@@ -220,7 +264,7 @@ SEBI_ORDERS = FactTable(
 )
 
 BITEMPORAL_TABLES: dict[str, FactTable] = {
-    t.name: t for t in (BHAVCOPY, CORPORATE_ACTIONS, SURVEILLANCE_FLAGS, SEBI_ORDERS)
+    t.name: t for t in (BHAVCOPY, CORPORATE_ACTIONS, SURVEILLANCE_FLAGS, SEBI_ORDERS, CORPORATE_ANNOUNCEMENTS)
 }
 
 def get_fact_table(name: str) -> FactTable:

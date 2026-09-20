@@ -7,7 +7,7 @@ import unittest
 
 from src.bitemporal.connection import get_connection, init_db
 from src.bitemporal.store import write_facts
-from src.signals.surveillance_state import current_surveillance_state
+from src.signals.surveillance_state import current_surveillance_state, build_surveillance_timeline
 
 def make_flag(symbol, mechanism, action_type, event_date, knowledge_date, from_stage=None, to_stage=None, source_circular="SURV1", details=None):
     return {
@@ -75,6 +75,45 @@ class CurrentSurveillanceStateTest(unittest.TestCase):
         ])
         state = current_surveillance_state(self.conn, "ABC", "2024-06-01")
         self.assertEqual(state, {"ASM_LT": "I", "GSM": "II"})
+
+class SurveillanceTimelineTest(unittest.TestCase):
+    def setUp(self):
+        self.conn = get_connection(":memory:")
+        init_db(self.conn)
+
+    def test_no_entries_returns_none(self):
+        timeline = build_surveillance_timeline(self.conn, "NEVERFLAGGED")
+        self.assertIsNone(timeline.first_entry_after("2024-01-01"))
+
+    def test_entry_finds_first_entry_strictly_after_date(self):
+        write_facts(self.conn, "surveillance_flags", [
+            make_flag("ABC", "ASM_LT", "ENTRY", "2024-01-05", "2024-01-04", to_stage="I"),
+        ])
+        timeline = build_surveillance_timeline(self.conn, "ABC")
+        entry = timeline.first_entry_after("2024-01-01")
+        self.assertEqual(entry["event_date"], "2024-01-05")
+        self.assertIsNone(timeline.first_entry_after("2024-01-05"))  # not strictly after
+        self.assertIsNone(timeline.first_entry_after("2024-06-01"))
+
+    def test_earliest_of_multiple_entries_across_mechanisms(self):
+        write_facts(self.conn, "surveillance_flags", [
+            make_flag("ABC", "GSM", "ENTRY", "2024-03-01", "2024-02-28", to_stage="II"),
+            make_flag("ABC", "ASM_ST", "ENTRY", "2024-01-10", "2024-01-09", to_stage="I"),
+        ])
+        timeline = build_surveillance_timeline(self.conn, "ABC")
+        entry = timeline.first_entry_after("2024-01-01")
+        self.assertEqual(entry["event_date"], "2024-01-10")
+        self.assertEqual(entry["mechanism"], "ASM_ST")
+
+    def test_exit_and_stage_change_rows_excluded_from_entries(self):
+        write_facts(self.conn, "surveillance_flags", [
+            make_flag("ABC", "ASM_LT", "ENTRY", "2024-01-05", "2024-01-04", to_stage="I"),
+            make_flag("ABC", "ASM_LT", "STAGE_CHANGE", "2024-02-05", "2024-02-04", from_stage="I", to_stage="II"),
+            make_flag("ABC", "ASM_LT", "EXIT", "2024-03-05", "2024-03-04"),
+        ])
+        timeline = build_surveillance_timeline(self.conn, "ABC")
+        self.assertEqual(len(timeline.entries), 1)
+        self.assertEqual(timeline.entries[0]["event_date"], "2024-01-05")
 
 if __name__ == "__main__":
     unittest.main()

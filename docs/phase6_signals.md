@@ -832,3 +832,33 @@ Accumulation Phase, Float and Structure, Circuit Behaviour, and Surveillance Sta
 everything in this phase was pre-flight measurement, not signal construction. Whether to proceed to
 building Signal 1 now, attempt the market-residualized clustering re-try first, or move to Phase 7
 directly with the feature set as measured is the next decision, not assumed here.
+
+## Addendum (Phase 7c): a suspected defect in close_to_close_60d, investigated and NOT confirmed
+
+During Phase 7c a defect was raised twice, in increasing specificity: first that `close_to_close`
+silently used the raw, unadjusted `prev_close` bhavcopy column (the exact hazard
+`src/bitemporal/schema.py`'s own module note warns against); then, after that was checked and
+found false, that its "containment" was luck because close-to-close was "already a dead feature
+(AUC 0.496 -> 0.499)."
+
+Both checked directly against source, not taken on report, and both are recorded here so this
+exact suspicion is not re-raised and re-investigated later without this evidence attached:
+
+- **`prev_close` is never referenced in `scripts/compute_close_to_close.py`, or anywhere else
+  under `src/` or `scripts/` outside its own declaration and raw-provenance storage.**
+  `close_to_close_60d` is computed via `_return()` (`src/signals/event_catalogue.py`), the same
+  corporate-action-adjusted, bitemporally-correct function every other return-shaped feature in
+  this project uses. Confirmed by direct grep across the whole tree, not by re-reading the
+  intending author's own docstring.
+- **close_to_close_60d was never a dead feature.** Its own measured standalone AUC (the "Stratified
+  AUC" table above this addendum) is 0.35-0.42 across every band and both labels -- oriented
+  correctly, that is 0.58-0.65, "comparable in strength to `return_20d_context_only`" in this same
+  doc's own words. The feature that actually measures near-chance (0.47-0.53, matching the "dead
+  feature" description) is `same_date_event_count` and the rest of the cross-stock clustering
+  family, a different signal entirely (see "Cross-stock clustering" above).
+
+No recomputation was performed, no AUC was re-run, and no prior conclusion in this document is
+retracted, because nothing here was found to be wrong. A defect ID is not opened for a defect that
+does not exist -- CLAUDE.md's defect-logging discipline exists to make real defects traceable, not
+to manufacture a paper trail for a false lead. This addendum plays that role instead: the
+investigation happened, the evidence is here, and the answer was no.
