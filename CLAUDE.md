@@ -171,7 +171,7 @@ Never claim a test passed without running it and pasting output. Label anything 
 verify as DOCUMENTED, NOT VERIFIED. Log every defect you find with an ID, root cause, fix, and
 re-verification evidence — including ones you introduced yourself.
 
-## Recurring failure modes — learned from P4-004/P4-005, will recur if not watched for
+## Recurring failure modes — learned from P4-004/P4-005/P8-001, will recur if not watched for
 
 1. **A counter increments AFTER the operation it counts succeeds, never before.** A success count
    that increments optimistically is not a success count — it is a claim the rest of the run has
@@ -192,6 +192,20 @@ re-verification evidence — including ones you introduced yourself.
    would have caught P4-004/P4-005 immediately instead of requiring a human to notice
    `circulars_processed: 2883` and `total_rows: 0` disagreeing in two different sections of the
    same report.
+4. **Before any feature is evaluated against an outcome label, state explicitly whether they share
+   an input.** A feature and a label can be numerically or mechanically coupled through a shared
+   anchor point, a shared underlying computation, or a shared real-world input — and a strong-looking
+   result from a coupled pair measures the coupling, not predictive power. This has happened twice:
+   `collapsed_90d`'s pre-move base and `return_20d_context_only` share the identical
+   `close(event_date − 20)` anchor (`P8-001`) — the classifier's single best-looking result
+   (`UNEXPLAINED`×Micro top-tier precision) was substantially this artifact, not genuine signal.
+   Separately, `momentum_high`'s association with subsequent exchange flags is substantially the
+   same quantity NSE's own published ASM criteria use directly (close-to-close price variation,
+   `docs/phase6_signals.md` Part B) — not independent confirmation, largely a re-derivation.
+   Two independent instances of the same shape is this project's own threshold (P4-012/P4-013) for
+   "stop treating it as a one-off, add a standing check" — before trusting an AUC, a precision@k
+   result, or a flag-rate comparison, trace both the feature's and the label's own definitions back
+   to their inputs and name any overlap before drawing a conclusion from the number.
 
 ## Working procedure
 

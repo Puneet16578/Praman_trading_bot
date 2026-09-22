@@ -27,6 +27,7 @@ honesty rule.
 | P4-011 | Ph. 4 (same lifecycle-coherence check) | **Critical** | Real circulars mark individual symbols directly in the Symbol column (`"MARATHON *"`, `"IMAGICAA #"`), not only via a trailing marker on the Security Name column (the only place this project's parser checked). The marker was never stripped from the symbol value before storing, so the same real company split into two different stored symbol identities depending on whether a given circular happened to mark it (`"MARATHON"` vs `"MARATHON *"`) -- silently breaking lifecycle continuity (an ENTRY under one spelling with no matching EXIT, and vice versa). This was the dominant cause behind the "double-ENTRY, no EXIT between" and "EXIT with no prior ENTRY" cases the coherence check found far from the 2019-10-01 data floor (where left-censoring is the expected, benign explanation instead). | Fixed — `_strip_marker` strips a trailing `*`/`^`/`#` from both the Symbol and Security Name cells before either is used (as the business-key symbol, or to look up footnote `details`); the marker set was also widened to include `#`, observed for the first time in this circular |
 | P4-012 | Ph. 4 (lifecycle-coherence check, second pass after P4-010/011 fixed but the not-near-floor categories did not collapse) | **Critical** | `is_periodic_asm_subject` requires the `"surve"` stem. Real circulars SURV49425/SURV60822/SURV63984/SURV69359 (four occurrences, 2021-2025) drop the word "Surveillance" entirely from their subject -- `"Applicability of Short-Term Additional Measure (ST-ASM)"` -- not a misspelling this project's typo tolerance could catch, an outright omission. These circulars were silently classified as not-periodic and never even attempted (not logged as a failure -- indistinguishable from the thousands of genuinely irrelevant SURV circulars). SURV63984 specifically is where symbol 63MOONS's real ASM exit lived; skipping it silently produced an apparent re-entry with no prior exit a month later, the exact symptom that first exposed this defect. | Fixed — added a narrow fallback: when `"surve"` is absent but `"applicab"`+`"measure"` are both present, accept the subject if it ends with the literal `"(ASM)"`/`"(ST-ASM)"` abbreviation (normalized to a trailing `"asm"`) -- an abbreviation never observed on any excluded-mechanism subject. **Superseded by P4-013** — see below. |
 | P4-013 | Ph. 4 (tracing a second post-P4-012 incoherence case, ARENTERP) | **Critical / design change** | Tracing a `stage_mismatch` case the same way as 63MOONS found a SECOND, independent subject-classification miss: SURV49492's subject drops the word `"Measure"` instead of `"Surveillance"` -- `"Applicability of Short- Term Additional Surveillance (ST-ASM)"`. Two distinct real circulars each silently missing a *different* required word, found only by hand-tracing individual symbols' lifecycles, is exactly the pattern that makes an allowlist the wrong design for this data: a false negative is silent and requires exhaustive tracing to find, while a false positive under a denylist fails loudly (a fetch/parse attempt that doesn't match any known Annexure shape) the moment it happens. | **Redesigned, not just fixed** — `is_periodic_asm_subject` inverted from an allowlist (require positive stems) to a denylist (attempt every SURV circular subject unless it matches one of ~25 known-irrelevant categories, built from a full survey of all 1,756 distinct real subjects in the cached corpus, not guessed). Dry-run verified against the full cached index before any network use: converges to the same 62 distinct accepted subjects as the old allowlist, plus exactly 4 real typo/omission variants the allowlist missed, minus exactly 4 subjects the allowlist had wrongly swept in (a standalone ICA circular, two policy/framework announcements, one typo'd Encumbrance circular) — zero unexplained deltas either direction. |
+| P8-001 | Ph. 8 (robustness review, before RESULTS.md was finalized) | **Critical** | Phase 8's Layers 2/3 scored the classifier and every baseline against the RAW `collapsed_90d` label, even though Phase 6 (`docs/phase6_signals.md`, Check 1) had already found that exact raw label "was tracking market drift, not move authenticity" and built `collapsed_relative` specifically to correct it. Layer 3's headline ("full system beats disclosure tier alone") was never checked against the label Phase 6's own findings said was the trustworthy one. | See `docs/phase8_robustness_checks.md` Check 1 for the full re-score under three alternative labels and the resulting before/after impact — the headline does not survive a label anchored away from the `return_20d` coupling (Check 1(b)/(c)). |
 
 ## P2-001 — `full_bhavcopy_save` silent failure on HTTP error
 
@@ -625,3 +626,48 @@ unexplained deltas either direction.
 the same accept/reject decisions for every case they cover). The full ingestion was rebuilt a
 fourth time after this change; see `docs/phase4_asm_gsm_sourcing.md` for the resulting
 lifecycle-coherence numbers.
+
+## P8-001 — Phase 8 Layers 2/3 scored against the raw label Phase 6 had already shown was contaminated
+
+**Root cause.** `docs/phase6_signals.md`'s Check 1 measured the raw `collapsed_90d` label swinging
+50.6%-74.1% by year and concluded plainly: "the raw label was tracking market conditions, not move
+authenticity, exactly as suspected." Phase 6 then built `collapsed_relative` (equal-weighted
+EQ-index-adjusted) specifically as the corrected label and used it for every subsequent Phase 6
+measurement (AUC stratification, the ensemble ceiling). Phase 8's Layer 2/3 scripts
+(`scripts/phase8_layer2_metrics.py`, `scripts/phase8_layer3_baselines.py`) were written afresh
+against `collapsed_90d` — the same raw label Phase 6 had already flagged — without carrying that
+correction forward. Nothing enforced consistency between the two phases; the label choice was
+never revisited when Phase 8 started.
+
+**A second, independent problem compounded the first, only found by the robustness review that
+caught this one:** `collapsed_90d`'s own pre-move base (`close(event_date − 20)`) is the *identical*
+anchor `return_20d_context_only` is computed from. A stock with a small `|return_20d|` sits close to
+that base by construction and crosses back over it on almost any subsequent move, real signal or
+none — a mechanical coupling between the label and the classifier's own `momentum_high` input,
+independent of the market-drift problem above.
+
+**How it was found.** A pre-registered robustness review (`docs/phase8_robustness_checks.md`, Check
+1), requested before RESULTS.md was finalized, explicitly because the 2026 base rate reported in
+Layer 2 (74.1%) is the exact top of the range Phase 6's own Check 1 had already named as
+market-drift-contaminated.
+
+**Fix / resolution.** Not a code fix — a measurement correction. `docs/phase8_robustness_checks.md`
+Check 1 re-derives TRAIN-only score tables and re-scores baseline 3 vs. baseline 4 under three
+alternative labels (`collapsed_relative`, and a new pre-registered label anchored at the event-day
+close instead of `event_date − 20`). The decomposition isolates which of the two problems drove the
+headline, measured as LIFT over each label's own base rate (raw Brier/precision are not comparable
+across labels with different base rates — an earlier draft of this decomposition made exactly that
+invalid comparison and was corrected before publishing): correcting market drift alone
+(`collapsed_90d` → `collapsed_relative`, same t−20 anchor) barely moves the classifier's own lift
+(+16.4pp → +15.9pp); only removing the shared anchor (`collapsed_relative` → the new t0-anchored
+label) collapses it (to −22.5pp / +6.7pp). The mechanical coupling, not market drift, is the
+operative defect. A follow-up (`docs/phase8b_clean_label_features.md`) re-ran Phase 6's own
+feature analysis under the clean label and found the classifier's core momentum input
+(`return_20d_context_only`) reverses sign on real 2026 hold-out data.
+
+**Re-verification.** All numbers reproducible from `scripts/phase8_robustness_relabel_t0.py`,
+`scripts/phase8_robustness_check1_rescoring.py`, `scripts/phase8_robustness_check1_skillscore.py`,
+`scripts/phase8_robustness_check1_direction.py`, `scripts/phase8b_feature_reauc.py`, and
+`scripts/phase8b_momentum_flagrate_check.py` — real output pasted in `docs/phase8_robustness_checks.md`
+and `docs/phase8b_clean_label_features.md`, not re-typed from memory. RESULTS.md updated to lead
+with this finding rather than the original Layer 3 headline.
