@@ -1,7 +1,14 @@
 """Retry pass for circulars that failed in a prior `ingest_asm_gsm_sample.py` run. Re-fetches ONLY
-the circulars named in that run's failure list (looked up back against the cached SURV circular
-index for subject/knowledge_date/download link -- the failure list itself only records circular
-number + reason, not the full record).
+the circulars named in that run's failure list (looked up back against a LIVE-fetched SURV
+circular index for subject/knowledge_date/download link -- the failure list itself only records
+circular number + reason, not the full record).
+
+P8-006 (docs/DEFECT_REGISTER.md): this script used to load both the circular index and the prior
+run's failure-list report from a PAST Claude session's own temp scratchpad directory -- ephemeral
+and unavailable to a fresh clone. Both now come from stable sources: the circular index via a live
+network fetch (`fetch_circular_index`, the same function `ingest_asm_gsm_sample.py` now uses,
+fixed under `P8-004`), and the prior report from `data/raw/asm_gsm_ingestion_report.json` (where
+`ingest_asm_gsm_sample.py` now writes it, gitignored but stable across sessions).
 
 The original working theory -- bursty failures meant NSE-side rate limiting -- turned out to be
 wrong for 442 of the 490 recorded failures: grouping by normalized cause before writing this
@@ -29,6 +36,7 @@ import json
 import re
 import sys
 import time
+from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -38,14 +46,17 @@ from src.bitemporal.store import StoreValidationError
 from src.config.settings import get_settings
 from src.ingestion.nse_market_data.asm import (
     AsmIngestionReport, session_with_cookie as asm_session, fetch_circular_file,
-    ingest_asm_circular, is_periodic_asm_subject,
+    fetch_circular_index, ingest_asm_circular, is_periodic_asm_subject,
 )
 from src.ingestion.nse_market_data.gsm import (
     GsmIngestionReport, session_with_cookie as gsm_session, classify_gsm_subject,
     fetch_circular_pdf_text, ingest_gsm_circular,
 )
 
-SCRATCH_SEBI = Path(r"C:\Users\VICTUS\AppData\Local\Temp\claude\d--Agentic-ai-project\693aa27b-1dbb-463f-b783-329123a86aff\scratchpad\sebi")
+DATA_RAW = Path(__file__).resolve().parents[1] / "data" / "raw"
+PRIOR_REPORT_PATH = DATA_RAW / "asm_gsm_ingestion_report.json"
+AFTER_RETRY_REPORT_PATH = DATA_RAW / "asm_gsm_ingestion_report_after_retry.json"
+INDEX_START = date(2019, 10, 1)  # the project's hard floor -- covers every circular any prior run could have failed on
 BASE_DELAY = 2.5
 MAX_DELAY = 30.0
 MAX_ATTEMPTS = 5
@@ -148,9 +159,12 @@ def retry_gsm(conn, failed_circulars: list[dict], index_by_number: dict[str, dic
     return report, still_failed
 
 def main() -> None:
-    prior_report = json.loads((SCRATCH_SEBI / "asm_gsm_ingestion_report.json").read_text(encoding="utf-8"))
-    circulars = json.loads((SCRATCH_SEBI / "all_surv_circulars_2019_2026.json").read_text(encoding="utf-8"))
-    index_by_number = {c["circNumber"]: c for c in circulars}
+    prior_report = json.loads(PRIOR_REPORT_PATH.read_text(encoding="utf-8"))
+
+    session = asm_session()
+    circulars = fetch_circular_index(session, INDEX_START, date.today())
+    print(f"Fetched {len(circulars)} live circulars ({INDEX_START.isoformat()} .. {date.today().isoformat()}) for lookup.")
+    index_by_number = {str(c["circNumber"]): c for c in circulars}
 
     asm_failed_in = prior_report["asm_circulars_failed"]
     gsm_failed_in = prior_report["gsm_circulars_failed"]
@@ -193,9 +207,9 @@ def main() -> None:
     merged_report["gsm_duplicate_events_skipped"] = merged_report.get("gsm_duplicate_events_skipped", 0) + gsm_report.duplicate_events_skipped
     merged_report["store_min_event_date"], merged_report["store_max_event_date"], merged_report["store_total_rows"] = row
 
-    out_path = SCRATCH_SEBI / "asm_gsm_ingestion_report_after_retry.json"
-    out_path.write_text(json.dumps(merged_report, indent=2), encoding="utf-8")
-    print(f"\nMerged post-retry report written to {out_path}")
+    AFTER_RETRY_REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    AFTER_RETRY_REPORT_PATH.write_text(json.dumps(merged_report, indent=2), encoding="utf-8")
+    print(f"\nMerged post-retry report written to {AFTER_RETRY_REPORT_PATH}")
 
     conn.close()
 

@@ -1,10 +1,22 @@
-"""Real-data corporate-actions ingestion, reusing the cache already built during Phase 3 source
-evaluation (this session's scratchpad) so this run makes ZERO new network calls. Writes to the
-same real DB as scripts/ingest_bhavcopy_sample.py.
+"""Real-data corporate-actions ingestion, full historical range.
+
+P8-006 (docs/DEFECT_REGISTER.md): this script used to load its corporate-actions and announcement
+data from cached JSON files inside a PAST Claude session's own temp scratchpad directory --
+ephemeral and unavailable to a fresh clone. Now calls `fetch_all()` directly, which fetches both
+live over the network and already returns `announcements_by_key` in the exact key format
+`ingest_corporate_actions()` expects -- the old `rekey_announcements()` bridging step is no longer
+needed at all, not merely pointed at a different cache.
+
+Verification scope, stated plainly rather than implied: `fetch_corporate_actions_year` was
+spot-checked live for 2026 (1,819 real rows returned, correct bare-list shape, no envelope
+problem the way the SURV circulars endpoint had -- P8-004) before this fix was written. The full
+`fetch_all()` sweep -- 7 years of corporate actions plus one announcements-window fetch per
+distinct (symbol, ex_date) pair, potentially thousands of real network calls at ~0.3s delay each
+-- was NOT run end to end today; that is a real, multi-hour operation, out of scope for this
+specific fix. DOCUMENTED, NOT VERIFIED at full historical scale (CLAUDE.md's verification-honesty
+convention) -- run it once, end to end, before relying on this script's full-history output.
 """
 from __future__ import annotations
-from datetime import datetime, timedelta
-import json
 import sys
 from pathlib import Path
 
@@ -12,38 +24,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.bitemporal.connection import get_connection, init_db
 from src.config.settings import get_settings
-from src.ingestion.nse_market_data.corporate_actions import announcement_cache_key, ingest_corporate_actions
+from src.ingestion.nse_market_data.corporate_actions import fetch_all, ingest_corporate_actions
 
-SCRATCH_CACHE = Path(r"C:\Users\VICTUS\AppData\Local\Temp\claude\d--Agentic-ai-project\693aa27b-1dbb-463f-b783-329123a86aff\scratchpad\cache")
-FETCH_WINDOW_DAYS = 200  # must match what validate_ratio_parser.py used when building the cache
+YEAR_FROM = 2019  # the project's hard floor (2019-10-01) falls inside this year
+YEAR_TO = 2026
 
-def rekey_announcements(actions: list[dict], raw_cache: dict) -> dict[str, list[dict]]:
-    rekeyed = {}
-    for action in actions:
-        if action.get("series") != "EQ":
-            continue
-        symbol = action["symbol"]
-        ex_date = datetime.strptime(action["exDate"], "%d-%b-%Y").date()
-        from_date = (ex_date - timedelta(days=FETCH_WINDOW_DAYS)).strftime("%d-%m-%Y")
-        to_date = ex_date.strftime("%d-%m-%Y")
-        old_key = f"{symbol}|{from_date}|{to_date}"
-        data = raw_cache.get(old_key)
-        if data is None or (isinstance(data, dict) and "error" in data):
-            continue
-        rekeyed[announcement_cache_key(symbol, ex_date)] = data
-    return rekeyed
 
 def main() -> None:
-    actions = json.loads((SCRATCH_CACHE / "actions_2019_2026.json").read_text(encoding="utf-8"))
-    raw_ann_cache = json.loads((SCRATCH_CACHE / "announcements.json").read_text(encoding="utf-8"))
-    announcements_by_key = rekey_announcements(actions, raw_ann_cache)
-    print(f"Loaded {len(actions)} corporate-action rows and {len(announcements_by_key)} announcement windows from cache (zero network calls).")
+    print(f"Fetching corporate actions {YEAR_FROM}..{YEAR_TO} live (no cache) -- this can take a while "
+          f"(one announcement-window fetch per distinct symbol/ex-date pair).")
+    actions, announcements_by_key = fetch_all(YEAR_FROM, YEAR_TO)
+    print(f"Fetched {len(actions)} corporate-action rows and {len(announcements_by_key)} announcement windows.")
 
     settings = get_settings()
     conn = get_connection(settings.database_path)
     init_db(conn)
 
-    report, write_result = ingest_corporate_actions(conn, actions, announcements_by_key, source_file="nse_corporate_actions_2019_2026_cached.json")
+    report, write_result = ingest_corporate_actions(conn, actions, announcements_by_key, source_file="nse_corporate_actions_live_fetch")
 
     print("\n=== TIER COUNTS ===")
     total = sum(report.tier_counts.values())
@@ -60,6 +57,7 @@ def main() -> None:
         print(f"  {q}")
 
     conn.close()
+
 
 if __name__ == "__main__":
     main()

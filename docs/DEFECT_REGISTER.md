@@ -31,7 +31,8 @@ honesty rule.
 | P8-002 | Ph. 8b (feature re-analysis script, caught while writing it) | Low | `scripts/phase8b_feature_reauc.py`'s first draft read `cap_band` from `event_catalogue_loose_zscore_only.csv`, which only carries Phase 5's original 3-way (Small/Mid/Large) turnover-tercile split — not the 5-way (Micro/Small/Mid/Large/Mega) quintile bands Phase 7b/8's classification pipeline uses. Failed loudly (Micro/Mega rows silently matched zero events, printed `n/a`) before any number was published. Checked whether any earlier phase's real, published stratified analysis made the same mistake: no — `scripts/build_final_event_catalogue.py`'s 3-way `cap_band` was Phase 5's own deliberate, original design (used correctly by Phase 6's own 3-way stratification section); `scripts/fit_outcome_ensemble.py`, `scripts/build_event_classifications.py`, and `scripts/phase8_classify_holdout.py` each independently compute their own 5-way quintile bands and never read the catalogue's 3-way column. | Fixed before publishing — `phase8b_feature_reauc.py` now sources `cap_band` from `event_classifications.csv`/`phase8_2026_classifications.csv` instead. No retroactive correction needed elsewhere; logged per instruction to check, not because a real defect was found upstream. |
 | P8-003 | Ph. 9 (adversarial lint pass + register-currency check) | **High / Critical (two parts)** | (1) `src/classification/event_classifier.py`'s `PROVENANCE_NOTE` and `DISCRIMINATIVE_POWER_NOTE`, rendered into every live report, stated "Phase 6 measured the combined signal ceiling at 0.611-0.70" — the exact figure `P8-001`'s correction withdrew. (2) `src/agent/banned_terms.py` missed 11 of 11 hand-written adversarial phrasings ("artificially inflated," "insider trading," "strong buy," bare "highly suspicious," "orchestrated," "circular trading," among others) — corroborating `tests/test_banned_terms_adversarial_evasion.py`'s own pre-existing, already-honestly-reported 0/5 finding (`docs/phase7c_agent_layer.md`) with a second, independently-authored phrasing set. | **Part (1) fixed** — both constants now cite `P8-001` and state the corrected finding (no top-tier lift, ~1.8% BSS); a stale test-file citation in `synthesis.py`'s docstring fixed alongside it; two test assertions that hardcoded the withdrawn "0.611" string updated to assert its ABSENCE instead. Full suite re-run: 326/326 pass. **Part (2) resolved architecturally, not by patching the lint** — confirmed zero LLM-provider-calling code exists anywhere in `src/`; `banned_terms.py` kept unchanged as a backstop (0/5 and 0/11 catch rates both recorded, not hidden); CLAUDE.md now states as standing policy that any future LLM-narrative capability must be local/dev-only and never reach shareable output — that is what enforces invariant 12's buy/sell/hold/target clause, not the lint. |
 | P8-004 | Ph. 9 (writing `scripts/weekly_ingest.py`, first real end-to-end run) | **High** | `src/ingestion/nse_market_data/{asm,gsm}.py`'s `fetch_circular_index` returned `r.json()` directly, typed `-> list[dict]`. The REAL, live `nseindia.com/api/circulars` response is an envelope, `{"data": [...circulars...], "fromDate": ..., "toDate": ...}`, not a bare list. `for c in circulars` in `fetch_and_ingest_{asm,gsm}_range` therefore iterated the envelope dict's own keys (three strings) instead of its circulars, crashing on the very first real call: `AttributeError: 'str' object has no attribute 'get'`. Both functions' own docstrings already said "Not called by the fixture-based test suite" — this is why: neither had ever been run against real or realistically-shaped data in this project's history before this session's first attempt to automate weekly ingestion. | Fixed — both `fetch_circular_index` functions now return `r.json()["data"]`, confirmed against a real live call (26 real circulars returned for a real 2026-09 window, correct dict shape). Two regression tests added (`tests/test_asm_gsm_ingestion.py::FetchCircularIndexEnvelopeTest`), mocking the real envelope shape observed live — both pass. Full suite re-run after the fix; see re-verification below. |
-| P8-005 | Ph. 9 (same first real run of `scripts/weekly_ingest.py`) | Medium | `weekly_ingest.py`'s own `_extract_gaps_and_mismatches` matched any line starting with `"GAP "` — but `ingest_bhavcopy_full_history.py` also prints an unconditional summary line, `"GAP (confirmed trading day, this request failed): 0"`, every run regardless of whether a real gap occurred. The bare-prefix match flagged that summary line as a real gap on every single run, including runs with zero real gaps — a false-positive that would have paged/alarmed on a clean week, every week. | Fixed — the match is now anchored on a trailing date (`^GAP \d{4}-\d{2}-\d{2}:`), matching only the real per-date gap lines. Re-verification: a real second end-to-end run of `weekly_ingest.py` (in progress as this entry is written; see this document's own commit history / `logs/weekly_ingest.log` for the actual outcome, not asserted here in advance). |
+| P8-005 | Ph. 9 (same first real run of `scripts/weekly_ingest.py`) | Medium | `weekly_ingest.py`'s own `_extract_gaps_and_mismatches` matched any line starting with `"GAP "` — but `ingest_bhavcopy_full_history.py` also prints an unconditional summary line, `"GAP (confirmed trading day, this request failed): 0"`, every run regardless of whether a real gap occurred. The bare-prefix match flagged that summary line as a real gap on every single run, including runs with zero real gaps — a false-positive that would have paged/alarmed on a clean week, every week. | Fixed — the match is now anchored on a trailing date (`^GAP \d{4}-\d{2}-\d{2}:`), matching only the real per-date gap lines. Re-verified live: a second end-to-end run (2026-09-22T17:17:03–17:42:13) reported a clean `GAPs: 0`, `overall=OK`. |
+| P8-006 | Ph. 10 housekeeping (reproducibility gap flagged after `P8-004`) | **Critical** | Three scripts — `scripts/ingest_asm_gsm_sample.py`, `scripts/retry_asm_gsm_failures.py`, `scripts/ingest_corporate_actions_sample.py` — hardcoded paths into a PAST Claude session's own temp scratchpad directory (`C:\Users\...\Temp\claude\...\693aa27b-.../scratchpad\{sebi,cache}`) as their only source of historical circular/corporate-action/announcement data. Windows can delete that directory at any time; it does not exist on a fresh clone at all. A fresh clone therefore could not rebuild `surveillance_flags` or `corporate_actions` from scratch — directly contradicting this project's own README claim that its scripts do exactly that. `ingest_asm_gsm_sample.py` additionally duplicated `fetch_and_ingest_{asm,gsm}_range`'s own sweep logic in a second, parallel `run_asm`/`run_gsm` implementation (CLAUDE.md invariant 1). | Fixed, all three, by delegating to the live-network functions each domain already has (`fetch_and_ingest_{asm,gsm}_range`, `P8-004`-fixed; `fetch_all` for corporate actions) instead of any cache. `git grep` for the literal temp-directory path prefix across all of `scripts/` now returns zero matches. Full comparison and verification scope: `docs/phase10_housekeeping2.md`. |
 
 ## P2-001 — `full_bhavcopy_save` silent failure on HTTP error
 
@@ -806,3 +807,72 @@ failure.
 this fix and `P8-004`'s reported `GAPs: 0` (started 2026-09-22T17:17:03, finished 17:42:13,
 `overall=OK`) — the false positive is gone on a real run with no real gaps, not merely reasoned
 about.
+
+## P8-006 — three historical ingestion scripts could not survive a fresh clone
+
+**Root cause.** `scripts/ingest_asm_gsm_sample.py`, `scripts/retry_asm_gsm_failures.py`, and
+`scripts/ingest_corporate_actions_sample.py` each hardcoded a `Path(r"C:\Users\VICTUS\AppData\
+Local\Temp\claude\d--Agentic-ai-project\693aa27b-1dbb-463f-b783-329123a86aff\scratchpad\...")` as
+their sole source of the data they ingest — a SURV circular index (7,936 rows), a prior run's
+failure-list report, and cached corporate-actions/announcements JSON, respectively. This directory
+belongs to a Claude session that ended before this one started. It happened to still exist on disk
+when checked (Windows had not yet cleaned it up), but nothing about that is guaranteed, and it does
+not exist at all on a fresh clone of this repository — directly contradicting `README.md`'s own
+"Setup" section, which says "running the ingestion scripts under `scripts/` builds it from scratch"
+with no caveat that three of them silently cannot. `ingest_asm_gsm_sample.py` additionally
+duplicated `fetch_and_ingest_{asm,gsm}_range`'s sweep logic in its own `run_asm`/`run_gsm`
+functions — a second, independent implementation of the same thing (CLAUDE.md invariant 1: "never
+create a parallel implementation").
+
+**How it was found.** Flagged directly after `P8-004` (this same session): fixing
+`fetch_circular_index`'s envelope bug for `weekly_ingest.py` prompted the question of whether the
+ORIGINAL historical ingestion path had the same shape of fragility. It did, in a different form —
+not a live-call crash, but a call that was never live at all.
+
+**Fix.** All three scripts now delegate to the live-network function each domain already has,
+removing the scratchpad dependency and (for the ASM/GSM sample script) the duplicated sweep logic
+in the same change:
+- `ingest_asm_gsm_sample.py` → `fetch_and_ingest_asm_range`/`fetch_and_ingest_gsm_range` directly
+  (the same functions `P8-004` fixed and `weekly_ingest.py` already uses live), for the full
+  2019-10-01 (ASM) / 2025-01-01 (GSM) historical range through today. Its own output report now
+  writes to `data/raw/asm_gsm_ingestion_report.json` (gitignored, stable across sessions), not the
+  scratchpad.
+- `retry_asm_gsm_failures.py` → the same live `fetch_circular_index` for its lookup index, and
+  reads/writes its failure-list reports from/to the same `data/raw/` location instead of the
+  scratchpad. Its own backoff/transient-retry logic (real, not duplicated elsewhere) is unchanged.
+- `ingest_corporate_actions_sample.py` → `fetch_all(year_from, year_to)` directly, which already
+  returns `announcements_by_key` in the exact shape `ingest_corporate_actions()` needs — the old
+  `rekey_announcements()` bridging function is no longer needed and was removed, not merely
+  bypassed.
+
+`git grep` for the literal temp-directory path prefix (`C:\\Users\\VICTUS\\AppData\\Local\\Temp`)
+across all of `scripts/` now returns zero matches — confirmed directly, not assumed from having
+fixed the three files known about going in.
+
+**Re-verification, stated precisely by what was and was not actually run:**
+- **Circular-index full-range fetch: live-verified.** A real call to `fetch_circular_index` for
+  the full 2019-10-01..2026-09-15 range returned 7,945 circulars in 0.8 seconds — no pagination
+  gap, no chunking needed. Compared directly against the old (still-present) scratchpad cache
+  (7,936 rows): every one of the old cache's circular numbers is present in the live fetch (0
+  missing); the live fetch has exactly 9 more, 6 explained by circulars published after the old
+  cache was captured and 3 unexplained by recency alone (not investigated further — noted, not
+  glossed over). The live fetch is a strict superset of the old cache. Full numbers:
+  `docs/phase10_housekeeping2.md`.
+- **`fetch_and_ingest_{asm,gsm}_range` (what `ingest_asm_gsm_sample.py` now calls): already
+  live-verified this session**, via `weekly_ingest.py`'s own successful second run (`P8-004`'s
+  re-verification) — the identical functions, a shorter date range. Not re-run at full 7-year
+  historical scale in this pass: the store already holds that history from the original ingestion,
+  so a full re-run would mostly re-discover duplicates already known to be handled correctly
+  (`write_facts`'s own duplicate-business-key skip, exercised directly by
+  `tests/test_asm_gsm_ingestion.py::IngestAsmCircularTest::test_reingesting_the_same_circular_is_idempotent`),
+  at the cost of thousands of redundant network calls for no new information.
+- **`fetch_corporate_actions_year`: spot-checked live** (2026, 1,819 real rows, correct bare-list
+  shape — no envelope problem the way the SURV circulars endpoint had). **The full `fetch_all()`
+  sweep — 7 years plus one announcement-window fetch per distinct (symbol, ex_date) pair,
+  potentially thousands of calls — was NOT run end to end.** Stated in the script's own docstring:
+  DOCUMENTED, NOT VERIFIED at full historical scale.
+- **`retry_asm_gsm_failures.py`: syntax/import-verified only.** Not run live — there is currently
+  no failure-list report at `data/raw/asm_gsm_ingestion_report.json` to retry against, because
+  nothing has failed. Nothing to falsely claim was tested.
+- All three scripts: `python -m py_compile` and a real `importlib` load (not just a syntax check)
+  confirm each still defines and can execute `main()`.
