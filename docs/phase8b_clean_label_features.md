@@ -7,18 +7,23 @@ market-relative label), the frozen thresholds, and the existing classification �
 ## Summary (read this first)
 
 Re-ran Phase 6's feature-vs-outcome analysis under the decoupled label, TRAIN and HOLD-OUT, pooled
-and by cap_band. **The classifier's current core axis does not survive:** `return_20d_context_only`
-(TRAIN AUC 0.533) flips sign on the 2026 hold-out (0.475, CI [0.461,0.490], entirely below 0.5);
-`close_to_close_60d` shows the same pattern (0.520→0.484). Both were Phase 6's strongest features
-under the coupled label. **`volume_ratio` confirms the ORIGINAL design hypothesis** (high →
-underperformance, TRAIN 0.577, hold-out 0.530) but only in Small/Large/Mega — Micro/Mid are chance
-on hold-out. **A real signal Phase 6 never found emerges: `delivery_pct_percentile_60d`** — a
-consistent, correctly-signed effect in every band, both splits (0.40-0.47) — not used anywhere in
-`classify_event()` today. `same_date_event_count`/ASM status are unaffected (already near-null).
-Cap-band-only (item 5) goes Brier-skill-negative under the clean label. `PARTIALLY_GROUNDED`'s
-flag-rate finding (item 6) is overwhelmingly a `momentum_high` effect — `GROUNDED`, which doesn't
-depend on momentum_high, shows the *same* ~20pp gap — with a smaller, real disclosure-tier gradient
-underneath, more visible at 120 sessions than at 20.
+and by cap_band, one evidence standard applied to every feature (defined below — nothing here is
+called "confirmed," only "weak but consistent" or not). **The classifier's current core axis does
+not survive:** `return_20d_context_only` (TRAIN AUC 0.533) flips sign on the 2026 hold-out (0.475,
+CI [0.461,0.490], entirely below 0.5); `close_to_close_60d` shows the same pattern (0.520→0.484).
+Both were Phase 6's strongest features under the coupled label. **Three features are weak but
+consistent under the clean label, correctly signed both periods:** `volume_ratio` (high →
+underperformance, TRAIN 0.577, hold-out 0.530, but only in Small/Large/Mega — Micro/Mid are chance
+on hold-out); `delivery_pct_percentile_60d` (low → underperformance, 0.40-0.47, the single most
+uniform feature tested — every band, both periods, same direction); and **`same_date_event_count`
+(low → underperformance, i.e. isolated moves underperform)** — corrected here from an earlier
+mischaracterization as "near-null": its pooled CIs exclude 0.50 in both periods (oriented 0.533
+TRAIN, 0.536 hold-out), every TRAIN band excludes 0.50, and it is at least as stable TRAIN→HOLD-OUT
+as `volume_ratio`. ASM/GSM-labelled status is the one genuinely null feature (0.501/0.503, no band
+shows anything). Cap-band-only (item 5) goes Brier-skill-negative under the clean label.
+`PARTIALLY_GROUNDED`'s flag-rate finding (item 6) is overwhelmingly a `momentum_high` effect —
+`GROUNDED`, which doesn't depend on momentum_high, shows the *same* ~20pp gap — with a smaller,
+real disclosure-tier gradient underneath, more visible at 120 sessions than at 20.
 
 ---
 
@@ -59,51 +64,82 @@ mismatch caught and fixed while writing this script, not a finding):**
 
 (format: TRAIN AUC / HOLD-OUT AUC, both pooled-direction; full CIs in the script's own output)
 
+**Evidence standard, applied identically to every feature below — stated once so it doesn't drift
+per feature.** A feature's effect is called **"weak but consistent"** here, and nothing stronger
+than that, if (1) the pooled HOLD-OUT AUC's 95% CI excludes 0.50, (2) the point estimate is
+oriented the same direction as TRAIN's, and (3) most bands point the same direction in both
+periods, even where an individual band's own CI is too small-n to exclude 0.50 on its own. A
+feature that meets (1)-(2) but shows chance-level or sign-flipped point estimates in specific bands
+is called **"band-conditional,"** not "weak but consistent," and the bands are named. A feature
+whose TRAIN and HOLD-OUT point estimates sit on opposite sides of 0.50, both outside their own CI,
+is called **"reversed / does not generalize."** The word "confirmed" is not used for any
+predictive-strength claim in this document.
+
 **Reading this plainly, stratified before believed, per instruction:**
 
-- **`return_20d_context_only` and `close_to_close_60d` — the two features the ENTIRE momentum axis
-  and Phase 6's "0.70 ensemble ceiling" were built on — fail to generalize.** TRAIN says weak-but-
-  real (0.52-0.53, both features, every band); HOLD-OUT is at or below 0.50 in 4 of 5 bands for
-  both, and the pooled hold-out AUC for `return_20d_context_only` (0.475, CI entirely below 0.5) is
-  the single strongest reversal in this table — worst in Micro specifically (0.404), the exact band
-  the original classifier's top precision tier (`UNEXPLAINED`×Micro) was built on. This is not a
-  small effect: a feature TRAIN said was weakly informative in the collapse-predicting direction
-  is, on real 2026 data, mildly informative in the OPPOSITE direction.
-- **`volume_ratio` partially confirms the original design hypothesis, but is band-conditional, not
-  uniform** — see item 4 below.
-- **`delivery_pct_percentile_60d` is a genuinely new finding: consistent, correctly-signed,
-  non-trivial signal in every band, on both TRAIN and HOLD-OUT** (0.40-0.47 throughout — recall
+- **`return_20d_context_only` and `close_to_close_60d` are REVERSED / DO NOT GENERALIZE — the two
+  features the ENTIRE momentum axis and Phase 6's "0.70 ensemble ceiling" were built on.** TRAIN
+  says weak-but-consistent in the collapse-predicting direction (0.52-0.53, every band); HOLD-OUT is
+  at or below 0.50 in 4 of 5 bands for both, and the pooled hold-out AUC for
+  `return_20d_context_only` (0.475, CI entirely below 0.5) is the single strongest reversal in this
+  table — worst in Micro specifically (0.404), the exact band the original classifier's top
+  precision tier (`UNEXPLAINED`×Micro) was built on.
+- **`volume_ratio` is BAND-CONDITIONAL, weak but consistent only in Small/Large/Mega** — full
+  detail in item 4 below.
+- **`delivery_pct_percentile_60d` is WEAK BUT CONSISTENT, and the most uniform feature in this
+  table** — correctly-signed in every band, both TRAIN and HOLD-OUT (0.40-0.47 throughout — recall
   AUC is symmetric around 0.5, so this is exactly as strong as 0.53-0.60 oriented the other way).
   Phase 6 measured this same feature against the *coupled* labels and found it essentially null
   (pooled AUC 0.4793 raw / 0.5062 relative, "indistinguishable from chance," `docs/phase6_signals.md`)
   — the clean label recovers a real effect Phase 6's own coupled measurement could not see.
-  **`delivery_pct_percentile_60d` is not used anywhere in `classify_event()`'s decision logic** —
-  it is reported as a signal field on every event but plays no role in `disclosure_tier`,
-  `momentum_high`, or `is_isolated`. This is the clearest concrete redesign target this document
-  produces.
-- **`same_date_event_count` and `asm_gsm_labelled` are unaffected by the label swap** — both were
-  already near-null under the coupled labels (Phase 6) and remain near-null here. Consistent, not
-  surprising, recorded for completeness.
+  **Not used anywhere in `classify_event()`'s decision logic today** — reported as a signal field
+  on every event but plays no role in `disclosure_tier`, `momentum_high`, or `is_isolated`.
+- **`same_date_event_count` is WEAK BUT CONSISTENT — corrected here from an earlier draft's
+  "near-null"/"unaffected" characterization, which did not apply the same evidence standard used
+  above.** Pooled: TRAIN 0.4675 [0.4629,0.4721], HOLD-OUT 0.4639 [0.4494,0.4784] — both CIs exclude
+  0.50, both the same direction (oriented 0.5325 TRAIN / 0.5361 HOLD-OUT: LOW same_date_event_count,
+  i.e. an ISOLATED move, predicts underperformance). By band, TRAIN: all 5 bands' own CIs exclude
+  0.50 (Micro 0.4545 [0.4443,0.4647] through Mega 0.4788 [0.4686,0.4890]). By band, HOLD-OUT: 3 of 5
+  bands' CIs exclude 0.50 (Micro [0.4296,0.4936], Mid [0.4340,0.4967], Mega [0.4168,0.4850]); the
+  other two (Small, Large) sit on the same side of 0.50 but their CIs just touch it
+  ([0.4379,0.5019] and [0.4379,0.5044]). **This is at least as stable TRAIN→HOLD-OUT as
+  `volume_ratio`, and its pooled hold-out effect (oriented 0.536) is comparable to or stronger than
+  `volume_ratio`'s (0.530).** `is_isolated` is already computed by the current classifier (it gates
+  `UNEXPLAINED_ISOLATED`) but the classifier does not use it as a general-purpose feature outside
+  that one carve-out.
+- **`asm_gsm_labelled` is the one genuinely NULL feature** — 0.501/0.503 pooled, every band within
+  0.008 of 0.50, both periods. Unaffected by the label swap because it was already null under the
+  coupled labels too (Phase 6).
 
-## Item 4 — volume_ratio, confirmed but not uniformly
+**One line on `zscore_60d`, since its own numbers don't fit either category cleanly:** pooled
+hold-out AUC is weak-but-consistent by the standard above (0.5374 [0.5229,0.5519], band-conditional
+like `volume_ratio` — real in Micro/Small, chance in Mid/Large/Mega) — but the clean-label
+precision@20 result for this same feature (`docs/phase8_robustness_checks.md`) is 15.0%, *far below*
+the 51.0% base rate. AUC is a rank statistic averaged over the whole distribution; precision@20 is
+the extreme tail. The two are not contradictory: the relationship is non-monotonic at the extreme —
+moderately large z-scores lean toward collapse (the AUC), but the very largest moves in the whole
+hold-out lean toward outperforming, not collapsing (the P@20 result). Neither number is wrong;
+`zscore_60d`'s relationship to this label simply is not monotonic across its own range.
 
-**Claim to confirm: high volume_ratio predicts underperformance (TRAIN AUC 0.577), the ORIGINAL
+## Item 4 — volume_ratio, weak but consistent, not uniformly
+
+**Effect under test: high volume_ratio predicts underperformance (TRAIN AUC 0.577), the ORIGINAL
 design hypothesis the coupled label had inverted (Phase 6 found volume_ratio *below* 0.50 in every
 cut it measured).** The pooled hold-out precision@20 result from `docs/phase8_robustness_checks.md`
 (16/20 = 80.0%, well above the new label's 51.0% base rate) and this item's own pooled hold-out AUC
 (0.5299, CI [0.5154,0.5445], excludes 0.50) both point the same way — **the reversal is real, not a
 20-event fluke.**
 
-**Confirmed only partially once stratified, per instruction to stratify before believing anything.**
-Hold-out AUC by band: Micro 0.505 (chance), Small 0.539, Mid 0.500 (chance), Large 0.537,
-**Mega 0.593 (strongest band)**. The pooled effect is real, but it is carried by Small/Large/Mega —
-Micro and Mid show no distinguishable effect on 2026 data at all, even though TRAIN suggested a
-real effect in every band (0.561-0.603). **Do not state "volume_ratio predicts underperformance"
-as a uniform, band-independent finding — state it as real in aggregate and in three of five bands,
-absent in Micro and Mid on this hold-out.** The precision@20 result (n=20) is a small sample from a
-population where this band-unevenness could matter — most of the 20 top-ranked events are very
-likely concentrated in bands where the effect is real, which is consistent with, not contradictory
-to, the banded picture here.
+**Band-conditional once stratified, per instruction to stratify before believing anything — not
+"confirmed" without qualification.** Hold-out AUC by band: Micro 0.505 (chance), Small 0.539, Mid
+0.500 (chance), Large 0.537, **Mega 0.593 (strongest band)**. The pooled effect is real, but it is
+carried by Small/Large/Mega — Micro and Mid show no distinguishable effect on 2026 data at all,
+even though TRAIN suggested a real effect in every band (0.561-0.603). **Do not state "volume_ratio
+predicts underperformance" as a uniform, band-independent finding — state it as real in aggregate
+and in three of five bands, absent in Micro and Mid on this hold-out.** The precision@20 result
+(n=20) is a small sample from a population where this band-unevenness could matter — most of the 20
+top-ranked events are very likely concentrated in bands where the effect is real, which is
+consistent with, not contradictory to, the banded picture here.
 
 ## Item 5 — cap-band-only baseline
 
@@ -168,15 +204,26 @@ Based on item 3 specifically, not on any other section of this evaluation:
    re-validate or drop.** It is the classifier's current core discriminating axis (it alone
    separates `PARTIALLY_GROUNDED` from `UNEXPLAINED`, and gates `UNEXPLAINED_ISOLATED`), and it is
    the one shown here to reverse sign on real, out-of-sample 2026 data once measured against a
-   label that does not share its own anchor.
-2. **`delivery_pct_percentile_60d` is a real, currently-unused signal** (consistent, correctly
-   signed, every band, both TRAIN and HOLD-OUT) that plays no role in `classify_event()` today —
-   the clearest concrete addition this analysis identifies.
-3. **`volume_ratio` is worth keeping, but only with a band interaction** (real in Small/Large/Mega,
-   absent in Micro/Mid on hold-out) — a uniform, pooled use of it would misrepresent Micro/Mid
-   events specifically, the two bands where this project's catalogue is most concentrated.
-4. **`same_date_event_count` (isolation) and ASM/GSM status add nothing under either label version**
-   — dropping or deprioritizing them is not a loss of signal Phase 6 hadn't already found.
+   label that does not share its own anchor. `close_to_close_60d`, its close correlate, reverses
+   the same way and should not be substituted in as a replacement without its own re-validation.
+2. **`delivery_pct_percentile_60d` is weak but consistent and currently unused** (correctly signed,
+   every band, both TRAIN and HOLD-OUT, the most uniform feature measured) — the clearest concrete
+   addition this analysis identifies.
+3. **`same_date_event_count` (isolation) is weak but consistent and under-used** — corrected in
+   this document from an earlier "adds nothing" characterization. The current classifier already
+   computes `is_isolated` but only spends it on the `UNEXPLAINED_ISOLATED` carve-out; this analysis
+   found it a general, low-value-predicts-underperformance signal at least as stable as
+   `volume_ratio`, worth a broader role.
+4. **`volume_ratio` is worth keeping, but only with a band interaction** (weak but consistent in
+   Small/Large/Mega, chance in Micro/Mid on hold-out) — a uniform, pooled use of it would
+   misrepresent Micro/Mid events specifically, two of the five bands this project's catalogue
+   covers.
+5. **`zscore_60d` is band-conditional like `volume_ratio`, with an added caution**: real in
+   Micro/Small, chance in Mid/Large/Mega, AND non-monotonic at the extreme tail (P@20 15%, far
+   below base rate, despite a positive pooled AUC) — any redesign using it should not assume the
+   extreme end of its range behaves like the middle.
+6. **ASM/GSM-labelled status is the one feature that adds nothing under any label version tested**
+   — dropping or deprioritizing it is not a loss of signal Phase 6 hadn't already found.
 
 None of this has been implemented. This is a measurement of where a future redesign's evidence
 points, not a recommendation acted on here.

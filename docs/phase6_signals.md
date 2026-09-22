@@ -1,5 +1,40 @@
 # Phase 6 — Signals as MCP tools
 
+> **Correction — 2026-09-22, `P8-001` (`docs/DEFECT_REGISTER.md`). Added after the fact, body
+> below NOT rewritten, so the before/after stays auditable.** A Phase 8 robustness review
+> (`docs/phase8_robustness_checks.md`, `docs/phase8b_clean_label_features.md`) found that every
+> outcome label this document uses — raw `collapsed_90d` AND the benchmark-relative
+> `collapsed_relative` built below to fix it — is anchored at `close(event_date − 20)`, the same
+> point `return_20d_context_only` and `close_to_close_60d` are computed from. Two consequences,
+> stated precisely:
+>
+> 1. **The "refuted hypotheses" below are withdrawn as stated, not confirmed as false.** Under a
+>    label anchored away from that shared point (`relative_t0_primary`), both
+>    `delivery_pct_percentile_60d` (the delivery-as-central-signal hypothesis this doc calls refuted
+>    twice) and `volume_ratio` show a **weak but consistent**, correctly-signed effect — most bands,
+>    both TRAIN and 2026 hold-out periods. Neither is "confirmed" outright (`volume_ratio` is
+>    band-conditional, real only in Small/Large/Mega; delivery is the more uniform of the two). The
+>    original null/inverted findings below were measured against the coupled labels and do not hold
+>    under a label that removes the coupling.
+> 2. **Every AUC ceiling and ensemble figure in this document (0.611 as-specified; 0.7009-0.7037
+>    with `return_20d_context_only`/`close_to_close_60d` added) is WITHDRAWN, not merely caveated.**
+>    Both dominant ensemble features are the same two shown (`docs/phase8b_clean_label_features.md`,
+>    item 3) to REVERSE SIGN on real 2026 hold-out data under the decoupled label — a ceiling built
+>    substantially on two features that do not generalize is not a trustworthy ceiling. This
+>    supersedes every later document that cites these numbers (`docs/RESULTS.md` §4, `event_classifier.py`'s
+>    `PROVENANCE_NOTE`/`DISCRIMINATIVE_POWER_NOTE` constants — the latter not yet updated in code as
+>    of this correction, flagged as an open follow-up, not silently left inconsistent).
+>
+> `same_date_event_count` (cross-stock co-movement)'s "weakest feature, no meaningful
+> discrimination" finding below is **not** withdrawn — it measures similarly weak under every label
+> version tested, coupled or not, so its original characterization was not a product of this
+> coupling (a separate, later correction did find this project's OWN re-analysis of it needed a
+> less dismissive reading — `docs/phase8b_clean_label_features.md` item 1 — but that correction is
+> to this project's *later* phase8b document, not to this section's original numbers, which stand).
+>
+> Read every AUC and every "refuted"/"confirmed" claim below as **historical: what this project
+> believed at Phase 6, using the labels available then** — not as this project's current position.
+
 Status: **pre-flight measurement complete, blocked per explicit instruction.** No signal tool has
 been built. Per "if the distributions overlap completely, tell me before building five more
 signals on top of it" — this doc reports that measurement and stops there.

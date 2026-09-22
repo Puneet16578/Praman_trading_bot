@@ -66,6 +66,14 @@ system). Its architectural disciplines carry over unchanged.
   before/after impact explicitly.
 - Every score is reproducible: committed result file, git sha, fixed inputs.
 - Report failures first.
+- **The 2026 hold-out is spent for model selection, as of 2026-09-22 (`P8-001` robustness review).**
+  `docs/phase8b_clean_label_features.md` item 3 used 2026 hold-out AUCs to decide which features
+  generalize (`return_20d_context_only`/`close_to_close_60d` dropped, `delivery_pct_percentile_60d`/
+  `same_date_event_count` kept). That is model selection informed by test-set performance. **2026 is
+  no longer a clean hold-out for any model whose feature set was chosen after that analysis** —
+  including any redesign that uses its conclusions. `docs/phase10_preregistration.md`'s evaluation
+  is FORWARD-only (events after 2026-09-15, once their own 90-session outcomes exist) for exactly
+  this reason — re-using 2026 to evaluate a design chosen using 2026 would be circular.
 
 ## Data sourcing — decided 2026-09-08
 

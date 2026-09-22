@@ -77,6 +77,14 @@ report-generation pipeline's transcription and derivation correctness against ra
 does not use `collapsed_90d`, `return_20d`, or any classification-performance metric at all. Nothing
 in `P8-001` bears on it.
 
+**The 2026 hold-out is now spent for model selection, as of this correction (2026-09-22).**
+`docs/phase8b_clean_label_features.md`'s item 3 used 2026 hold-out AUCs to decide which features
+generalize under the clean label — that is model selection informed by test-set performance, not a
+clean walk-forward measurement anymore. **2026 cannot be used again as a hold-out for any model
+whose feature set was chosen using that analysis**, including any future redesign that acts on it.
+`docs/phase10_preregistration.md` commits to a FORWARD-only evaluation (events after 2026-09-15,
+once their own 90-session outcomes exist) for exactly this reason.
+
 **The original Layer 3 paragraph, kept verbatim below rather than deleted, so the retraction is
 auditable against what it retracts:**
 
@@ -162,7 +170,18 @@ carries, rather than a reason to expect it would reverse into a stronger finding
   indistinguishability — attached at the point of classification (`src/agent/synthesis.py`), not in
   a footnote a reader could miss.
 
-## 4. The measured ceiling
+## 4. The measured ceiling — WITHDRAWN, `P8-001`
+
+**Every number in this section is withdrawn, not merely caveated.** Both figures below were
+measured against `collapsed_relative`, anchored at `close(event_date − 20)` — and the two features
+that drive the higher figure (`return_20d_context_only`, `close_to_close_60d`) are exactly the two
+`docs/phase8b_clean_label_features.md` (item 3) shows REVERSE SIGN on real 2026 hold-out data once
+scored against a label anchored away from that same point. A ceiling built substantially on two
+features shown not to generalize is not a number to plan around. Dated correction:
+`docs/phase6_signals.md`'s own top note; full detail: `docs/phase8_robustness_checks.md`,
+`docs/phase8b_clean_label_features.md`.
+
+**Kept below verbatim, as originally computed, for auditability — not to be read as current:**
 
 **AUC 0.611, held out on 2025-2026 data** (`docs/phase6_signals.md`), rising to 0.7009-0.7037 with
 `return_20d_context_only`/`close_to_close_60d` added — both variations on the same momentum-
@@ -214,13 +233,18 @@ merely unbuilt:**
   **Caveat added per `P8-001` (§1): all three numbers above are measured under the raw
   `collapsed_90d` label, which Check 1(b) confirms shares its anchor with `return_20d_context_only`
   itself.** Re-run under the corrected, event-day-anchored label
-  (`docs/phase8_robustness_checks.md`), every feature's empirically-correct direction *flips* (TRAIN
-  AUC moves from "low value predicts collapse" to "high value predicts collapse" for all three), and
-  precision@20 falls to 15.0% (`zscore_60d`) and 40.0% (`return_20d_context_only`, both now *at or
-  below* the new label's 51.0% base rate) — only `volume_ratio` (80.0%) still clears it.
-  `return_20d_context_only`'s apparent strength above is now understood to be substantially, if not
-  entirely, an artifact of the anchor it shares with the label it was scored against — not
-  independent confirmation of genuine momentum-persistence signal.
+  (`docs/phase8_robustness_checks.md`, `docs/phase8b_clean_label_features.md`), every feature's
+  empirically-correct direction *flips* (TRAIN AUC moves from "low value predicts collapse" to
+  "high value predicts collapse" for all three). `return_20d_context_only` — cited above as the best
+  performer and the one that survived stratification — is now shown to REVERSE SIGN on real 2026
+  hold-out data (pooled AUC 0.475, CI entirely below 0.5) and falls to 40.0% at precision@20, below
+  the new label's 51.0% base rate: not weaker evidence, but the opposite direction, and it is
+  withdrawn as a load-bearing feature (`docs/phase6_signals.md`'s own dated correction). `volume_ratio`
+  (80.0% at precision@20) is weak but consistent under the clean label — real in 3 of 5 cap bands,
+  chance in Micro/Mid — the ORIGINAL design hypothesis, not "confirmed" outright.
+  `zscore_60d` falls to 15.0%, but its own pooled hold-out AUC (0.537) is still weak-but-consistent
+  in the collapse-predicting direction — the two numbers describe different parts of its
+  distribution (AUC: the bulk; P@20: the extreme tail), not a contradiction.
 - **Lead time — led with the near-term spread, not the bare median.** Of 2,906 real 2026 events not
   already under surveillance but later flagged: **p10=2, p25=3, p50=14, p75=52, p90=95, max=168.**
   44.4% flagged within 10 sessions, 56.3% within 20. Not classically bimodal — a heavily front-
