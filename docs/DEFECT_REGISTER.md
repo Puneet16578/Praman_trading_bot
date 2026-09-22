@@ -29,7 +29,7 @@ honesty rule.
 | P4-013 | Ph. 4 (tracing a second post-P4-012 incoherence case, ARENTERP) | **Critical / design change** | Tracing a `stage_mismatch` case the same way as 63MOONS found a SECOND, independent subject-classification miss: SURV49492's subject drops the word `"Measure"` instead of `"Surveillance"` -- `"Applicability of Short- Term Additional Surveillance (ST-ASM)"`. Two distinct real circulars each silently missing a *different* required word, found only by hand-tracing individual symbols' lifecycles, is exactly the pattern that makes an allowlist the wrong design for this data: a false negative is silent and requires exhaustive tracing to find, while a false positive under a denylist fails loudly (a fetch/parse attempt that doesn't match any known Annexure shape) the moment it happens. | **Redesigned, not just fixed** — `is_periodic_asm_subject` inverted from an allowlist (require positive stems) to a denylist (attempt every SURV circular subject unless it matches one of ~25 known-irrelevant categories, built from a full survey of all 1,756 distinct real subjects in the cached corpus, not guessed). Dry-run verified against the full cached index before any network use: converges to the same 62 distinct accepted subjects as the old allowlist, plus exactly 4 real typo/omission variants the allowlist missed, minus exactly 4 subjects the allowlist had wrongly swept in (a standalone ICA circular, two policy/framework announcements, one typo'd Encumbrance circular) — zero unexplained deltas either direction. |
 | P8-001 | Ph. 8 (robustness review, before RESULTS.md was finalized) | **Critical** | Phase 8's Layers 2/3 scored the classifier and every baseline against the RAW `collapsed_90d` label, even though Phase 6 (`docs/phase6_signals.md`, Check 1) had already found that exact raw label "was tracking market drift, not move authenticity" and built `collapsed_relative` specifically to correct it. Layer 3's headline ("full system beats disclosure tier alone") was never checked against the label Phase 6's own findings said was the trustworthy one. | Corrected, not silently fixed — headline retracted. See `docs/phase8_robustness_checks.md` Check 1 for the full re-score under three alternative labels and the resulting before/after impact — the headline does not survive a label anchored away from the `return_20d` coupling (Check 1(b)/(c)). |
 | P8-002 | Ph. 8b (feature re-analysis script, caught while writing it) | Low | `scripts/phase8b_feature_reauc.py`'s first draft read `cap_band` from `event_catalogue_loose_zscore_only.csv`, which only carries Phase 5's original 3-way (Small/Mid/Large) turnover-tercile split — not the 5-way (Micro/Small/Mid/Large/Mega) quintile bands Phase 7b/8's classification pipeline uses. Failed loudly (Micro/Mega rows silently matched zero events, printed `n/a`) before any number was published. Checked whether any earlier phase's real, published stratified analysis made the same mistake: no — `scripts/build_final_event_catalogue.py`'s 3-way `cap_band` was Phase 5's own deliberate, original design (used correctly by Phase 6's own 3-way stratification section); `scripts/fit_outcome_ensemble.py`, `scripts/build_event_classifications.py`, and `scripts/phase8_classify_holdout.py` each independently compute their own 5-way quintile bands and never read the catalogue's 3-way column. | Fixed before publishing — `phase8b_feature_reauc.py` now sources `cap_band` from `event_classifications.csv`/`phase8_2026_classifications.csv` instead. No retroactive correction needed elsewhere; logged per instruction to check, not because a real defect was found upstream. |
-| P8-003 | Ph. 9 (adversarial lint pass + register-currency check) | **High / Critical (two parts)** | (1) `src/classification/event_classifier.py`'s `PROVENANCE_NOTE` and `DISCRIMINATIVE_POWER_NOTE`, rendered into every live report, still state "Phase 6 measured the combined signal ceiling at 0.611-0.70" — the exact figure `P8-001`'s correction withdrew. (2) `src/agent/banned_terms.py` missed 11 of 11 hand-written adversarial phrasings ("artificially inflated," "insider trading," "strong buy," bare "highly suspicious," "orchestrated," "circular trading," among others) — real gaps in vocabulary coverage, in the bare-"suspicious" case, and CLAUDE.md invariant 12's entire buy/sell/hold/target clause has no detector at all. | **Not yet fixed — queued for explicit approval, per this project's working procedure for changes to a safety-critical/defamation-risk module, rather than patched silently inside an audit pass.** Full detail and real test output: `docs/phase9_hygiene_review.md`. |
+| P8-003 | Ph. 9 (adversarial lint pass + register-currency check) | **High / Critical (two parts)** | (1) `src/classification/event_classifier.py`'s `PROVENANCE_NOTE` and `DISCRIMINATIVE_POWER_NOTE`, rendered into every live report, stated "Phase 6 measured the combined signal ceiling at 0.611-0.70" — the exact figure `P8-001`'s correction withdrew. (2) `src/agent/banned_terms.py` missed 11 of 11 hand-written adversarial phrasings ("artificially inflated," "insider trading," "strong buy," bare "highly suspicious," "orchestrated," "circular trading," among others) — corroborating `tests/test_banned_terms_adversarial_evasion.py`'s own pre-existing, already-honestly-reported 0/5 finding (`docs/phase7c_agent_layer.md`) with a second, independently-authored phrasing set. | **Part (1) fixed** — both constants now cite `P8-001` and state the corrected finding (no top-tier lift, ~1.8% BSS); a stale test-file citation in `synthesis.py`'s docstring fixed alongside it; two test assertions that hardcoded the withdrawn "0.611" string updated to assert its ABSENCE instead. Full suite re-run: 326/326 pass. **Part (2) resolved architecturally, not by patching the lint** — confirmed zero LLM-provider-calling code exists anywhere in `src/`; `banned_terms.py` kept unchanged as a backstop (0/5 and 0/11 catch rates both recorded, not hidden); CLAUDE.md now states as standing policy that any future LLM-narrative capability must be local/dev-only and never reach shareable output — that is what enforces invariant 12's buy/sell/hold/target clause, not the lint. |
 
 ## P2-001 — `full_bhavcopy_save` silent failure on HTTP error
 
@@ -694,17 +694,49 @@ LLM-plausible phrasings through `lint_text()` directly and found **11 of 11 miss
 adjacent vocabulary outside the fixed `DIRECT_TERMS` list ("insider trading," "circular trading,"
 "artificially inflated," "orchestrated," "coordinated operation," "synthetic [volume]"), bare
 "suspicious" with no score/rank word nearby to trigger `RANKING_PATTERNS`, and invariant 12's entire
-buy/sell/hold/target-price clause, which has no detector family assigned to it at all.
+buy/sell/hold/target-price clause, which has no detector family assigned to it at all. **This is not
+a new discovery in isolation** — `tests/test_banned_terms_adversarial_evasion.py`, already in this
+project's suite since Phase 7c, independently measured a 0/5 catch rate on a differently-authored
+set of deliberate evasions and reported it honestly ("a low number here is the honest finding, not a
+bug to paper over," `docs/phase7c_agent_layer.md`). This pass's 11/11 (a set of mundane,
+LLM-plausible phrasings, not deliberately engineered to evade the regex the way the Phase 7c set
+was) corroborates that finding from a second, independent angle rather than duplicating it.
 
 **How it was found.** Phase 9's adversarial lint pass and register-currency check, run as their own
 exercise rather than incidentally — the module's own docstring already stated it expects false
 negatives and does not assume 100% coverage; this is that check, actually run, with real output.
 
-**Fix.** **Not yet applied.** Both parts are queued for explicit approval before editing
-`src/classification/event_classifier.py` or `src/agent/banned_terms.py` — per this project's
-working procedure (plan, then implement only after approval) for a defamation-risk/safety-critical
-module, rather than patched silently inside an audit-and-documentation pass. Full real test output:
-`docs/phase9_hygiene_review.md`.
+**Fix.**
+
+**(1) Applied.** `PROVENANCE_NOTE` and `DISCRIMINATIVE_POWER_NOTE` now cite `P8-001` and state the
+corrected finding (no top-tier precision lift over base rate; aggregate Brier Skill Score ~1.8% vs.
+a constant baseline) instead of the withdrawn ceiling. A stale citation in `synthesis.py`'s
+docstring (a `tests/test_orchestrator_determinism.py` file that does not exist — the real test is
+`OrchestratorDeterminismTest` in `tests/test_orchestrator.py`) was corrected alongside it, found
+while re-verifying this fix. Two tests that hardcoded the withdrawn `"0.611"` string
+(`tests/test_synthesis.py`, `tests/test_orchestrator.py`) were updated to assert its ABSENCE and
+the presence of the `"P8-001"` citation instead, so a future accidental revert is caught rather than
+silently passing.
+
+**(2) Resolved architecturally, per explicit decision — NOT by patching `banned_terms.py` toward
+more coverage.** A vocabulary list losing to paraphrase twice, independently, is exactly the pattern
+this project's own register (P4-012/P4-013) has previously treated as "the detection shape itself
+is wrong, not merely incomplete." Rather than add more patterns, confirmed directly (grep across
+all of `src/`) that **zero LLM-provider-calling code exists anywhere in this codebase** — every
+`EvidenceClaim.text` is a deterministic template (`src/agent/specialists.py`), and `synthesis.py`
+never calls a provider. `CLAUDE.md` now states this as standing policy (invariant 2's "LLM
+narrative scope" note): any future LLM-narrative capability must be local/dev-only and must never
+reach shareable output — that is what enforces invariant 12's buy/sell/hold/target clause, not
+`banned_terms.py`. The lint itself is UNCHANGED — kept as a backstop, both its 0/5 (Phase 7c) and
+0/11 (Phase 9) catch rates recorded plainly beside it, neither hidden nor treated as the primary
+control.
+
+**Re-verification.** Full suite re-run after both fixes: `python -m unittest discover -s tests`,
+**326/326 tests pass**, including the two updated assertions
+(`test_discriminative_power_note_is_attached_unconditionally`,
+`test_discriminative_power_note_present_on_every_report`) and the pre-existing
+`AdversarialEvasionCatchRateTest`/`test_report_is_banned_term_clean` suites, unchanged and still
+passing. Full real test output: `docs/phase9_hygiene_review.md`.
 
 **Re-verification.** Pending the fix. The adversarial test cases in `docs/phase9_hygiene_review.md`
 §1 are the re-verification suite once a fix is approved and applied — re-run the same 11 phrasings

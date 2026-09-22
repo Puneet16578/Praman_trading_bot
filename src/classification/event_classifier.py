@@ -13,8 +13,12 @@ rather than trust this project's conjunction blindly.
 
 PROVENANCE_NOTE is fixed, deterministic text meant to be rendered into every report's OUTPUT (not
 only this module's docstring or the design doc) -- the classification rests on this project's own
-thresholds, not a validated predictor; Phase 6 measured the combined signal ceiling at 0.611-0.70
-held out.
+thresholds, not a validated predictor. Phase 6's original 0.611-0.70 ceiling figure is WITHDRAWN
+(P8-001, docs/DEFECT_REGISTER.md): its two dominant features reverse sign under a label that does
+not share this classifier's own momentum anchor. Under that corrected label, this classifier's
+top-scored tier shows no precision lift over its own base rate, and its aggregate Brier Skill
+Score is ~1.8% vs. a constant baseline (docs/phase8_robustness_checks.md,
+docs/phase8b_clean_label_features.md).
 """
 from __future__ import annotations
 import bisect
@@ -31,10 +35,14 @@ ALL_CLASSES = (GROUNDED, PARTIALLY_GROUNDED, UNEXPLAINED, UNEXPLAINED_ISOLATED, 
 PROVENANCE_NOTE = (
     "Classification uses this project's own thresholds (disclosure tier, momentum persistence vs. "
     "real per-cap-band medians, co-movement vs. this catalogue's own distribution) -- not a "
-    "validated predictor. Phase 6 measured the combined signal ceiling at 0.611-0.70 held out on "
-    "2025-2026 data. UNEXPLAINED and UNEXPLAINED_ISOLATED describe an absence of a substantive "
-    "disclosure and where the measured signals fall -- they are not a finding about why the price "
-    "moved, and carry no conclusion about the cause of the move."
+    "validated predictor. A robustness review (P8-001) found the original Phase 6/8 ceiling and "
+    "top-tier precision figures were substantially an artifact of a label sharing this "
+    "classifier's own momentum anchor: under a corrected, decoupled label, this classifier's "
+    "top-scored tier shows NO precision lift over its own base rate, and its aggregate Brier "
+    "Skill Score is approximately 1.8% versus a constant baseline. UNEXPLAINED and "
+    "UNEXPLAINED_ISOLATED describe an absence of a substantive disclosure and where the measured "
+    "signals fall -- they are not a finding about why the price moved, and carry no conclusion "
+    "about the cause of the move."
 )
 
 # Measured directly (scripts/analyze_collapse_rate_confidence_intervals.py, 95% Wilson CIs,
@@ -60,13 +68,17 @@ INDISTINGUISHABLE_PAIR_NOTE = (
 # Attached to EVERY report next to its classification, not only inside the longer PROVENANCE_NOTE
 # paragraph above -- a reader looking at one event's report should see the system's measured
 # discriminative power at the exact point it presents a classification, not have to find it in a
-# general disclaimer. Same number as PROVENANCE_NOTE (Phase 6, held out on 2025-2026 data); stated
-# again here, standalone, because "wherever it presents a classification" was explicit.
+# general disclaimer. Same correction as PROVENANCE_NOTE (P8-001, docs/DEFECT_REGISTER.md); stated
+# again here, standalone, because "wherever it presents a classification" was explicit. The
+# original Phase 6 AUC 0.611-0.70 figure this note used to cite is WITHDRAWN -- see
+# docs/phase8_robustness_checks.md and docs/phase8b_clean_label_features.md for the full
+# re-measurement.
 DISCRIMINATIVE_POWER_NOTE = (
-    "Measured discriminative power of the signals behind this classification: AUC 0.611-0.70, "
-    "held out on 2025-2026 data (Phase 6). Above chance (0.50) but weak -- read this "
-    "classification as directional evidence, not a reliable predictor of whether this specific "
-    "move held or reversed."
+    "Measured discriminative power of this classification (P8-001 correction): under a "
+    "robustness-corrected label, this classifier's top-scored tier shows NO precision lift over "
+    "its own base rate, and its aggregate Brier Skill Score is approximately 1.8% versus a "
+    "constant baseline -- read this classification as directional evidence at best, not a "
+    "reliable predictor of whether this specific move held or reversed."
 )
 
 # The real Phase 5 catalogue-membership rule (scripts/build_final_event_catalogue.py:is_event(),

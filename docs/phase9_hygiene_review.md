@@ -1,5 +1,11 @@
 # Phase 9 — Adversarial Lint, README, Data/Legal Hygiene, Register Consistency
 
+> **Update, 2026-09-22: both `P8-003` items below are now resolved — see
+> `docs/DEFECT_REGISTER.md`'s `P8-003` entry for the applied fix and re-verification (326/326
+> tests pass).** This document's own body is left as originally written (the findings, not yet
+> the resolution) so the audit's original state stays auditable; read the register entry for
+> current status.
+
 ## Summary (read this first)
 
 **Top finding, most consequential: `src/classification/event_classifier.py`'s `PROVENANCE_NOTE` and

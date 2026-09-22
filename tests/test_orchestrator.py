@@ -71,8 +71,12 @@ class OrchestratorFixtureTest(unittest.TestCase):
             self.assertIn(claim["verification"]["derivation"], ("PASS", "NOT_APPLICABLE", "NOT_SAMPLED"))
 
     def test_discriminative_power_note_present_on_every_report(self):
+        # The original 0.611-0.70 ceiling this note used to cite is WITHDRAWN (P8-001,
+        # docs/DEFECT_REGISTER.md) -- asserting the corrected citation is present and the
+        # withdrawn number is absent, so a future accidental revert is caught.
         report = self.orchestrator.run_for_event(self.conn, SYMBOL, self.event_date)
-        self.assertIn("0.611", report.discriminative_power_note)
+        self.assertIn("P8-001", report.discriminative_power_note)
+        self.assertNotIn("0.611", report.discriminative_power_note)
 
     def test_report_is_banned_term_clean(self):
         _seed_announcement(self.conn, self.days[65])

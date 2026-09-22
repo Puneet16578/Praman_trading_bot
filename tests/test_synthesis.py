@@ -84,13 +84,16 @@ class ClassificationNoteTest(unittest.TestCase):
         self.assertEqual(lint_text(GROUNDED_LIMITATION_NOTE), [])
 
     def test_discriminative_power_note_is_attached_unconditionally(self):
-        """Unlike classification_notes (class-specific), the 0.611-0.70 ceiling must appear on
-        EVERY report, next to the classification, regardless of which class."""
+        """Unlike classification_notes (class-specific), the P8-001-corrected discriminative-power
+        statement must appear on EVERY report, next to the classification, regardless of class.
+        The original 0.611-0.70 ceiling this note used to cite is WITHDRAWN (P8-001) -- asserting
+        its absence here, not its presence, so a future accidental revert is caught."""
         for tier, count, r20 in [("SUBSTANTIVE", 1000, 0.20), ("NONE", 1000, 0.01), ("ROUTINE", 1000, 0.50)]:
             with self.subTest(tier=tier):
                 report = self._render(tier=tier if tier != "ROUTINE" else "ROUTINE_ONLY", same_date_event_count=count, return_20d=r20)
                 self.assertEqual(report.discriminative_power_note, DISCRIMINATIVE_POWER_NOTE)
-                self.assertIn("0.611", report.discriminative_power_note)
+                self.assertIn("P8-001", report.discriminative_power_note)
+                self.assertNotIn("0.611", report.discriminative_power_note)
                 self.assertEqual(lint_text(report.discriminative_power_note), [])
 
     def test_baseline_comparison_note_is_attached_unconditionally(self):

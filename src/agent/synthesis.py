@@ -5,8 +5,14 @@ narrative-text hook a provider could use to suppress or override any of it (CLAU
 configured, byte-identical structure with/without a provider"). This module never calls a
 provider at all -- there is nothing an optional narrative summary could add that isn't already
 invariant-12-bounded structured fact, so none is wired in; the orchestrator's determinism test
-(tests/test_orchestrator_determinism.py) runs this same path twice and diffs the result to hold
-that guarantee, not merely assert it.
+(`OrchestratorDeterminismTest.test_two_runs_of_the_same_event_are_byte_identical`,
+tests/test_orchestrator.py -- corrected citation, was previously misnamed in this docstring as a
+separate test_orchestrator_determinism.py file that does not exist) runs this same path twice and
+diffs the result to hold that guarantee, not merely assert it. Confirmed directly (P8-003,
+docs/DEFECT_REGISTER.md): zero LLM-provider-calling code exists anywhere under src/ as of this
+note -- this is not merely a design intention, it is the verified, current state of the whole
+pipeline. See CLAUDE.md's "LLM narrative scope" note for the standing policy this establishes for
+any future work that adds one.
 """
 from __future__ import annotations
 

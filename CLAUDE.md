@@ -17,6 +17,21 @@ system). Its architectural disciplines carry over unchanged.
    output with NO language model configured. An LLM may write narrative; a deterministic
    validator re-checks every proposal; any provider failure falls back deterministically.
 
+   **LLM narrative scope — decided 2026-09-22, `P8-003` (`docs/DEFECT_REGISTER.md`).** Confirmed
+   directly (grep across all of `src/`, plus `OrchestratorDeterminismTest`, `tests/test_orchestrator.py`):
+   **zero LLM-provider-calling code exists anywhere in this codebase today.** Every `EvidenceClaim.text`
+   is a deterministic Python template over data (`src/agent/specialists.py`); `synthesis.py` never
+   calls a provider at all. This is not merely today's state, it is now this project's standing
+   policy: **if an LLM-narrative capability is ever added, it must run in a local/dev-only mode and
+   must NEVER reach shareable output.** Any output naming a company renders from deterministic
+   templates only, full stop — that is what enforces CLAUDE.md invariant 12's buy/sell/hold/target
+   clause, not `src/agent/banned_terms.py`. `banned_terms.py` remains a backstop lint (kept, not
+   removed), but it is not the primary control and should not be treated as one: an adversarial
+   pass (`docs/phase9_hygiene_review.md`) found it misses 11 of 11 hand-written adversarial
+   phrasings ("insider trading," "strong buy," bare "highly suspicious," among others) — a
+   vocabulary list loses to paraphrase, which is exactly why the real control is architectural
+   (no narrative-generation surface in the shareable path at all), not lexical.
+
 3. **One authorization enforcement point**, fail-closed. Nothing reaches a tool without passing
    it.
 
