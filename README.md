@@ -28,8 +28,10 @@ coupling, neither disclosure tier nor the classifier shows top-tier lift over it
    retraction above, not the original (now-superseded) headline.
 2. [`docs/DEFECT_REGISTER.md`](docs/DEFECT_REGISTER.md) — every defect this project has found in
    itself, including ones in its own evaluation methodology, with root cause and re-verification
-   evidence. `P8-003` (open) lists two known, not-yet-fixed issues: production report text still
-   citing a withdrawn ceiling figure, and real coverage gaps in the manipulation-language lint.
+   evidence. `P8-003` (resolved) is why the architecture paragraph below reads the way it does —
+   production report text was corrected to stop citing a withdrawn ceiling figure, and a real
+   coverage gap in the manipulation-language lint was resolved architecturally, not by patching
+   the lint.
 3. [`docs/phase10_preregistration.md`](docs/phase10_preregistration.md) — the frozen spec for
    whatever redesign follows, committed before any forward evaluation data exists.
 4. [`CLAUDE.md`](CLAUDE.md) — the project's own working invariants, data-sourcing decisions (including
@@ -43,7 +45,9 @@ through `docs/phase8b_*.md`, in order.
 ## What this is not
 
 - Not investment advice. No buy/sell/hold, no price targets, no ratings — CLAUDE.md invariant 12,
-  enforced (imperfectly — see `P8-003`) by `src/agent/banned_terms.py`.
+  enforced by template-only output (no code path renders free-text narrative into shareable
+  output at all — `P8-003`), with `src/agent/banned_terms.py` kept as a backstop lint, not the
+  primary control.
 - Not a validated predictor. Every report renders its own measured discriminative-power ceiling
   and limitations alongside its classification, not in a footnote.
 - Not redistributable data. `data/raw/` and `data/processed/` are gitignored on purpose — the NSE
@@ -77,8 +81,14 @@ catalogue, classification rules, and the manipulation-language lint.
 
 Every fact carries an event date and a knowledge date; every query is as-of a specific date
 (`CLAUDE.md` invariant 7 — "bitemporal or nothing"). Corporate-action adjustment, event
-cataloguing, and outcome labelling all respect this. The classifier itself is deterministic by
-default (`src/classification/event_classifier.py`); an optional multi-agent LLM layer
-(`src/agent/`) writes narrative around the same deterministic rule and is re-checked by a
-deterministic Adversary and the banned-term lint before anything reaches output — the system
-produces complete, grounded output with no language model configured at all.
+cataloguing, and outcome labelling all respect this. The classifier itself is deterministic
+(`src/classification/event_classifier.py`), and so is everything around it: the multi-agent
+evidence layer (`src/agent/` — Supervisor, the three specialist agents, the Adversary, the
+authorization gate) runs fully deterministically end to end. **No language model is called
+anywhere in this codebase** — confirmed directly by grep across all of `src/`, not merely a design
+intention (`P8-003`, `docs/DEFECT_REGISTER.md`). Every piece of report text a specialist agent
+produces is a plain Python template over data (`src/agent/specialists.py`), independently
+re-derivable and re-checked by the deterministic Adversary before it reaches output. Any future
+LLM-narrative capability is restricted by standing project policy (`CLAUDE.md`, invariant 2's "LLM
+narrative scope" note) to local/dev use only and must never reach shareable output —
+`src/agent/banned_terms.py` remains a backstop lint for that scenario, not the primary control.
