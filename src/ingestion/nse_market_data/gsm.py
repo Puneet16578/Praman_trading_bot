@@ -154,11 +154,14 @@ def session_with_cookie(timeout: float = 20.0) -> requests.Session:
     return session
 
 def fetch_circular_index(session: requests.Session, from_date: date, to_date: date, timeout: float = 30.0) -> list[dict]:
+    """P8-004 (docs/DEFECT_REGISTER.md) -- same fix as src/ingestion/nse_market_data/asm.py's
+    identical function: the real response is an envelope, {"data": [...], "fromDate": ...,
+    "toDate": ...}, not a bare list. See that module's docstring for the full trace."""
     r = session.get("https://www.nseindia.com/api/circulars",
                      params={"dept": "SURV", "fromDate": from_date.strftime("%d-%m-%Y"), "toDate": to_date.strftime("%d-%m-%Y")},
                      timeout=timeout)
     r.raise_for_status()
-    return r.json()
+    return r.json()["data"]
 
 def fetch_circular_pdf_text(session: requests.Session, url: str, timeout: float = 30.0) -> str:
     import pdfplumber

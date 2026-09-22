@@ -424,11 +424,19 @@ def session_with_cookie(timeout: float = 20.0) -> requests.Session:
     return session
 
 def fetch_circular_index(session: requests.Session, from_date: date, to_date: date, timeout: float = 30.0) -> list[dict]:
+    """P8-004 (docs/DEFECT_REGISTER.md): the real, live response from this endpoint is an envelope
+    -- {"data": [...circulars...], "fromDate": ..., "toDate": ...} -- not a bare list, confirmed
+    directly against the real API (26 real circulars returned for a real 10-day window, 2026-09).
+    This function was never exercised against live data anywhere in this project's test suite
+    before that check (`fetch_and_ingest_asm_range`'s own docstring: "Not called by the
+    fixture-based test suite") -- `for c in circulars` previously iterated the envelope dict's own
+    KEYS ("data"/"fromDate"/"toDate", each a string), not its circulars, crashing on the first
+    real call with `AttributeError: 'str' object has no attribute 'get'`."""
     r = session.get("https://www.nseindia.com/api/circulars",
                      params={"dept": "SURV", "fromDate": from_date.strftime("%d-%m-%Y"), "toDate": to_date.strftime("%d-%m-%Y")},
                      timeout=timeout)
     r.raise_for_status()
-    return r.json()
+    return r.json()["data"]
 
 def fetch_circular_file(session: requests.Session, url: str, timeout: float = 30.0) -> bytes:
     r = session.get(url, timeout=timeout)

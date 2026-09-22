@@ -30,6 +30,8 @@ honesty rule.
 | P8-001 | Ph. 8 (robustness review, before RESULTS.md was finalized) | **Critical** | Phase 8's Layers 2/3 scored the classifier and every baseline against the RAW `collapsed_90d` label, even though Phase 6 (`docs/phase6_signals.md`, Check 1) had already found that exact raw label "was tracking market drift, not move authenticity" and built `collapsed_relative` specifically to correct it. Layer 3's headline ("full system beats disclosure tier alone") was never checked against the label Phase 6's own findings said was the trustworthy one. | Corrected, not silently fixed — headline retracted. See `docs/phase8_robustness_checks.md` Check 1 for the full re-score under three alternative labels and the resulting before/after impact — the headline does not survive a label anchored away from the `return_20d` coupling (Check 1(b)/(c)). |
 | P8-002 | Ph. 8b (feature re-analysis script, caught while writing it) | Low | `scripts/phase8b_feature_reauc.py`'s first draft read `cap_band` from `event_catalogue_loose_zscore_only.csv`, which only carries Phase 5's original 3-way (Small/Mid/Large) turnover-tercile split — not the 5-way (Micro/Small/Mid/Large/Mega) quintile bands Phase 7b/8's classification pipeline uses. Failed loudly (Micro/Mega rows silently matched zero events, printed `n/a`) before any number was published. Checked whether any earlier phase's real, published stratified analysis made the same mistake: no — `scripts/build_final_event_catalogue.py`'s 3-way `cap_band` was Phase 5's own deliberate, original design (used correctly by Phase 6's own 3-way stratification section); `scripts/fit_outcome_ensemble.py`, `scripts/build_event_classifications.py`, and `scripts/phase8_classify_holdout.py` each independently compute their own 5-way quintile bands and never read the catalogue's 3-way column. | Fixed before publishing — `phase8b_feature_reauc.py` now sources `cap_band` from `event_classifications.csv`/`phase8_2026_classifications.csv` instead. No retroactive correction needed elsewhere; logged per instruction to check, not because a real defect was found upstream. |
 | P8-003 | Ph. 9 (adversarial lint pass + register-currency check) | **High / Critical (two parts)** | (1) `src/classification/event_classifier.py`'s `PROVENANCE_NOTE` and `DISCRIMINATIVE_POWER_NOTE`, rendered into every live report, stated "Phase 6 measured the combined signal ceiling at 0.611-0.70" — the exact figure `P8-001`'s correction withdrew. (2) `src/agent/banned_terms.py` missed 11 of 11 hand-written adversarial phrasings ("artificially inflated," "insider trading," "strong buy," bare "highly suspicious," "orchestrated," "circular trading," among others) — corroborating `tests/test_banned_terms_adversarial_evasion.py`'s own pre-existing, already-honestly-reported 0/5 finding (`docs/phase7c_agent_layer.md`) with a second, independently-authored phrasing set. | **Part (1) fixed** — both constants now cite `P8-001` and state the corrected finding (no top-tier lift, ~1.8% BSS); a stale test-file citation in `synthesis.py`'s docstring fixed alongside it; two test assertions that hardcoded the withdrawn "0.611" string updated to assert its ABSENCE instead. Full suite re-run: 326/326 pass. **Part (2) resolved architecturally, not by patching the lint** — confirmed zero LLM-provider-calling code exists anywhere in `src/`; `banned_terms.py` kept unchanged as a backstop (0/5 and 0/11 catch rates both recorded, not hidden); CLAUDE.md now states as standing policy that any future LLM-narrative capability must be local/dev-only and never reach shareable output — that is what enforces invariant 12's buy/sell/hold/target clause, not the lint. |
+| P8-004 | Ph. 9 (writing `scripts/weekly_ingest.py`, first real end-to-end run) | **High** | `src/ingestion/nse_market_data/{asm,gsm}.py`'s `fetch_circular_index` returned `r.json()` directly, typed `-> list[dict]`. The REAL, live `nseindia.com/api/circulars` response is an envelope, `{"data": [...circulars...], "fromDate": ..., "toDate": ...}`, not a bare list. `for c in circulars` in `fetch_and_ingest_{asm,gsm}_range` therefore iterated the envelope dict's own keys (three strings) instead of its circulars, crashing on the very first real call: `AttributeError: 'str' object has no attribute 'get'`. Both functions' own docstrings already said "Not called by the fixture-based test suite" — this is why: neither had ever been run against real or realistically-shaped data in this project's history before this session's first attempt to automate weekly ingestion. | Fixed — both `fetch_circular_index` functions now return `r.json()["data"]`, confirmed against a real live call (26 real circulars returned for a real 2026-09 window, correct dict shape). Two regression tests added (`tests/test_asm_gsm_ingestion.py::FetchCircularIndexEnvelopeTest`), mocking the real envelope shape observed live — both pass. Full suite re-run after the fix; see re-verification below. |
+| P8-005 | Ph. 9 (same first real run of `scripts/weekly_ingest.py`) | Medium | `weekly_ingest.py`'s own `_extract_gaps_and_mismatches` matched any line starting with `"GAP "` — but `ingest_bhavcopy_full_history.py` also prints an unconditional summary line, `"GAP (confirmed trading day, this request failed): 0"`, every run regardless of whether a real gap occurred. The bare-prefix match flagged that summary line as a real gap on every single run, including runs with zero real gaps — a false-positive that would have paged/alarmed on a clean week, every week. | Fixed — the match is now anchored on a trailing date (`^GAP \d{4}-\d{2}-\d{2}:`), matching only the real per-date gap lines. Re-verification: a real second end-to-end run of `weekly_ingest.py` (in progress as this entry is written; see this document's own commit history / `logs/weekly_ingest.log` for the actual outcome, not asserted here in advance). |
 
 ## P2-001 — `full_bhavcopy_save` silent failure on HTTP error
 
@@ -738,7 +740,69 @@ control.
 `AdversarialEvasionCatchRateTest`/`test_report_is_banned_term_clean` suites, unchanged and still
 passing. Full real test output: `docs/phase9_hygiene_review.md`.
 
-**Re-verification.** Pending the fix. The adversarial test cases in `docs/phase9_hygiene_review.md`
-§1 are the re-verification suite once a fix is approved and applied — re-run the same 11 phrasings
-(and any new ones covering the buy/sell/hold/target clause) and confirm all are caught before
-closing this entry.
+(An earlier draft of this entry's re-verification paragraph said "pending the fix" and described
+re-running the 11 phrasings against a patched lint — stale as soon as (2) above was resolved
+architecturally instead of by patching, since no patch to `banned_terms.py` was ever going to be
+applied. Removed rather than left contradicting the paragraph directly above it — caught while
+adding `P8-004`/`P8-005` below, itself a small instance of exactly the register-consistency check
+this phase exists to run.)
+
+## P8-004 — `fetch_circular_index` never unwrapped the real API's envelope, crashed on its first live call
+
+**Root cause.** `src/ingestion/nse_market_data/asm.py` and `.../gsm.py` each define their own
+`fetch_circular_index(session, from_date, to_date) -> list[dict]`, both calling
+`session.get("https://www.nseindia.com/api/circulars", ...)` and returning `r.json()` directly.
+The real, live response from this endpoint is an envelope — `{"data": [...circulars...],
+"fromDate": "...", "toDate": "..."}` — not a bare list. `fetch_and_ingest_asm_range`/
+`fetch_and_ingest_gsm_range` both do `for c in circulars: subject = c.get("sub", "") or ""`;
+iterating the un-unwrapped envelope dict yields its own three keys (`"data"`, `"fromDate"`,
+`"toDate"`, each a plain string) instead of circular dicts, so the very first iteration crashed:
+`AttributeError: 'str' object has no attribute 'get'`.
+
+**How it was found.** Writing `scripts/weekly_ingest.py` (this phase's item 2) and actually running
+it end to end, rather than only reading the code. Both functions' own docstrings already said "Not
+called by the fixture-based test suite" — confirmed directly (`grep fetch_circular_index tests/`
+returns nothing before this fix) that neither function had ever been exercised against real, or
+even realistically-shaped, data anywhere in this project's history. `scripts/ingest_asm_gsm_sample.py`
+(the only prior caller of the underlying parse/ingest functions) sourced its circular list from a
+pre-fetched, already-unwrapped cache file, not from `fetch_circular_index` itself, so it never
+exercised this code path either.
+
+**Fix.** Both `fetch_circular_index` functions now return `r.json()["data"]`. Verified directly
+against the real, live endpoint (not assumed from the traceback alone): a real call for a real
+10-day window in 2026-09 returned 26 real circulars, correct dict shape, `sub`/`circNumber`/
+`cirDate`/`circFilelink` all present as expected by the calling code.
+
+**Re-verification.** Two new regression tests (`tests/test_asm_gsm_ingestion.py::FetchCircularIndexEnvelopeTest`),
+mocking a session whose `.json()` returns the real observed envelope shape (trimmed to 2 of the 26
+real circulars) — both `test_asm_fetch_circular_index_unwraps_data_key` and
+`test_gsm_fetch_circular_index_unwraps_data_key` pass. Full suite re-run after the fix: **328/328
+pass** (326 + these 2 new tests). A second real, live end-to-end run of `scripts/weekly_ingest.py`
+after the fix completed with `asm_gsm=OK` (previously `ERROR`) — real confirmation, not inference
+from the traceback alone.
+
+## P8-005 — `weekly_ingest.py`'s own GAP detection matched an unconditional summary line
+
+**Root cause.** `scripts/weekly_ingest.py`'s `_extract_gaps_and_mismatches` matched any captured
+output line whose stripped text started with `"GAP "`. `scripts/ingest_bhavcopy_full_history.py`
+prints TWO different lines beginning with that exact prefix: a per-date line only printed when a
+real gap occurred (`"GAP 2026-09-16: <reason>"`), and an unconditional summary line printed on
+EVERY run regardless of outcome (`"GAP (confirmed trading day, this request failed): 0"`). The
+bare-prefix match could not tell them apart, so the summary line was counted as a real gap on every
+single run — a script meant to surface real problems in an unattended weekly log would have logged
+a false "GAP" every week, including clean weeks with zero real gaps, which is exactly the kind of
+false-positive that trains a human to stop reading the log.
+
+**How it was found.** The very first real end-to-end run of `scripts/weekly_ingest.py`
+(alongside `P8-004`, in the same run) reported `GAPs: 1` — investigated directly rather than
+accepted, since 1 unexplained gap on a run expected to be clean (recent, already-mostly-ingested
+dates) was itself suspicious; the "gap" turned out to be the summary line, count zero, not a real
+failure.
+
+**Fix.** The match is now anchored on a trailing date (`^GAP \d{4}-\d{2}-\d{2}:`,
+`_GAP_LINE_RE`), matching only real per-date gap lines and never the unconditional summary line.
+
+**Re-verification.** A second real, live end-to-end run of `scripts/weekly_ingest.py` after both
+this fix and `P8-004`'s reported `GAPs: 0` (started 2026-09-22T17:17:03, finished 17:42:13,
+`overall=OK`) — the false positive is gone on a real run with no real gaps, not merely reasoned
+about.

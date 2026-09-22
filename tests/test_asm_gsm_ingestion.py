@@ -17,6 +17,8 @@ from src.ingestion.nse_market_data.asm import (
 from src.ingestion.nse_market_data.gsm import (
     GSM, classify_gsm_subject, ingest_gsm_circular, is_gsm_subject, parse_gsm_pdf_text,
 )
+from datetime import date
+from unittest.mock import MagicMock
 
 # ---------- ASM: subject-line classification ----------
 
@@ -670,6 +672,53 @@ class IngestGsmCircularTest(unittest.TestCase):
             ingest_gsm_circular(stale_conn, ENTRY, "II", "SURV65707", STAGE_MOVE_TEXT, report)
         self.assertEqual(report.circulars_processed, 0)
         stale_conn.close()
+
+# ---------- P8-004: fetch_circular_index must unwrap the real API's envelope shape ----------
+
+# The real, live https://www.nseindia.com/api/circulars response, confirmed directly against the
+# API (docs/DEFECT_REGISTER.md, P8-004): an envelope, not a bare list. Reproduced verbatim in
+# shape (trimmed to 2 of the real 26 circulars returned for a real 2026-09 window).
+REAL_CIRCULARS_ENVELOPE_SHAPE = {
+    "data": [
+        {"cirDate": "20260922", "circNumber": "76481", "sub": "Empanelment as Algo Provider",
+         "circFilelink": "https://nsearchives.nseindia.com/content/circulars/INVG76481.pdf"},
+        {"cirDate": "20260921", "circNumber": "76451", "sub": "Applicability of Enhanced Surveillance Measure (ESM)",
+         "circFilelink": "https://nsearchives.nseindia.com/content/circulars/SURV76451.zip"},
+    ],
+    "fromDate": "12-09-2026", "toDate": "22-09-2026",
+}
+
+def _mock_session_returning(payload) -> MagicMock:
+    session = MagicMock()
+    response = MagicMock()
+    response.json.return_value = payload
+    response.raise_for_status.return_value = None
+    session.get.return_value = response
+    return session
+
+class FetchCircularIndexEnvelopeTest(unittest.TestCase):
+    """P8-004: `for c in circulars` previously iterated the envelope dict's own keys (each a
+    string) when the real API returned {"data": [...], "fromDate": ..., "toDate": ...} instead of
+    a bare list -- caught only by an actual live network call, since this function was never
+    exercised against real or realistically-shaped data anywhere in this test suite before."""
+
+    def test_asm_fetch_circular_index_unwraps_data_key(self):
+        from src.ingestion.nse_market_data.asm import fetch_circular_index
+        session = _mock_session_returning(REAL_CIRCULARS_ENVELOPE_SHAPE)
+        result = fetch_circular_index(session, date(2026, 9, 12), date(2026, 9, 22))
+        self.assertEqual(len(result), 2)
+        self.assertIsInstance(result[0], dict)
+        self.assertEqual(result[0]["circNumber"], "76481")
+        # The real failure mode: iterating the un-unwrapped envelope yields strings, not dicts.
+        for c in result:
+            self.assertTrue(hasattr(c, "get"), "circular entries must be dicts, not envelope keys")
+
+    def test_gsm_fetch_circular_index_unwraps_data_key(self):
+        from src.ingestion.nse_market_data.gsm import fetch_circular_index
+        session = _mock_session_returning(REAL_CIRCULARS_ENVELOPE_SHAPE)
+        result = fetch_circular_index(session, date(2026, 9, 12), date(2026, 9, 22))
+        self.assertEqual(len(result), 2)
+        self.assertIsInstance(result[0], dict)
 
 if __name__ == "__main__":
     unittest.main()
