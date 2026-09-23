@@ -25,10 +25,16 @@ import numpy as np
 from sklearn.linear_model import LogisticRegression
 
 TRAIN_CUTOFF = "2026-01-01"
-DELIVERY_THRESHOLD = 15.0
-ISOLATED_THRESHOLD = 47.0
+# Amendment 4 refit: recomputed via scripts/phase10_compute_thresholds.py against the CORRECTED
+# TRAIN population (equity-only filter + promoted corporate-actions sweep, P8-007/P8-010) --
+# "same median rule," per instruction, means recomputing the median of the corrected TRAIN data,
+# not reusing the literal old values computed from the pre-correction population. Old values
+# (docs/phase10_preregistration.md, pre-correction TRAIN n=64,450): delivery 15.0000, isolated
+# 47.0000, volume_ratio Micro/Small/Mid/Large/Mega = 4.7182/6.6737/7.2739/8.4210/7.5811.
+DELIVERY_THRESHOLD = 13.3333
+ISOLATED_THRESHOLD = 45.0
 VOLUME_RATIO_BAND_MEDIAN = {
-    "Micro": 4.7182, "Small": 6.6737, "Mid": 7.2739, "Large": 8.4210, "Mega": 7.5811,
+    "Micro": 5.0926, "Small": 6.8397, "Mid": 7.6364, "Large": 8.6042, "Mega": 7.4616,
 }
 BAND_ELIGIBLE = {"Small", "Large", "Mega"}
 DISCLOSURE_LEVELS = ["SUBSTANTIVE", "ROUTINE_ONLY", "UNKNOWN_COVERAGE"]  # NONE is reference

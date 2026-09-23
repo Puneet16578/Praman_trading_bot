@@ -39,6 +39,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.bitemporal.connection import get_connection, init_db
 from src.config.settings import get_settings
+from src.ingestion.nse_market_data.isin_mapping import build_symbol_groups, load_isin_map
 from src.signals.event_catalogue import FAR_FUTURE_AS_OF, _return, build_symbol_history
 
 CORR_LOOKBACK = 250        # trading sessions of prior history used for the correlation proxy
@@ -46,6 +47,7 @@ MAX_COMOVERS_FOR_CORR = 30 # cap per event, to bound cost on unusually busy date
 
 INPUT_PATH = Path(__file__).resolve().parents[1] / "data" / "processed" / "event_catalogue_loose_zscore_only.csv"
 OUTPUT_PATH = Path(__file__).resolve().parents[1] / "data" / "processed" / "clustering.csv"
+ISIN_MAP_PATH = Path(__file__).resolve().parents[1] / "data" / "raw" / "nse_symbol_isin_current.json"
 
 def main() -> None:
     settings = get_settings()
@@ -65,6 +67,11 @@ def main() -> None:
     symbols = sorted(set(e["symbol"] for e in events))
     print(f"{len(symbols)} distinct symbols, {len(by_date)} distinct event dates")
 
+    # Amendment 4 prep item 5: stitch a renamed security's symbols (P8-010) so a lookback window
+    # crossing a rename isn't starved of real prior trading days. Missing map file falls back to
+    # no stitching (P8-006's lesson -- not a hard dependency).
+    symbol_groups = build_symbol_groups(load_isin_map(ISIN_MAP_PATH)) if ISIN_MAP_PATH.exists() else {}
+
     # Precompute, once per symbol, a date-indexed array of daily adjusted returns (prior-history
     # only usage enforced later by index slicing, not by this build step).
     print("Building per-symbol return series...")
@@ -72,7 +79,7 @@ def main() -> None:
     hist_cache = {}
     return_series: dict[str, tuple[list[str], np.ndarray]] = {}
     for i, symbol in enumerate(symbols):
-        hist = build_symbol_history(conn, symbol)
+        hist = build_symbol_history(conn, symbol, symbol_group=symbol_groups.get(symbol, [symbol]))
         hist_cache[symbol] = hist
         days = hist.trading_days
         rets = []

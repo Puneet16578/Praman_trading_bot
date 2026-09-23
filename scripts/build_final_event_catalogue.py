@@ -87,19 +87,41 @@ def main() -> None:
     conn = get_connection(settings.database_path)
     init_db(conn)
 
-    symbols = [r[0] for r in conn.execute(
+    all_symbols = [r[0] for r in conn.execute(
         "SELECT DISTINCT symbol FROM bhavcopy WHERE series='EQ' ORDER BY symbol").fetchall()]
+
+    # Amendment 4: equity-only universe rule (docs/phase10_amendment4_prep.md, decided from the
+    # P8-007 corrections' item-4 measurement) -- fund units have no company disclosures, so
+    # disclosure-tier classification cannot apply to them (43.90-61.22% of every UNKNOWN_COVERAGE
+    # event was a confirmed fund unit, both measurements). Excludes INF-prefix ISINs (fund units)
+    # AND unresolved symbols (no ISIN found in any snapshot -- cannot be classified as equity
+    # either, excluded conservatively rather than assumed in). Every other prefix (INE and the
+    # small DVR "IN9..." class) is kept -- not restricted to INE only.
+    isin_map = load_isin_map(ISIN_MAP_PATH) if ISIN_MAP_PATH.exists() else {}
+    symbol_groups = build_symbol_groups(isin_map) if isin_map else {}
+    if not isin_map:
+        print("No ISIN map found -- equity-only filter and stitching both skipped "
+              "(run scripts/build_isin_map.py to enable them)")
+        symbols = all_symbols
+        excluded_fund_unit = excluded_unresolved = 0
+    else:
+        symbols = []
+        excluded_fund_unit = excluded_unresolved = 0
+        for s in all_symbols:
+            isin = isin_map.get(s)
+            if isin is None:
+                excluded_unresolved += 1
+                continue
+            if isin.startswith("INF"):
+                excluded_fund_unit += 1
+                continue
+            symbols.append(s)
+        print(f"Equity-only universe rule applied: {len(all_symbols)} EQ symbols -> "
+              f"{len(symbols)} kept, {excluded_fund_unit} excluded as fund-unit (INF ISIN), "
+              f"{excluded_unresolved} excluded as unresolved (no ISIN found)")
+
     print(f"Building final event catalogue (z-only, LOOSE, 60-session post-demerger exclusion) "
           f"for {len(symbols)} EQ symbols...")
-
-    # Amendment 4 prep item 5: stitch a renamed security's symbols into one continuous history
-    # (P8-010 -- this project's own symbol-string-keyed tables otherwise treat a rename as two
-    # unrelated series). Missing map file falls back to no stitching, same as before this change
-    # (P8-006's lesson: a real pipeline step must not be blocked on having run a refresh script
-    # first) -- run scripts/build_isin_map.py to enable it.
-    symbol_groups = build_symbol_groups(load_isin_map(ISIN_MAP_PATH)) if ISIN_MAP_PATH.exists() else {}
-    if not symbol_groups:
-        print("No ISIN map found -- building per-symbol, unstitched (run scripts/build_isin_map.py to enable stitching)")
     renamed_groups = {tuple(sorted(g)) for g in symbol_groups.values() if len(g) > 1}
     print(f"Rename groups that will be stitched: {len(renamed_groups)}")
 

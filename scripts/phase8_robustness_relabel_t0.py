@@ -30,6 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.bitemporal.connection import get_connection, init_db
 from src.config.settings import get_settings
+from src.ingestion.nse_market_data.isin_mapping import build_symbol_groups, load_isin_map
 from src.signals.event_catalogue import FAR_FUTURE_AS_OF, build_symbol_history
 
 HORIZON = 90
@@ -41,6 +42,7 @@ CATALOGUE_PATH = ROOT / "data" / "processed" / "event_catalogue_loose_zscore_onl
 INDEX_PATH = ROOT / "data" / "processed" / "market_index.csv"
 OUTPUT_PATH = ROOT / "data" / "processed" / "phase8_relabel_t0_relative.csv"
 SURVIVORSHIP_PATH = ROOT / "data" / "processed" / "phase8_survivorship_check.csv"
+ISIN_MAP_PATH = ROOT / "data" / "raw" / "nse_symbol_isin_current.json"
 
 
 def load_market_index() -> dict[str, float]:
@@ -112,11 +114,17 @@ def main() -> None:
     for e in events:
         by_symbol.setdefault(e["symbol"], []).append(e)
 
+    # Amendment 4 prep item 5: stitch a renamed security's symbols (P8-010) so this label's
+    # 90-session forward window doesn't starve for real trading days just because this project's
+    # own tables are keyed by symbol string. Missing map file falls back to no stitching
+    # (P8-006's lesson -- not a hard dependency).
+    symbol_groups = build_symbol_groups(load_isin_map(ISIN_MAP_PATH)) if ISIN_MAP_PATH.exists() else {}
+
     out_rows = []
     survivorship_rows = []
     t0 = time.time()
     for i, (symbol, symbol_events) in enumerate(by_symbol.items()):
-        hist = build_symbol_history(conn, symbol)
+        hist = build_symbol_history(conn, symbol, symbol_group=symbol_groups.get(symbol, [symbol]))
         for e in symbol_events:
             direction = 1 if float(e["return_1d"]) > 0 else -1
             result = compute_t0_relative(hist, e["event_date"], direction, market_index, global_dates)

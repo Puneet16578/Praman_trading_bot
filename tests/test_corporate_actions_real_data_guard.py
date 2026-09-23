@@ -42,12 +42,19 @@ class RealCorporateActionGuardTest(unittest.TestCase):
         self.assertEqual(len(after), 2, "Must be visible on/after the real announcement date (2025-04-29).")
         self.assertEqual({row["action_type"] for row in after}, {"BONUS", "SPLIT"})
 
-    def test_quarantined_aurigrow_disagreement_never_reached_the_store(self):
+    def test_quarantined_aurigrow_disagreement_written_as_ratio_conflict_exclusion(self):
         """AURIGROW's quarantined 2022-01-20 bonus (subject '1:1' vs announcement's erroneous
-        '11104000:111040000', resolved against the real filed PDF -- see docs/phase3_corporate_actions.md)
-        must not be queryable at any as-of, confirming QUARANTINE really means never written."""
+        '11104000:111040000', resolved against the real filed PDF -- see docs/phase3_corporate_actions.md).
+        P8-007 corrections changed QUARANTINE handling: a real corporate action DID happen, so it
+        is now written as a RATIO_CONFLICT exclusion marker (no ratio trusted) instead of never
+        reaching the store at all -- confirmed here against the real, promoted production row
+        (docs/phase10_amendment4_prep.md), not the old pre-correction expectation this test
+        originally asserted."""
         rows = read_as_of(self.conn, "corporate_actions", "2099-01-01", symbol="AURIGROW", event_date="2022-01-20")
-        self.assertEqual(len(rows), 0)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["action_type"], "RATIO_CONFLICT")
+        self.assertEqual(rows[0]["confidence_tier"], "RATIO_CONFLICT_EXCLUSION")
+        self.assertIsNone(rows[0]["ratio_numerator"])
 
     def test_no_real_row_has_knowledge_date_after_event_date(self):
         """Documents the honest scope note above: in this real dataset, every writable row's

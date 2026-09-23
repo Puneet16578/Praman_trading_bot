@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.bitemporal.connection import get_connection, init_db
 from src.config.settings import get_settings
+from src.ingestion.nse_market_data.isin_mapping import build_symbol_groups, load_isin_map
 from src.signals.disclosure_classification import classify_disclosure_window
 from src.signals.event_catalogue import build_symbol_history
 from src.signals.surveillance_state import build_surveillance_timeline
@@ -39,6 +40,7 @@ CLUSTERING_PATH = Path(__file__).resolve().parents[1] / "data" / "processed" / "
 CLOSE_TO_CLOSE_PATH = Path(__file__).resolve().parents[1] / "data" / "processed" / "close_to_close_60d.csv"
 OUTPUT_PATH = Path(__file__).resolve().parents[1] / "data" / "processed" / "event_classifications.csv"
 THRESHOLDS_OUTPUT_PATH = Path(__file__).resolve().parents[1] / "data" / "processed" / "classification_thresholds.json"
+ISIN_MAP_PATH = Path(__file__).resolve().parents[1] / "data" / "raw" / "nse_symbol_isin_current.json"
 
 def load_catalogue() -> list[dict]:
     with open(CATALOGUE_PATH, encoding="utf-8") as f:
@@ -111,6 +113,10 @@ def main() -> None:
 
     fetched_symbols = {r[0] for r in conn.execute("SELECT DISTINCT symbol FROM corporate_announcements").fetchall()}
 
+    # Amendment 4 prep item 5: stitch a renamed security's symbols (P8-010), consistent with the
+    # catalogue/outcome-label rebuild. Missing map file falls back to no stitching (P8-006's lesson).
+    symbol_groups = build_symbol_groups(load_isin_map(ISIN_MAP_PATH)) if ISIN_MAP_PATH.exists() else {}
+
     by_symbol: dict[str, list[dict]] = defaultdict(list)
     for r in rows:
         by_symbol[r["symbol"]].append(r)
@@ -122,7 +128,7 @@ def main() -> None:
         n_symbols += 1
         has_coverage = symbol in fetched_symbols
         timeline = build_surveillance_timeline(conn, symbol)
-        hist = build_symbol_history(conn, symbol)
+        hist = build_symbol_history(conn, symbol, symbol_group=symbol_groups.get(symbol, [symbol]))
         days = hist.trading_days
 
         ann_rows = []
