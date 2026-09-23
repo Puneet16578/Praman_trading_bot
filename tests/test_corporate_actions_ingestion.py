@@ -12,10 +12,11 @@ from src.bitemporal.connection import get_connection, init_db
 from src.bitemporal.guard import read_as_of
 from src.ingestion.nse_market_data.corporate_actions import (
     BONUS, CAPITAL_REDUCTION, CAPITAL_REDUCTION_EXCLUSION, CONFIRMED, DEMERGER, DEMERGER_EXCLUSION,
-    EX_DATE_FALLBACK, MATCHED_UNCONFIRMED, QUARANTINE, SPLIT, announcement_cache_key,
+    EX_DATE_FALLBACK, MATCHED_UNCONFIRMED, QUARANTINE, RATIO_CONFLICT, RATIO_CONFLICT_EXCLUSION,
+    RIGHTS, RIGHTS_EXCLUSION, SPLIT, announcement_cache_key,
     build_rows_and_report, classify_bonus_split, collapse_clusters, find_announcement,
     ingest_corporate_actions, is_capital_reduction_subject, is_deferred_text, is_demerger_subject,
-    parse_announcement_ratio, parse_subject_ratio,
+    is_rights_subject, parse_announcement_ratio, parse_subject_ratio,
 )
 
 def ann(sort_date: str, desc: str, text: str) -> dict:
@@ -36,6 +37,33 @@ class ParseSubjectRatioTest(unittest.TestCase):
 
     def test_dividend_unhandled(self):
         self.assertIsNone(parse_subject_ratio("Interim Dividend - Rs 7.10 Per Share"))
+
+    def test_hyphen_attached_bonus_real_ajantpharm_subject(self):
+        """P8-007 corrections: the real, live NSE subject for AJANTPHARM's 2022-06-22 bonus is
+        'Bonus- 1:2' -- a hyphen attached directly to "Bonus", not the plain 'Bonus 1:2' form the
+        original regex required. Confirmed missing before this fix (docs/phase10_p8007_scoping.md
+        §1); this is the regression test."""
+        result = parse_subject_ratio("Bonus- 1:2")
+        self.assertIsNotNone(result)
+        self.assertEqual(result["type"], BONUS)
+        self.assertEqual((result["numerator"], result["denominator"]), (1.0, 2.0))
+
+    def test_bonus_hyphen_no_space_variant(self):
+        result = parse_subject_ratio("Bonus-1:2")
+        self.assertIsNotNone(result)
+        self.assertEqual((result["numerator"], result["denominator"]), (1.0, 2.0))
+
+    def test_bonus_plain_space_form_still_matches(self):
+        """The widened separator must not stop matching the original, most common real form."""
+        result = parse_subject_ratio("Bonus 1:2")
+        self.assertIsNotNone(result)
+        self.assertEqual((result["numerator"], result["denominator"]), (1.0, 2.0))
+
+    def test_rights_subject_detected(self):
+        """P8-007 corrections: confirmed real case, M&MFIN 2020-07-22."""
+        self.assertTrue(is_rights_subject("Rights 1:1 @ Premium Rs 48/-"))
+        self.assertFalse(is_rights_subject("Bonus 1:1"))
+        self.assertFalse(is_rights_subject("Interim Dividend - Rs 7.10 Per Share"))
 
     def test_demerger_detected(self):
         self.assertTrue(is_demerger_subject("Demerger"))
@@ -231,15 +259,46 @@ class BuildRowsAndReportTest(unittest.TestCase):
         self.assertEqual(rows, [])
         self.assertEqual(report.unhandled_action_types, 1)
 
-    def test_quarantine_row_not_in_output_but_logged(self):
+    def test_rights_becomes_exclusion_marker_no_ratio(self):
+        """P8-007 corrections: confirmed real case, M&MFIN 2020-07-22, 'Rights 1:1 @ Premium Rs
+        48/-' -- previously silently counted as unhandled (indistinguishable from a dividend);
+        now written as its own accurately-labeled structural-break exclusion marker."""
+        actions = [{"symbol": "M&MFIN", "series": "EQ", "exDate": "22-Jul-2020",
+                    "subject": "Rights 1:1 @ Premium Rs 48/-"}]
+        rows, report = build_rows_and_report(actions, {}, "test.json")
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["action_type"], RIGHTS)
+        self.assertEqual(rows[0]["confidence_tier"], RIGHTS_EXCLUSION)
+        self.assertIsNone(rows[0]["ratio_numerator"])
+        self.assertIsNone(rows[0]["ratio_denominator"])
+        self.assertEqual(report.unhandled_action_types, 0)  # no longer falls into the generic bucket
+        self.assertEqual(report.tier_counts[RIGHTS_EXCLUSION], 1)
+
+    def test_quarantine_becomes_ratio_conflict_exclusion_marker_still_logged(self):
+        """P8-007 corrections: a QUARANTINE-tier bonus/split (subject and announcement ratios
+        disagree) used to be dropped entirely -- confirmed real case, UNIVASTU 2025-10-13, 'Bonus
+        2:1' vs. the announcement's own garbled auto-parsed ratio (docs/phase10_p8007_scoping.md
+        §1, same auto-text-quality failure mode already documented for AURIGROW). A real
+        corporate action DID happen; it is now written as a structural-break exclusion marker
+        (no ratio trusted) instead of silently vanishing, and still logged in `quarantined` for
+        review, unchanged."""
         symbol, ex_date_str = "TESTCO", "01-Mar-2021"
         key = announcement_cache_key(symbol, date(2021, 3, 1))
         actions = [{"symbol": symbol, "series": "EQ", "exDate": ex_date_str, "subject": "Bonus 1:1"}]
         announcements = {key: [ann("2021-01-20 10:00:00", "Bonus", "...bonus at the ratio of 1 : 10...")]}
         rows, report = build_rows_and_report(actions, announcements, "test.json")
-        self.assertEqual(rows, [])
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["action_type"], RATIO_CONFLICT)
+        self.assertEqual(rows[0]["confidence_tier"], RATIO_CONFLICT_EXCLUSION)
+        self.assertIsNone(rows[0]["ratio_numerator"])
+        self.assertIsNone(rows[0]["ratio_denominator"])
         self.assertEqual(len(report.quarantined), 1)
         self.assertEqual(report.quarantined[0]["symbol"], symbol)
+        self.assertEqual(report.tier_counts[RATIO_CONFLICT_EXCLUSION], 1)
+        self.assertNotIn(QUARANTINE, report.tier_counts)  # the raw QUARANTINE tier no longer
+                                                            # appears in tier_counts -- it's
+                                                            # renamed/rewritten to the exclusion
+                                                            # tier at the point of writing
 
     def test_non_eq_series_skipped(self):
         actions = [{"symbol": "717GS2028", "series": "GS", "exDate": "06-Jan-2022", "subject": "Interest Payment"}]
@@ -264,14 +323,22 @@ class IngestCorporateActionsTest(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["confidence_tier"], CONFIRMED)
 
-    def test_quarantined_row_never_reaches_the_store(self):
+    def test_quarantined_row_written_as_ratio_conflict_exclusion_not_a_trusted_ratio(self):
+        """P8-007 corrections: a QUARANTINE-tier disagreement now reaches the store as a
+        RATIO_CONFLICT exclusion marker (no ratio) rather than never reaching it at all -- see
+        BuildRowsAndReportTest.test_quarantine_becomes_ratio_conflict_exclusion_marker_still_logged
+        for the unit-level version of this same behavior change."""
         symbol, ex_date_str = "TESTCO", "01-Mar-2021"
         key = announcement_cache_key(symbol, date(2021, 3, 1))
         actions = [{"symbol": symbol, "series": "EQ", "exDate": ex_date_str, "subject": "Bonus 1:1"}]
         announcements = {key: [ann("2021-01-20 10:00:00", "Bonus", "...bonus at the ratio of 1 : 10...")]}
         report, write_result = ingest_corporate_actions(self.conn, actions, announcements, "test.json")
-        self.assertEqual(write_result.inserted, 0)
-        self.assertEqual(len(read_as_of(self.conn, "corporate_actions", "2099-01-01", symbol=symbol)), 0)
+        self.assertEqual(write_result.inserted, 1)
+        stored = read_as_of(self.conn, "corporate_actions", "2099-01-01", symbol=symbol)
+        self.assertEqual(len(stored), 1)
+        self.assertEqual(stored[0]["action_type"], RATIO_CONFLICT)
+        self.assertEqual(stored[0]["confidence_tier"], RATIO_CONFLICT_EXCLUSION)
+        self.assertIsNone(stored[0]["ratio_numerator"])
         self.assertEqual(len(report.quarantined), 1)
 
     def test_reingesting_identical_data_is_idempotent(self):

@@ -75,10 +75,18 @@ import statistics
 from dataclasses import dataclass, field
 
 from ..bitemporal.guard import latest_as_of, read_as_of
-from ..ingestion.nse_market_data.corporate_actions import BONUS, CAPITAL_REDUCTION, DEMERGER, SPLIT
+from ..ingestion.nse_market_data.corporate_actions import (
+    BONUS, CAPITAL_REDUCTION, DEMERGER, RATIO_CONFLICT, RIGHTS, SPLIT,
+)
 from .price_adjustment import factor_for_action
 
-STRUCTURAL_BREAK_ACTION_TYPES = (DEMERGER, CAPITAL_REDUCTION)
+# RIGHTS and RATIO_CONFLICT added in P8-007 corrections (docs/phase10_p8007_corrections.md):
+# both are written as no-ratio exclusion markers by build_rows_and_report, the identical shape
+# DEMERGER/CAPITAL_REDUCTION already use, so they need the identical exclusion treatment here.
+# Currently inert against the live production corporate_actions table (no row of either type has
+# been written there this session -- only into a separate staging table/DB) -- forward-compatible,
+# not yet exercised against production data.
+STRUCTURAL_BREAK_ACTION_TYPES = (DEMERGER, CAPITAL_REDUCTION, RIGHTS, RATIO_CONFLICT)
 
 TRAILING_WINDOW = 60      # sessions, for the z-score/percentile reference distribution
 CUMULATIVE_WINDOW = 20    # sessions, for the cumulative-return statistic

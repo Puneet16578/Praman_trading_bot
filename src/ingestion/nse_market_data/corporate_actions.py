@@ -49,6 +49,15 @@ BONUS = "BONUS"
 SPLIT = "SPLIT"
 DEMERGER = "DEMERGER"
 CAPITAL_REDUCTION = "CAPITAL_REDUCTION"
+RIGHTS = "RIGHTS"              # P8-007 corrections: a real action type, previously silently
+                                # folded into "unhandled" alongside dividends/AGMs/etc.
+RATIO_CONFLICT = "RATIO_CONFLICT"  # P8-007 corrections: what QUARANTINE bonus/split rows become
+                                    # once written (see build_rows_and_report) -- a real bonus/
+                                    # split happened, but the subject and announcement ratios
+                                    # disagree, so no ratio is trusted enough to adjust by
+
+RIGHTS_EXCLUSION = "RIGHTS_EXCLUSION"          # own tier name, mirrors DEMERGER_EXCLUSION
+RATIO_CONFLICT_EXCLUSION = "RATIO_CONFLICT_EXCLUSION"  # own tier name, mirrors DEMERGER_EXCLUSION
 
 # Measured from the 253 cases where v1 (earliest-in-a-200-day-window) matching agreed with
 # `subject` -- see docs/phase3_corporate_actions.md for the full distribution
@@ -70,8 +79,13 @@ DEFERRED_RE = re.compile("|".join(DEFERRED_PATTERNS), re.I)
 # ---------- Parsers ----------
 
 def parse_subject_ratio(subject: str) -> dict | None:
+    """P8-007 corrections (docs/phase10_p8007_corrections.md): the Bonus pattern used to require
+    `\\s+` immediately after "Bonus", missing the real, hyphen-attached NSE phrasing "Bonus- 1:2"
+    (confirmed live: AJANTPHARM, 2022-06-22). Widened to `[\\s\\-:.]*` -- any combination of
+    whitespace, hyphen, colon, or period between "Bonus" and the ratio's first digit -- so it
+    still matches the plain "Bonus 1:2" form and also "Bonus-1:2", "Bonus- 1:2", "Bonus:1:2"."""
     s = (subject or "").strip()
-    m = re.search(r"\bBonus\s+(\d+)\s*:\s*(\d+)\b", s, re.I)
+    m = re.search(r"\bBonus[\s\-:.]*(\d+)\s*:\s*(\d+)\b", s, re.I)
     if m:
         new, old = int(m.group(1)), int(m.group(2))
         return {"type": BONUS, "numerator": float(new), "denominator": float(old), "factor": (new + old) / old, "raw": f"{new}:{old}"}
@@ -111,6 +125,19 @@ def is_demerger_subject(subject: str, symbol: str | None = None, ex_date: str | 
     if symbol is not None and ex_date is not None and (symbol, ex_date) in _KNOWN_DEMERGER_EXCEPTIONS:
         return True
     return False
+
+def is_rights_subject(subject: str) -> bool:
+    """P8-007 corrections: a Rights issue (confirmed real case: M&MFIN, 2020-07-22,
+    "Rights 1:1 @ Premium Rs 48/-") is a distinct, real action type -- it has a disclosed ratio,
+    but adjusting for a rights issue is a different, more complex mechanism than a bonus/split's
+    simple multiplicative factor (it depends on the ratio AND the subscription premium, and on
+    theoretical ex-rights price, not on the ratio alone). Not attempted here: like a demerger,
+    treated conservatively as a structural-break EXCLUSION MARKER (no ratio, no factor) rather
+    than guessed at. Checked to not overmatch: this endpoint's subjects are corporate-action
+    labels ("Rights X:Y @ Premium Rs Z/-"), not general prose, so a bare "rights" substring check
+    is safe here -- it does not need to exclude something like "voting rights" language the way a
+    free-text disclosure body might."""
+    return "rights" in (subject or "").lower()
 
 def is_capital_reduction_subject(subject: str) -> bool:
     """A capital reduction -- shares extinguished or face value cut, whether to return value to
@@ -259,7 +286,11 @@ class IngestionReport:
     tier_counts: dict[str, int]
     downgraded_count: int
     quarantined: list[dict]  # not written; logged for review
-    unhandled_action_types: int  # dividends, rights, mergers-other-than-demerger, etc. -- out of scope this session
+    unhandled_action_types: int  # dividends, buybacks, AGMs, mergers-other-than-demerger, etc. --
+                                  # out of scope this session. Rights issues moved OUT of this
+                                  # bucket in P8-007 corrections -- see is_rights_subject -- since
+                                  # they get their own exclusion-marker handling now, not a silent
+                                  # count alongside truly no-adjustment-needed types like dividends.
 
 def announcement_cache_key(symbol: str, ex_date: date) -> str:
     """A symbol with two separate bonus/split rounds needs two separate announcement windows --
@@ -305,6 +336,23 @@ def build_rows_and_report(actions: list[dict], announcements_by_key: dict[str, l
             tier_counts[CAPITAL_REDUCTION_EXCLUSION] = tier_counts.get(CAPITAL_REDUCTION_EXCLUSION, 0) + 1
             continue
 
+        # P8-007 corrections (docs/phase10_p8007_corrections.md): a Rights issue has a disclosed
+        # ratio, but this project does not attempt rights-issue price adjustment (a different,
+        # more complex mechanism than a bonus/split factor -- see is_rights_subject). Previously
+        # silently counted as "unhandled" alongside dividends/AGMs, which need no exclusion at
+        # all; now written as its own structural-break exclusion marker, same treatment as a
+        # demerger, so the price series does not read a real rights-related move as an unexplained
+        # crash while also not silently vanishing from the record.
+        if is_rights_subject(subject):
+            rows.append({
+                "symbol": symbol, "action_type": RIGHTS, "event_date": ex_date.isoformat(),
+                "knowledge_date": ex_date.isoformat(),
+                "ratio_numerator": None, "ratio_denominator": None,
+                "confidence_tier": RIGHTS_EXCLUSION, "details": subject.strip(), "source_file": source_file,
+            })
+            tier_counts[RIGHTS_EXCLUSION] = tier_counts.get(RIGHTS_EXCLUSION, 0) + 1
+            continue
+
         subj_parsed = parse_subject_ratio(subject)
         if subj_parsed is None:
             unhandled += 1
@@ -312,18 +360,36 @@ def build_rows_and_report(actions: list[dict], announcements_by_key: dict[str, l
 
         key = announcement_cache_key(symbol, ex_date)
         result = classify_bonus_split(subj_parsed, ex_date, announcements_by_key.get(key, []))
-        tier_counts[result.tier] = tier_counts.get(result.tier, 0) + 1
 
-        if result.downgraded_for_gap:
-            downgraded += 1
-
+        # P8-007 corrections: QUARANTINE used to mean "never written" -- a real bonus/split DID
+        # happen (the subject and announcement simply disagree on the exact ratio), and dropping
+        # it entirely left the price series reading a real corporate action as an unexplained
+        # crash (confirmed real case: UNIVASTU, 2025-10-13, "Bonus 2:1" vs. the announcement's own
+        # garbled auto-parsed ratio "25357180:11995590" -- the same auto-text-quality problem this
+        # module's own docstring already documents for AURIGROW). Still logged in `quarantined`
+        # for review (unchanged), but now ALSO written as a structural-break exclusion marker
+        # under its own action_type (RATIO_CONFLICT) rather than silently vanishing.
         if result.tier == QUARANTINE:
             quarantined.append({
                 "symbol": symbol, "ex_date": ex_date.isoformat(), "action_type": subj_parsed["type"],
                 "subject_raw": result.subject_ratio_raw, "announcement_raw": result.announcement_ratio_raw,
                 "knowledge_date": result.knowledge_date,
             })
+            rows.append({
+                "symbol": symbol, "action_type": RATIO_CONFLICT, "event_date": ex_date.isoformat(),
+                "knowledge_date": result.knowledge_date,
+                "ratio_numerator": None, "ratio_denominator": None,
+                "confidence_tier": RATIO_CONFLICT_EXCLUSION,
+                "details": f"subject={result.subject_ratio_raw} announcement={result.announcement_ratio_raw}",
+                "source_file": source_file,
+            })
+            tier_counts[RATIO_CONFLICT_EXCLUSION] = tier_counts.get(RATIO_CONFLICT_EXCLUSION, 0) + 1
             continue
+
+        tier_counts[result.tier] = tier_counts.get(result.tier, 0) + 1
+
+        if result.downgraded_for_gap:
+            downgraded += 1
 
         rows.append({
             "symbol": symbol, "action_type": subj_parsed["type"], "event_date": ex_date.isoformat(),
