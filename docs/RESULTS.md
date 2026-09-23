@@ -35,6 +35,19 @@ correct or incorrect:**
   85.0%, return_20d 95.0%; naively directed, 20.0% / 35.0% / 5.0%. Reported in full in §5.
 - **"Lead time led by p25 = 14 sessions"** — the real p25 is 3 sessions; 14 is the real median.
   Both are reported, correctly labeled, in §5 and in `docs/phase8_evaluation_results.md`.
+- **The clean-label feature AUC table cited below (§ "zscore_60d falls to 15.0%... pooled hold-out
+  AUC (0.537)") was computed on PRE-`P8-007`/Amendment-4-correction data** — before the equity-only
+  universe rule, ISIN-resolved corporate actions, and cross-series (EQ→BE/BZ) label continuity were
+  applied (`docs/phase10_preregistration_amendment4.md` §6). Re-run on the corrected data
+  (`scripts/phase10_amendment4_phase8b_reauc.py`, full table with Hanley-McNeil 95% CIs in
+  `docs/phase10_amendment4_prep3.md` §3): **`zscore_60d`'s pooled HOLD-OUT AUC is now 0.5234
+  [0.5081,0.5387]** (was 0.5374) — still weak-but-consistent in the collapse-predicting direction,
+  CI still excludes 0.5, no conclusion below changes. Every other feature in that table moved
+  similarly (largest shift: `delivery_pct_percentile_60d` HOLD-OUT 0.4347→0.4618) with **no feature
+  reversing direction** — the qualitative narrative in this section stands; only the specific
+  decimal figures it cites are superseded. The precision@20 figures (15.0%/40.0%/80.0%/95.0%, from
+  a separate script, `scripts/phase8_robustness_check1_direction.py`) were NOT re-run this session
+  and are not corrected here.
 
 ---
 
