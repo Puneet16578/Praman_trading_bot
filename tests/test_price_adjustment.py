@@ -8,7 +8,10 @@ import unittest
 
 from src.bitemporal.connection import get_connection, init_db
 from src.bitemporal.store import write_fact
-from src.ingestion.nse_market_data.corporate_actions import BONUS, CONFIRMED, DEMERGER, DEMERGER_EXCLUSION, SPLIT
+from src.ingestion.nse_market_data.corporate_actions import (
+    BONUS, CONFIRMED, DEMERGER, DEMERGER_EXCLUSION, RATIO_CONFLICT, RATIO_CONFLICT_EXCLUSION,
+    RIGHTS, RIGHTS_EXCLUSION, SPLIT,
+)
 from src.signals.price_adjustment import UnadjustableWindowError, adjusted_close, compute_adjustment_factor, factor_for_action
 
 def make_bhavcopy(symbol, event_date, knowledge_date, close_price):
@@ -105,6 +108,42 @@ class DemergerUnadjustableTest(unittest.TestCase):
 
     def test_demerger_outside_range_does_not_raise(self):
         factor = compute_adjustment_factor(self.conn, "RELIANCE", "2023-06-01", "2023-07-01")
+        self.assertEqual(factor, 1.0)
+
+class RightsAndRatioConflictUnadjustableTest(unittest.TestCase):
+    """P8-007 corrections: RIGHTS and RATIO_CONFLICT are written as no-ratio exclusion markers,
+    the identical shape DEMERGER already uses (DemergerUnadjustableTest above) -- this is the
+    per-pair-verified compute_adjustment_factor/adjusted_close path's own coverage of that same
+    exclusion, which UNADJUSTABLE_ACTION_TYPES must independently list (see that constant's
+    docstring: deliberately mirrored, not shared, with event_catalogue.py's
+    STRUCTURAL_BREAK_ACTION_TYPES)."""
+
+    def setUp(self):
+        self.conn = get_connection(":memory:")
+        init_db(self.conn)
+        write_fact(self.conn, "bhavcopy", make_bhavcopy("MMFIN", "2020-06-01", "2020-06-01", 100.0))
+        write_fact(self.conn, "corporate_actions", {
+            "symbol": "MMFIN", "action_type": RIGHTS, "event_date": "2020-07-22", "knowledge_date": "2020-07-22",
+            "ratio_numerator": None, "ratio_denominator": None, "confidence_tier": RIGHTS_EXCLUSION,
+            "details": "Rights 1:1 @ Premium Rs 48/-", "source_file": "fixture.json",
+        })
+        write_fact(self.conn, "bhavcopy", make_bhavcopy("UNIVASTU", "2025-09-01", "2025-09-01", 100.0))
+        write_fact(self.conn, "corporate_actions", {
+            "symbol": "UNIVASTU", "action_type": RATIO_CONFLICT, "event_date": "2025-10-13", "knowledge_date": "2025-10-13",
+            "ratio_numerator": None, "ratio_denominator": None, "confidence_tier": RATIO_CONFLICT_EXCLUSION,
+            "details": "subject=2:1 announcement=25357180:11995590", "source_file": "fixture.json",
+        })
+
+    def test_rights_in_range_raises_not_silently_ignored(self):
+        with self.assertRaises(UnadjustableWindowError):
+            compute_adjustment_factor(self.conn, "MMFIN", "2020-06-01", "2020-08-01")
+
+    def test_ratio_conflict_in_range_raises_not_silently_ignored(self):
+        with self.assertRaises(UnadjustableWindowError):
+            compute_adjustment_factor(self.conn, "UNIVASTU", "2025-09-01", "2025-11-01")
+
+    def test_rights_outside_range_does_not_raise(self):
+        factor = compute_adjustment_factor(self.conn, "MMFIN", "2020-06-01", "2020-07-01")
         self.assertEqual(factor, 1.0)
 
 if __name__ == "__main__":

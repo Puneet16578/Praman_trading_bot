@@ -8,15 +8,26 @@ from __future__ import annotations
 from datetime import date
 
 from ..bitemporal.guard import latest_as_of
-from ..ingestion.nse_market_data.corporate_actions import BONUS, CAPITAL_REDUCTION, DEMERGER, SPLIT
+from ..ingestion.nse_market_data.corporate_actions import (
+    BONUS, CAPITAL_REDUCTION, DEMERGER, RATIO_CONFLICT, RIGHTS, SPLIT,
+)
 
-UNADJUSTABLE_ACTION_TYPES = (DEMERGER, CAPITAL_REDUCTION)
+# RIGHTS and RATIO_CONFLICT added in P8-007 corrections (docs/phase10_p8007_corrections.md):
+# both are written as no-ratio exclusion markers now (build_rows_and_report), the identical shape
+# DEMERGER/CAPITAL_REDUCTION already use here. This tuple is deliberately mirrored, not shared,
+# with event_catalogue.py's STRUCTURAL_BREAK_ACTION_TYPES (see that module's docstring for why the
+# duplication exists -- a vectorized fast path vs. this per-pair-verified slow path); the two must
+# be kept in sync by hand, which the original P8-007 corrections change missed for this file until
+# a direct check of every consumer of the old DEMERGER/CAPITAL_REDUCTION pairing found it.
+UNADJUSTABLE_ACTION_TYPES = (DEMERGER, CAPITAL_REDUCTION, RIGHTS, RATIO_CONFLICT)
 
 class UnadjustableWindowError(ValueError):
-    """Raised when a demerger or capital-reduction ex-date falls inside (price_date, as_of] for
-    this symbol. Neither has an adjustment factor (CLAUDE.md's scope boundary: NSE discloses no
-    ratio for either at announcement time) -- silently ignoring it here would compute a
-    confidently wrong adjusted price. The caller must exclude this window, not receive a number.
+    """Raised when a demerger, capital-reduction, rights, or ratio-conflict ex-date falls inside
+    (price_date, as_of] for this symbol. None has a trusted adjustment factor (CLAUDE.md's scope
+    boundary for the first two; a rights issue's adjustment depends on premium/theoretical
+    ex-rights price, not the ratio alone; a ratio-conflict row's own subject/announcement ratios
+    disagree) -- silently ignoring any of them here would compute a confidently wrong adjusted
+    price. The caller must exclude this window, not receive a number.
     """
 
 def factor_for_action(action_type: str, ratio_numerator: float, ratio_denominator: float) -> float:

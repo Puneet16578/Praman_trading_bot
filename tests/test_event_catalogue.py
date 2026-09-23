@@ -10,7 +10,8 @@ import unittest
 from src.bitemporal.connection import get_connection, init_db
 from src.bitemporal.store import write_fact, write_facts
 from src.ingestion.nse_market_data.corporate_actions import (
-    BONUS, CAPITAL_REDUCTION, CAPITAL_REDUCTION_EXCLUSION, CONFIRMED, DEMERGER, DEMERGER_EXCLUSION, SPLIT,
+    BONUS, CAPITAL_REDUCTION, CAPITAL_REDUCTION_EXCLUSION, CONFIRMED, DEMERGER, DEMERGER_EXCLUSION,
+    RATIO_CONFLICT, RATIO_CONFLICT_EXCLUSION, RIGHTS, RIGHTS_EXCLUSION, SPLIT,
 )
 from src.signals.event_catalogue import (
     LateAnnouncedActionError, TRAILING_WINDOW, build_symbol_history,
@@ -136,6 +137,40 @@ class SymbolHistoryReturnTest(unittest.TestCase):
         hist = build_symbol_history(self.conn, "CAPRED")
         r = _return(hist, d0, d1, as_of=d1)
         self.assertIsNone(r, "A capital-reduction-spanning window must be excluded, same as a demerger.")
+
+    def test_rights_window_excluded_same_as_demerger(self):
+        """P8-007 corrections: a Rights issue has a disclosed ratio, but this project does not
+        attempt rights-issue price adjustment (a different mechanism than bonus/split -- see
+        is_rights_subject) -- same exclusion treatment as a demerger, real case M&MFIN 2020-07-22."""
+        d0, d1 = _dates(2)
+        write_facts(self.conn, "bhavcopy", [
+            make_bhavcopy_row("MMFIN", d0, close_price=1000.0),
+            make_bhavcopy_row("MMFIN", d1, close_price=675.0),
+        ])
+        write_facts(self.conn, "corporate_actions", [
+            make_action("MMFIN", RIGHTS, d1, d1, confidence_tier=RIGHTS_EXCLUSION,
+                        details="Rights 1:1 @ Premium Rs 48/-"),
+        ])
+        hist = build_symbol_history(self.conn, "MMFIN")
+        r = _return(hist, d0, d1, as_of=d1)
+        self.assertIsNone(r, "A rights-spanning window must be excluded, same as a demerger.")
+
+    def test_ratio_conflict_window_excluded_same_as_demerger(self):
+        """P8-007 corrections: a QUARANTINE-tier bonus/split disagreement (subject and announcement
+        ratios don't agree) is written as a RATIO_CONFLICT exclusion marker -- real case UNIVASTU
+        2025-10-13, no ratio trusted enough to adjust by, same exclusion treatment as a demerger."""
+        d0, d1 = _dates(2)
+        write_facts(self.conn, "bhavcopy", [
+            make_bhavcopy_row("UNIVASTU", d0, close_price=1000.0),
+            make_bhavcopy_row("UNIVASTU", d1, close_price=333.0),
+        ])
+        write_facts(self.conn, "corporate_actions", [
+            make_action("UNIVASTU", RATIO_CONFLICT, d1, d1, confidence_tier=RATIO_CONFLICT_EXCLUSION,
+                        details="subject=2:1 announcement=25357180:11995590"),
+        ])
+        hist = build_symbol_history(self.conn, "UNIVASTU")
+        r = _return(hist, d0, d1, as_of=d1)
+        self.assertIsNone(r, "A ratio-conflict-spanning window must be excluded, same as a demerger.")
 
     def test_demerger_outside_window_does_not_affect_an_unrelated_return(self):
         d0, d1, d2 = _dates(3)
