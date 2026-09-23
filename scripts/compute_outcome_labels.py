@@ -125,10 +125,17 @@ def main() -> None:
     if not symbol_groups:
         print("No ISIN map found -- computing per-symbol, unstitched (run scripts/build_isin_map.py to enable stitching)")
 
+    # Amendment 4 prep round 2, item 1(b)/2 fix (P8-012): extend through BE/BZ (trade-for-trade
+    # settlement) so a stock that leaves the EQ series but keeps trading isn't treated as if it
+    # had gone silent -- measured to explain ~30% of HOLD-OUT's fully-elapsed-but-missing-outcome
+    # events (docs/phase10_amendment4_prep2.md item 1(b)). Labels only -- the event catalogue
+    # itself (build_final_event_catalogue.py) stays EQ-only, unchanged.
+
     out_rows = []
     t0 = time.time()
     for i, (symbol, symbol_events) in enumerate(by_symbol.items()):
-        hist = build_symbol_history(conn, symbol, symbol_group=symbol_groups.get(symbol, [symbol]))
+        hist = build_symbol_history(conn, symbol, symbol_group=symbol_groups.get(symbol, [symbol]),
+                                     extend_with_series=("BE", "BZ"))
         for e in symbol_events:
             direction = 1 if float(e["return_1d"]) > 0 else -1
             outcome = compute_outcome(hist, e["event_date"], direction)

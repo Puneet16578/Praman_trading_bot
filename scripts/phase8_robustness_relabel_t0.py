@@ -120,11 +120,15 @@ def main() -> None:
     # (P8-006's lesson -- not a hard dependency).
     symbol_groups = build_symbol_groups(load_isin_map(ISIN_MAP_PATH)) if ISIN_MAP_PATH.exists() else {}
 
+    # Amendment 4 prep round 2, item 1(b)/2 fix (P8-012): extend through BE/BZ (trade-for-trade
+    # settlement), labels only -- the event catalogue itself stays EQ-only. See
+    # compute_outcome_labels.py's identical wiring for the full rationale.
     out_rows = []
     survivorship_rows = []
     t0 = time.time()
     for i, (symbol, symbol_events) in enumerate(by_symbol.items()):
-        hist = build_symbol_history(conn, symbol, symbol_group=symbol_groups.get(symbol, [symbol]))
+        hist = build_symbol_history(conn, symbol, symbol_group=symbol_groups.get(symbol, [symbol]),
+                                     extend_with_series=("BE", "BZ"))
         for e in symbol_events:
             direction = 1 if float(e["return_1d"]) > 0 else -1
             result = compute_t0_relative(hist, e["event_date"], direction, market_index, global_dates)

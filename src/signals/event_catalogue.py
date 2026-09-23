@@ -138,7 +138,8 @@ class SymbolHistory:
         hi = bisect.bisect_right(self.structural_break_dates, end_inclusive)
         return hi > lo
 
-def build_symbol_history(conn, symbol: str, series: str = "EQ", symbol_group: list[str] | None = None) -> SymbolHistory:
+def build_symbol_history(conn, symbol: str, series: str = "EQ", symbol_group: list[str] | None = None,
+                          extend_with_series: tuple[str, ...] = ()) -> SymbolHistory:
     """`symbol_group` (Amendment 4 prep item 5, optional, default None = just `[symbol]`, IDENTICAL
     to before -- fully backward compatible) stitches every symbol string known to share this
     security's ISIN into one continuous history. Without it, a company rename (this project's own
@@ -150,12 +151,34 @@ def build_symbol_history(conn, symbol: str, series: str = "EQ", symbol_group: li
     never overlap (confirmed directly: scripts/phase10_amendment4_isin_renames.py found all 195
     detected renames strictly chronologically contiguous, never concurrent). Caller resolves
     `symbol_group` via `src/ingestion/nse_market_data/isin_mapping.py`'s `build_symbol_groups` --
-    this module stays decoupled from the ISIN-mapping mechanism itself, accepting only plain data."""
+    this module stays decoupled from the ISIN-mapping mechanism itself, accepting only plain data.
+
+    `extend_with_series` (Amendment 4 prep round 2, item 1(b)/2 fix -- P8-012, default `()` =
+    IDENTICAL to before): additional series (e.g. `("BE", "BZ")`, trade-for-trade settlement) whose
+    rows, STRICTLY AFTER this symbol's own last `series`-series trading date, are appended for
+    forward continuity. A stock moved to trade-for-trade settlement leaves the EQ series but keeps
+    trading -- without this, its own trading_days list stops abruptly, exactly mimicking
+    "delisted" for any forward-looking label (measured: docs/phase10_amendment4_prep2.md item 1(b),
+    ~30% of HOLD-OUT's fully-elapsed-but-missing-outcome events). Only rows STRICTLY LATER than the
+    primary series' own last date are appended -- a concurrent BE-designated lot trading alongside
+    EQ (observed in real data) is a different, ambiguous case this project does not attempt to
+    reconcile, so the overlap period is left alone rather than guessed at. This parameter is for
+    LABEL/OUTCOME computation only -- the event CATALOGUE itself stays EQ-only (callers building
+    the catalogue never pass this)."""
     symbols = symbol_group or [symbol]
 
     raw_rows = []
     for s in symbols:
         raw_rows.extend(read_as_of(conn, "bhavcopy", FAR_FUTURE_AS_OF, symbol=s, series=series))
+    if extend_with_series:
+        primary_last_date = max((r["event_date"] for r in raw_rows), default=None)
+        if primary_last_date is not None:
+            for s in symbols:
+                for extra_series in extend_with_series:
+                    raw_rows.extend(
+                        r for r in read_as_of(conn, "bhavcopy", FAR_FUTURE_AS_OF, symbol=s, series=extra_series)
+                        if r["event_date"] > primary_last_date
+                    )
     vintages: dict[str, list[tuple[str, dict]]] = {}
     for row in raw_rows:
         vintages.setdefault(row["event_date"], []).append((row["knowledge_date"], row))

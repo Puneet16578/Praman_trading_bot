@@ -1,6 +1,11 @@
 """One entry point for scheduled, unattended weekly ingestion: bhavcopy -> corporate
-announcements -> corporate actions -> ASM/GSM circulars, in that order, then a dated summary block
-appended to `logs/weekly_ingest.log`.
+announcements -> ISIN map refresh -> corporate actions -> ASM/GSM circulars, in that order, then a
+dated summary block appended to `logs/weekly_ingest.log`.
+
+ISIN map (Amendment 4, docs/phase10_preregistration_amendment4.md §1): refreshes
+data/raw/nse_symbol_isin_current.json (scripts/build_isin_map.py) before corporate_actions runs,
+so P8-010's ISIN-based symbol resolution and the equity-only universe rule both see a current
+snapshot for any symbol newly listed or newly renamed this week.
 
 Corporate actions (docs/phase10_preregistration_amendment3.md): without this step, a forward-window
 split or bonus goes unadjusted -- a 1:2 split reads as a spurious -50% single-day return, producing
@@ -70,6 +75,16 @@ def step_bhavcopy() -> None:
 def step_announcements() -> None:
     from ingest_announcements_full_history import main as announcements_main
     announcements_main()
+
+
+def step_isin_map() -> None:
+    """Amendment 4 (docs/phase10_preregistration_amendment4.md §1): refreshes
+    data/raw/nse_symbol_isin_current.json with a fresh CM/UDiFF snapshot before corporate_actions
+    runs, so a symbol newly listed or newly renamed this week resolves (or is correctly counted as
+    unresolved) within the week it starts appearing, not discovered after the fact. Must run
+    BEFORE step_corporate_actions, which loads this same file."""
+    from build_isin_map import main as isin_map_main
+    isin_map_main()
 
 
 def step_corporate_actions() -> None:
@@ -144,6 +159,7 @@ def step_asm_gsm() -> None:
 STEPS = [
     ("bhavcopy", step_bhavcopy),
     ("announcements", step_announcements),
+    ("isin_map", step_isin_map),
     ("corporate_actions", step_corporate_actions),
     ("asm_gsm", step_asm_gsm),
 ]

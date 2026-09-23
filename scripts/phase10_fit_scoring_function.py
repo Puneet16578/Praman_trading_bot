@@ -46,6 +46,23 @@ TRAIN_CLASS_PATH = ROOT / "data" / "processed" / "event_classifications.csv"
 RELABEL_PATH = ROOT / "data" / "processed" / "phase8_relabel_t0_relative.csv"
 
 
+def standard_errors(X: np.ndarray, fitted_p: np.ndarray) -> np.ndarray:
+    """Amendment 4 prep round 2, item 3: classical MLE standard errors for logistic regression,
+    computed directly from the observed Fisher information -- no new dependency (statsmodels is
+    not installed in this environment; sklearn's own LogisticRegression does not expose this).
+    For the canonical logit link, the Fisher information is I = X^T W X, W = diag(p*(1-p)) at the
+    fitted probabilities; the asymptotic covariance of the MLE is I^-1, and SE_j = sqrt(I^-1_jj).
+    This is the identical quantity statsmodels/R would report for an unregularized fit -- a
+    textbook result (McCullagh & Nelder, Generalized Linear Models), not an approximation chosen
+    for convenience. Returns one SE per column of the intercept-augmented design matrix
+    ([1, X]), in that order (intercept first)."""
+    design = np.hstack([np.ones((X.shape[0], 1)), X])
+    w = fitted_p * (1 - fitted_p)
+    fisher_info = design.T @ (design * w[:, None])
+    cov = np.linalg.inv(fisher_info)
+    return np.sqrt(np.diag(cov))
+
+
 def load_train_classifications() -> dict[tuple[str, str], dict]:
     out = {}
     with open(TRAIN_CLASS_PATH, encoding="utf-8") as f:
@@ -128,12 +145,15 @@ def main() -> None:
     model = LogisticRegression(penalty=None, solver="lbfgs", max_iter=1000)
     model.fit(X, y)
 
-    print(f"\n{'='*90}\nFITTED LOGISTIC REGRESSION (TRAIN 2019-2025 ONLY, unregularized MLE)\n{'='*90}")
-    print(f"intercept: {model.intercept_[0]:.6f}")
-    for name, coef in zip(feature_names, model.coef_[0]):
-        print(f"  {name:36s} {coef:+.6f}")
-
     train_pred = model.predict_proba(X)[:, 1]
+    se = standard_errors(X, train_pred)
+
+    print(f"\n{'='*90}\nFITTED LOGISTIC REGRESSION (TRAIN 2019-2025 ONLY, unregularized MLE)\n{'='*90}")
+    print(f"intercept: {model.intercept_[0]:+.6f}  (SE {se[0]:.6f})")
+    for name, coef, s in zip(feature_names, model.coef_[0], se[1:]):
+        z = coef / s
+        print(f"  {name:36s} {coef:+.6f}  (SE {s:.6f}, z={z:+.2f})")
+
     from sklearn.metrics import roc_auc_score, brier_score_loss
     print(f"\nIn-sample (TRAIN) AUC: {roc_auc_score(y, train_pred):.4f}")
     print(f"In-sample (TRAIN) Brier: {brier_score_loss(y, train_pred):.4f}")

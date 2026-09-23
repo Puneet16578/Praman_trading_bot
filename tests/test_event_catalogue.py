@@ -274,6 +274,51 @@ class SymbolGroupStitchingTest(unittest.TestCase):
             expected = "OLDCO2" if s.event_date in old_dates else "NEWCO2"
             self.assertEqual(s.symbol, expected)
 
+class ExtendWithSeriesTest(unittest.TestCase):
+    """Amendment 4 prep round 2, item 1(b)/2 fix (P8-012): a stock moved to trade-for-trade
+    settlement (BE/BZ) leaves the EQ series but keeps trading -- without extend_with_series, its
+    own trading_days list stops abruptly at the series change, exactly mimicking "delisted" for a
+    forward-looking label. Real shape confirmed via docs/phase10_amendment4_prep2.md item 1(b)."""
+
+    def setUp(self):
+        self.conn = get_connection(":memory:")
+        init_db(self.conn)
+        d0, d1, d2, d3 = _dates(4)
+        self.d0, self.d1, self.d2, self.d3 = d0, d1, d2, d3
+        write_facts(self.conn, "bhavcopy", [
+            make_bhavcopy_row("MOVED", d0, close_price=1000.0, series="EQ"),
+            make_bhavcopy_row("MOVED", d1, close_price=1010.0, series="EQ"),
+        ])
+        write_facts(self.conn, "bhavcopy", [
+            make_bhavcopy_row("MOVED", d2, close_price=505.0, series="BE"),
+            make_bhavcopy_row("MOVED", d3, close_price=510.0, series="BE"),
+        ])
+
+    def test_without_extend_with_series_history_stops_at_the_series_change(self):
+        hist = build_symbol_history(self.conn, "MOVED")
+        self.assertEqual(hist.trading_days, [self.d0, self.d1])
+        r = _return(hist, self.d1, self.d3, as_of=self.d3)
+        self.assertIsNone(r, "BE rows are invisible without extend_with_series -- unstitched, this must be None.")
+
+    def test_with_extend_with_series_history_continues_through_be(self):
+        hist = build_symbol_history(self.conn, "MOVED", extend_with_series=("BE", "BZ"))
+        self.assertEqual(hist.trading_days, [self.d0, self.d1, self.d2, self.d3])
+        r = _return(hist, self.d1, self.d3, as_of=self.d3)
+        self.assertAlmostEqual(r, (510.0 / 1010.0) - 1)
+
+    def test_extension_rows_strictly_after_primary_last_date_only(self):
+        """A row landing ON OR BEFORE the primary series' own last date is never pulled in from the
+        extension series, even if present -- only strictly-later rows are appended."""
+        write_fact(self.conn, "bhavcopy", make_bhavcopy_row("MOVED", self.d1, close_price=999.0, series="BZ"))
+        hist = build_symbol_history(self.conn, "MOVED", extend_with_series=("BE", "BZ"))
+        self.assertEqual(hist.trading_days, [self.d0, self.d1, self.d2, self.d3])
+        row = hist.price_row_as_of(self.d1, as_of=self.d3)
+        self.assertEqual(row["close_price"], 1010.0, "The EQ row for d1 must win -- the same-date BZ row is inside the overlap period, not appended.")
+
+    def test_default_extend_with_series_is_a_no_op(self):
+        hist = build_symbol_history(self.conn, "MOVED", extend_with_series=())
+        self.assertEqual(hist.trading_days, [self.d0, self.d1])
+
 class ComputeDailyStatsTest(unittest.TestCase):
     def setUp(self):
         self.conn = get_connection(":memory:")
