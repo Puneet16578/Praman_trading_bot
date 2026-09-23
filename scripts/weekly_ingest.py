@@ -53,7 +53,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # project root, fo
 
 ROOT = Path(__file__).resolve().parents[1]
 LOG_PATH = ROOT / "logs" / "weekly_ingest.log"
-ASM_GSM_LOOKBACK_DAYS = 10  # deliberate overlap margin -- see module docstring
+ASM_GSM_LOOKBACK_DAYS = 30  # widened from 10 (P8-007 scoping, docs/phase10_p8007_scoping.md): a
+                            # single circular-index call was observed to return an incomplete
+                            # result once; fetch_and_ingest_{asm,gsm}_range now union two index
+                            # calls internally (fetch_circular_index_union), and this window is
+                            # widened as a second, independent layer of the same defense
 CORPORATE_ACTIONS_LOOKBACK_DAYS = 60  # matches fetch_recent's own default; stated here too so a
                                        # change to one is not silently out of sync with the other
 

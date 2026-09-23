@@ -174,15 +174,29 @@ def fetch_circular_pdf_text(session: requests.Session, url: str, timeout: float 
             text_parts.append(page.extract_text() or "")
     return "\n".join(text_parts)
 
+def fetch_circular_index_union(session: requests.Session, from_date: date, to_date: date,
+                                timeout: float = 30.0) -> list[dict]:
+    """P8-007 scoping finding, docs/phase10_p8007_scoping.md -- same fix as
+    src/ingestion/nse_market_data/asm.py's identical function: a single live call was observed
+    to return an incomplete result once; two calls unioned by `circNumber` is cheap insurance
+    against this observed intermittency (the index call itself is fast, confirmed directly)."""
+    first = fetch_circular_index(session, from_date, to_date)
+    second = fetch_circular_index(session, from_date, to_date)
+    by_number = {str(c["circNumber"]): c for c in first}
+    for c in second:
+        by_number.setdefault(str(c["circNumber"]), c)
+    return list(by_number.values())
+
 def fetch_and_ingest_gsm_range(conn, from_date: date, to_date: date, delay_seconds: float = 0.3,
                                 session_factory: Callable[[], requests.Session] = session_with_cookie) -> GsmIngestionReport:
     """Real network sweep, 2025-01-01 floor enforced by the caller passing `from_date` -- this
     function itself does not hardcode the floor so tests can exercise it at any date range, but
-    `scripts/ingest_asm_gsm_sample.py` never calls it with a date before 2025-01-01. Not called by
-    the fixture-based test suite."""
+    `scripts/ingest_asm_gsm_sample.py` never calls it with a date before 2025-01-01. Circular index
+    unioned across two calls -- see `fetch_circular_index_union`. Not called by the fixture-based
+    test suite."""
     session = session_factory()
     report = GsmIngestionReport()
-    circulars = fetch_circular_index(session, from_date, to_date)
+    circulars = fetch_circular_index_union(session, from_date, to_date)
     for c in circulars:
         subject = c.get("sub", "") or ""
         if not is_gsm_subject(subject):

@@ -443,14 +443,31 @@ def fetch_circular_file(session: requests.Session, url: str, timeout: float = 30
     r.raise_for_status()
     return r.content
 
+def fetch_circular_index_union(session: requests.Session, from_date: date, to_date: date,
+                                timeout: float = 30.0) -> list[dict]:
+    """P8-007 scoping finding, docs/phase10_p8007_scoping.md: a single live call to this endpoint
+    was observed to return an INCOMPLETE result once (6 of 9 real circulars a range genuinely
+    contains), with two immediately-following, isolated calls for the identical range each
+    returning the full set. Calls the index twice and unions by `circNumber` (deduplicating, not
+    doubling ingestion work) -- the index call itself is fast (<1s for the full 7-year history,
+    confirmed directly), so a second call is cheap insurance against this observed, real
+    intermittency, not a workaround for a design flaw in this function."""
+    first = fetch_circular_index(session, from_date, to_date)
+    second = fetch_circular_index(session, from_date, to_date)
+    by_number = {str(c["circNumber"]): c for c in first}
+    for c in second:
+        by_number.setdefault(str(c["circNumber"]), c)
+    return list(by_number.values())
+
 def fetch_and_ingest_asm_range(conn, from_date: date, to_date: date, delay_seconds: float = 0.3,
                                 session_factory: Callable[[], requests.Session] = session_with_cookie) -> AsmIngestionReport:
-    """Real network sweep: lists every SURV circular in the date range, keeps only periodic ASM
-    applicability circulars (`is_periodic_asm_subject`), downloads+parses+writes each one through
-    the store. Not called by the fixture-based test suite."""
+    """Real network sweep: lists every SURV circular in the date range (unioned across two index
+    calls -- see `fetch_circular_index_union`), keeps only periodic ASM applicability circulars
+    (`is_periodic_asm_subject`), downloads+parses+writes each one through the store. Not called by
+    the fixture-based test suite."""
     session = session_factory()
     report = AsmIngestionReport()
-    circulars = fetch_circular_index(session, from_date, to_date)
+    circulars = fetch_circular_index_union(session, from_date, to_date)
     for c in circulars:
         subject = c.get("sub", "") or ""
         if not is_periodic_asm_subject(subject):
