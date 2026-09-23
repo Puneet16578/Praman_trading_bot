@@ -194,4 +194,6 @@ finalized. This round's own real, standalone contributions — the decay-curve s
 Phase 8b CI table, and the `RESULTS.md` fix — are committed on their own, separately from the
 still-open amendment.
 
-**Final commit hash for this round's work**: `<filled in by the commit below>`.
+**Final commit hash for this round's work**: `d78122a1bcb311ddcc141cf7f6ad5b58afee3831`
+(`scripts/phase10_amendment4_decay_curve.py`, the corrected Phase 8b CI table, and this document).
+The draft amendment itself (`docs/phase10_preregistration_amendment4.md`) remains uncommitted.
