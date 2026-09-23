@@ -64,9 +64,21 @@ Python dependencies: `jugaad-data` (NSE bhavcopy/ASM/GSM access), `requests` + `
 `pdfplumber` (SEBI order scraping/PDF extraction), `pandas`, `pydantic`, `mcp`.
 
 The bitemporal store is a local sqlite file, path configurable via `PRAMAN_DATABASE_PATH`
-(default: `data/processed/praman.db` — see `src/config/settings.py`). It is not checked in; running
-the ingestion scripts under `scripts/` builds it from scratch. Full price/volume/delivery history
-starts 2019-10-01 — see `CLAUDE.md`'s "Data sourcing" section for why no earlier date is usable.
+(default: `data/processed/praman.db` — see `src/config/settings.py`). It is not checked in.
+
+**On "running the ingestion scripts builds it from scratch": designed to, not proven to, stated
+precisely rather than left implied.** Every ingestion script is designed for a fresh-clone rebuild,
+and `P8-006` (`docs/DEFECT_REGISTER.md`) fixed the three that could not have actually done so (each
+depended on a past session's own temp scratchpad directory). Each script's own constituent
+live-network function has been individually verified against the real API this session
+(`fetch_circular_index`, `fetch_corporate_actions_year`, `fetch_recent`, `fetch_and_ingest_{asm,gsm}_range`
+— see `docs/phase10_housekeeping.md`/`housekeeping2.md`/`housekeeping3.md`). **A full,
+unattended, end-to-end rebuild from an empty database has never actually been run.** An overnight
+rebuild into a separate database, diffed row-for-row against the current store, would turn this
+from a designed claim into a verified one — a real, worthwhile check, not done here.
+
+Full price/volume/delivery history starts 2019-10-01 — see `CLAUDE.md`'s "Data sourcing" section
+for why no earlier date is usable.
 
 ## Tests
 
