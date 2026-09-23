@@ -45,18 +45,21 @@ proven algebraic equivalence GIVEN the ordering precondition, not an approximati
 directly against real compute_adjustment_factor()/adjusted_close() calls in
 tests/test_event_catalogue_real_data_guard.py, not merely reasoned about on paper.
 
-Structural-break exclusion: a DEMERGER or CAPITAL_REDUCTION action has no adjustment factor by
-design (CLAUDE.md's scope boundary -- neither has a ratio NSE discloses at announcement time; see
-corporate_actions.py's module docstring). Any return window whose (start, end] spans one of these
-event_dates is excluded, not silently computed on raw prices -- mirrored here from
-compute_adjustment_factor's own UnadjustableWindowError by checking these event_dates against each
-window directly (the g(D) fast path only ever folds BONUS/SPLIT into cum_factor_up_to;
-DEMERGER/CAPITAL_REDUCTION event_dates are tracked purely as exclusion boundaries, never given a
-factor). Kept as one shared "structural break" set rather than two parallel ones deliberately: the
-exclusion criterion is "no disclosed ratio for a real, mechanical price-level change," not
-"is specifically a demerger" -- but every row's own `action_type` in `corporate_actions` still
-records accurately which of the two actually happened; only the exclusion-window LOGIC treats them
-identically, not their stored labels (docs/phase5_event_catalogue.md Sec.4j).
+Structural-break exclusion: a DEMERGER, CAPITAL_REDUCTION, RIGHTS, or RATIO_CONFLICT action has no
+trusted adjustment factor by design (CLAUDE.md's scope boundary for the first two; a rights issue's
+adjustment depends on premium/theoretical ex-rights price, not the ratio alone; a ratio-conflict
+row's own subject/announcement ratios disagree -- see corporate_actions.py's module docstring). Any
+return window whose (start, end] spans one of these event_dates is excluded, not silently computed
+on raw prices -- mirrored here from compute_adjustment_factor's own UnadjustableWindowError by
+checking these event_dates against each window directly (the g(D) fast path only ever folds
+BONUS/SPLIT into cum_factor_up_to; STRUCTURAL_BREAK_ACTION_TYPES event_dates are tracked purely as
+exclusion boundaries, never given a factor). Kept as one shared "structural break" set rather than
+separate parallel ones deliberately: the exclusion criterion is "no ratio trusted enough to adjust
+by," not "is specifically a demerger" -- but every row's own `action_type` in `corporate_actions`
+still records accurately which action actually happened; only the exclusion-window LOGIC treats
+them identically, not their stored labels (docs/phase5_event_catalogue.md Sec.4j). This tuple is
+now defined ONCE, in `corporate_actions.py` (P8-009 root-cause fix) -- both this module and
+`price_adjustment.py` import the same object rather than each keeping their own copy.
 
 Bhavcopy's own knowledge_date is NOT collapsed the way corporate-action as_of-dependence is:
 unlike corporate actions, a bhavcopy row for a given (symbol, event_date) CAN have more than one
@@ -76,17 +79,9 @@ from dataclasses import dataclass, field
 
 from ..bitemporal.guard import latest_as_of, read_as_of
 from ..ingestion.nse_market_data.corporate_actions import (
-    BONUS, CAPITAL_REDUCTION, DEMERGER, RATIO_CONFLICT, RIGHTS, SPLIT,
+    BONUS, SPLIT, STRUCTURAL_BREAK_ACTION_TYPES,
 )
 from .price_adjustment import factor_for_action
-
-# RIGHTS and RATIO_CONFLICT added in P8-007 corrections (docs/phase10_p8007_corrections.md):
-# both are written as no-ratio exclusion markers by build_rows_and_report, the identical shape
-# DEMERGER/CAPITAL_REDUCTION already use, so they need the identical exclusion treatment here.
-# Currently inert against the live production corporate_actions table (no row of either type has
-# been written there this session -- only into a separate staging table/DB) -- forward-compatible,
-# not yet exercised against production data.
-STRUCTURAL_BREAK_ACTION_TYPES = (DEMERGER, CAPITAL_REDUCTION, RIGHTS, RATIO_CONFLICT)
 
 TRAILING_WINDOW = 60      # sessions, for the z-score/percentile reference distribution
 CUMULATIVE_WINDOW = 20    # sessions, for the cumulative-return statistic
@@ -143,8 +138,24 @@ class SymbolHistory:
         hi = bisect.bisect_right(self.structural_break_dates, end_inclusive)
         return hi > lo
 
-def build_symbol_history(conn, symbol: str, series: str = "EQ") -> SymbolHistory:
-    raw_rows = read_as_of(conn, "bhavcopy", FAR_FUTURE_AS_OF, symbol=symbol, series=series)
+def build_symbol_history(conn, symbol: str, series: str = "EQ", symbol_group: list[str] | None = None) -> SymbolHistory:
+    """`symbol_group` (Amendment 4 prep item 5, optional, default None = just `[symbol]`, IDENTICAL
+    to before -- fully backward compatible) stitches every symbol string known to share this
+    security's ISIN into one continuous history. Without it, a company rename (this project's own
+    bhavcopy/corporate_actions tables are keyed by symbol STRING, not ISIN) makes the pre-rename
+    symbol's own trading history end abruptly and the post-rename symbol's begin from nothing --
+    exactly the shape that starves a forward-looking label of the real trading days it needs
+    (measured: docs/phase10_amendment4_prep.md item 3, ~0.52% of fully-elapsed catalogued events).
+    Safe to concatenate without a merge/tie-break step because a real rename's member date ranges
+    never overlap (confirmed directly: scripts/phase10_amendment4_isin_renames.py found all 195
+    detected renames strictly chronologically contiguous, never concurrent). Caller resolves
+    `symbol_group` via `src/ingestion/nse_market_data/isin_mapping.py`'s `build_symbol_groups` --
+    this module stays decoupled from the ISIN-mapping mechanism itself, accepting only plain data."""
+    symbols = symbol_group or [symbol]
+
+    raw_rows = []
+    for s in symbols:
+        raw_rows.extend(read_as_of(conn, "bhavcopy", FAR_FUTURE_AS_OF, symbol=s, series=series))
     vintages: dict[str, list[tuple[str, dict]]] = {}
     for row in raw_rows:
         vintages.setdefault(row["event_date"], []).append((row["knowledge_date"], row))
@@ -152,7 +163,9 @@ def build_symbol_history(conn, symbol: str, series: str = "EQ") -> SymbolHistory
         entries.sort(key=lambda kv: kv[0])
     trading_days = sorted(vintages.keys())
 
-    actions = latest_as_of(conn, "corporate_actions", FAR_FUTURE_AS_OF, symbol=symbol)
+    actions = []
+    for s in symbols:
+        actions.extend(latest_as_of(conn, "corporate_actions", FAR_FUTURE_AS_OF, symbol=s))
     _assert_ordering_guarantee(actions, symbol)
 
     adjustable = sorted((a for a in actions if a["action_type"] in (BONUS, SPLIT)), key=lambda a: a["event_date"])
@@ -275,7 +288,7 @@ def compute_daily_stats(hist: SymbolHistory) -> list[DailyStat]:
             delivery_percentile = _percentile_rank(today_row["delivery_pct"], trailing_delivery)
 
         out.append(DailyStat(
-            symbol=hist.symbol, event_date=today, close_price_raw=today_row["close_price"],
+            symbol=today_row["symbol"], event_date=today, close_price_raw=today_row["close_price"],
             return_1d=r1, return_1d_demerger_excluded=r1_excluded,
             return_20d=r20, return_20d_demerger_excluded=r20_excluded,
             zscore_60d=zscore, percentile_60d=percentile, trailing_return_count=len(trailing_returns),

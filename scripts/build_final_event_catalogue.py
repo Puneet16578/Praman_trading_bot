@@ -36,8 +36,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.bitemporal.connection import get_connection, init_db
 from src.config.settings import get_settings
+from src.ingestion.nse_market_data.isin_mapping import build_symbol_groups, load_isin_map
 from src.signals.event_catalogue import DailyStat, build_symbol_history, compute_daily_stats
 from src.signals.surveillance_state import current_surveillance_state
+
+ISIN_MAP_PATH = Path(__file__).resolve().parents[1] / "data" / "raw" / "nse_symbol_isin_current.json"
 
 Z_THRESHOLD = 2.5
 VOL_THRESHOLD = 2.0
@@ -89,6 +92,17 @@ def main() -> None:
     print(f"Building final event catalogue (z-only, LOOSE, 60-session post-demerger exclusion) "
           f"for {len(symbols)} EQ symbols...")
 
+    # Amendment 4 prep item 5: stitch a renamed security's symbols into one continuous history
+    # (P8-010 -- this project's own symbol-string-keyed tables otherwise treat a rename as two
+    # unrelated series). Missing map file falls back to no stitching, same as before this change
+    # (P8-006's lesson: a real pipeline step must not be blocked on having run a refresh script
+    # first) -- run scripts/build_isin_map.py to enable it.
+    symbol_groups = build_symbol_groups(load_isin_map(ISIN_MAP_PATH)) if ISIN_MAP_PATH.exists() else {}
+    if not symbol_groups:
+        print("No ISIN map found -- building per-symbol, unstitched (run scripts/build_isin_map.py to enable stitching)")
+    renamed_groups = {tuple(sorted(g)) for g in symbol_groups.values() if len(g) > 1}
+    print(f"Rename groups that will be stitched: {len(renamed_groups)}")
+
     demerger_windows = build_demerger_windows(conn)
     n_demergers = sum(len(w) for w in demerger_windows.values())
     print(f"Structural-break windows loaded: {n_demergers} occurrences (DEMERGER + CAPITAL_REDUCTION) "
@@ -101,15 +115,24 @@ def main() -> None:
     distinct_days: set[str] = set()
 
     t0 = time.time()
+    processed_groups: set[tuple[str, ...]] = set()
     for i, symbol in enumerate(symbols):
-        hist = build_symbol_history(conn, symbol)
+        group = tuple(sorted(symbol_groups.get(symbol, [symbol])))
+        if group in processed_groups:
+            continue  # already built as part of an earlier member's stitched history
+        processed_groups.add(group)
+
+        hist = build_symbol_history(conn, symbol, symbol_group=list(group))
         stats = compute_daily_stats(hist)
         total_stat_rows += len(stats)
         for s in stats:
             distinct_days.add(s.event_date)
             turnover_by_year[s.event_date[:4]].append(s.close_price_raw * s.traded_qty)
             if is_event(s):
-                if in_demerger_window(demerger_windows, symbol, s.event_date):
+                # s.symbol (not the outer `symbol`/group representative) -- a stitched group's
+                # rows are labeled by whichever member ACTUALLY traded on that date, and the
+                # demerger window must be looked up under that same real symbol.
+                if in_demerger_window(demerger_windows, s.symbol, s.event_date):
                     excluded_by_window.append(s)
                 else:
                     matched.append(s)

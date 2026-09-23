@@ -73,9 +73,11 @@ def step_announcements() -> None:
 
 
 def step_corporate_actions() -> None:
+    from pathlib import Path
     from src.bitemporal.connection import get_connection, init_db
     from src.config.settings import get_settings
     from src.ingestion.nse_market_data.corporate_actions import fetch_recent, ingest_corporate_actions
+    from src.ingestion.nse_market_data.isin_mapping import load_isin_map
 
     settings = get_settings()
     conn = get_connection(settings.database_path)
@@ -85,7 +87,18 @@ def step_corporate_actions() -> None:
     actions, announcements_by_key = fetch_recent(lookback_days=CORPORATE_ACTIONS_LOOKBACK_DAYS)
     print(f"[CORP_ACTIONS] fetched {len(actions)} actions, {len(announcements_by_key)} announcement windows")
 
-    report, write_result = ingest_corporate_actions(conn, actions, announcements_by_key, source_file="weekly_ingest_fetch_recent")
+    # P8-010: resolve a renamed security's action back to whichever symbol was actually trading on
+    # its ex_date (this project's OWN bhavcopy symbol), not NSE's live, current-symbol-only report.
+    # Missing map file is not fatal -- falls back to the pre-P8-010 behavior (raw symbol as-is), a
+    # fresh clone without a built ISIN map must still be able to run this step (P8-006's lesson).
+    isin_map_path = Path(__file__).resolve().parents[1] / "data" / "raw" / "nse_symbol_isin_current.json"
+    isin_map = load_isin_map(isin_map_path) if isin_map_path.exists() else None
+    if isin_map is None:
+        print(f"[CORP_ACTIONS] no ISIN map at {isin_map_path} -- symbol resolution skipped "
+              f"(run scripts/build_isin_map.py to enable it)")
+
+    report, write_result = ingest_corporate_actions(conn, actions, announcements_by_key,
+                                                      source_file="weekly_ingest_fetch_recent", isin_map=isin_map)
     total = sum(report.tier_counts.values())
     print(f"[CORP_ACTIONS] tier_counts={dict(report.tier_counts)} total_rows_built={total}")
     print(f"[CORP_ACTIONS] inserted={write_result.inserted} skipped_duplicate={write_result.skipped_duplicate}")

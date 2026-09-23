@@ -31,7 +31,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.bitemporal.connection import get_connection, init_db
 from src.config.settings import get_settings
+from src.ingestion.nse_market_data.isin_mapping import build_symbol_groups, load_isin_map
 from src.signals.event_catalogue import FAR_FUTURE_AS_OF, _return, build_symbol_history
+
+ISIN_MAP_PATH = Path(__file__).resolve().parents[1] / "data" / "raw" / "nse_symbol_isin_current.json"
 
 PRE_MOVE_LOOKBACK = 20
 HORIZONS = (30, 60, 90)
@@ -115,10 +118,17 @@ def main() -> None:
         by_symbol.setdefault(e["symbol"], []).append(e)
     print(f"Across {len(by_symbol)} symbols")
 
+    # Amendment 4 prep item 5: stitch a renamed security's symbols so a 90-session forward window
+    # that crosses a rename (P8-010) doesn't starve for real trading days it should be able to see.
+    # Missing map file falls back to no stitching (P8-006's lesson -- not a hard dependency).
+    symbol_groups = build_symbol_groups(load_isin_map(ISIN_MAP_PATH)) if ISIN_MAP_PATH.exists() else {}
+    if not symbol_groups:
+        print("No ISIN map found -- computing per-symbol, unstitched (run scripts/build_isin_map.py to enable stitching)")
+
     out_rows = []
     t0 = time.time()
     for i, (symbol, symbol_events) in enumerate(by_symbol.items()):
-        hist = build_symbol_history(conn, symbol)
+        hist = build_symbol_history(conn, symbol, symbol_group=symbol_groups.get(symbol, [symbol]))
         for e in symbol_events:
             direction = 1 if float(e["return_1d"]) > 0 else -1
             outcome = compute_outcome(hist, e["event_date"], direction)

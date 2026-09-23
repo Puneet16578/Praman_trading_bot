@@ -26,6 +26,7 @@ that conclusion explicit and queryable per row, rather than a design note nobody
 from __future__ import annotations
 import re
 import time
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Callable
@@ -58,6 +59,15 @@ RATIO_CONFLICT = "RATIO_CONFLICT"  # P8-007 corrections: what QUARANTINE bonus/s
 
 RIGHTS_EXCLUSION = "RIGHTS_EXCLUSION"          # own tier name, mirrors DEMERGER_EXCLUSION
 RATIO_CONFLICT_EXCLUSION = "RATIO_CONFLICT_EXCLUSION"  # own tier name, mirrors DEMERGER_EXCLUSION
+
+# P8-009 root-cause fix: action types with no adjustment factor -- single source of truth for
+# BOTH event_catalogue.py's vectorized fast path (STRUCTURAL_BREAK_ACTION_TYPES) and
+# price_adjustment.py's per-pair-verified slow path (UNADJUSTABLE_ACTION_TYPES). These used to be
+# two independently hand-mirrored tuples; adding RIGHTS/RATIO_CONFLICT to only one of them (the
+# original P8-007 corrections change) silently left the other checking a stale, incomplete list.
+# Both modules now import this single tuple instead of redefining their own copy, so the two
+# cannot drift apart again by construction, not by discipline.
+STRUCTURAL_BREAK_ACTION_TYPES = (DEMERGER, CAPITAL_REDUCTION, RIGHTS, RATIO_CONFLICT)
 
 # Measured from the 253 cases where v1 (earliest-in-a-200-day-window) matching agreed with
 # `subject` -- see docs/phase3_corporate_actions.md for the full distribution
@@ -299,21 +309,73 @@ def announcement_cache_key(symbol: str, ex_date: date) -> str:
     matching logic was built to avoid; the cache key must not reintroduce it one level up)."""
     return f"{symbol}|{ex_date.isoformat()}"
 
-def build_rows_and_report(actions: list[dict], announcements_by_key: dict[str, list[dict]], source_file: str) -> tuple[list[dict], IngestionReport]:
+def resolve_isin_symbol(raw_symbol: str, ex_date: date, candidate_date_ranges: dict[str, tuple[str, str]]) -> str:
+    """P8-010 fix: NSE's live corporate-actions endpoint reports a security's entire history under
+    its CURRENT symbol string, retroactively -- not the symbol actually in effect on `ex_date`
+    (confirmed real case: HEG renamed to HEGAM around 2026-09-07; every HEGAM-labeled action,
+    including a 2019 buyback, shares HEG's own ISIN). `candidate_date_ranges` is this ISIN's known
+    symbols, each mapped to its own real EQ bhavcopy (first, last) trading-date range -- returns
+    whichever candidate's window actually covers `ex_date`, i.e. the symbol this project's OWN
+    price series needs the action filed under to be usable. Falls back to `raw_symbol` unchanged
+    if no candidate's window covers it (including single-symbol ISINs, where this is a safe
+    no-op, not a guess)."""
+    ex_iso = ex_date.isoformat()
+    for symbol, (lo, hi) in candidate_date_ranges.items():
+        if lo <= ex_iso <= hi:
+            return symbol
+    return raw_symbol
+
+def build_isin_candidates_for_actions(conn, actions: list[dict], isin_map: dict[str, str]) -> dict[str, dict[str, tuple[str, str]]]:
+    """DB-touching wrapper for `resolve_isin_symbol`: for every ISIN actually present in `actions`
+    that `isin_map` (see `src/ingestion/nse_market_data/isin_mapping.py`) resolves to more than one
+    symbol, fetch each candidate symbol's own real EQ bhavcopy date range. Only queries the ISINs
+    actually needed, not the whole map -- cheap even for a full historical sweep. Not called by
+    `build_rows_and_report` itself (which stays a pure function); callers that touch the DB
+    (`ingest_corporate_actions`) compute this once and pass it through."""
+    by_isin: dict[str, set[str]] = defaultdict(set)
+    for symbol, isin in isin_map.items():
+        by_isin[isin].add(symbol)
+
+    isins_needed = {a.get("isin") for a in actions if a.get("isin")}
+    multi_symbol_isins = {isin: symbols for isin, symbols in by_isin.items()
+                           if isin in isins_needed and len(symbols) > 1}
+    if not multi_symbol_isins:
+        return {}
+
+    all_candidate_symbols = sorted({s for symbols in multi_symbol_isins.values() for s in symbols})
+    placeholders = ",".join("?" * len(all_candidate_symbols))
+    rows = conn.execute(
+        f"SELECT symbol, MIN(event_date) lo, MAX(event_date) hi FROM bhavcopy "
+        f"WHERE series='EQ' AND symbol IN ({placeholders}) GROUP BY symbol",
+        tuple(all_candidate_symbols),
+    ).fetchall()
+    date_ranges = {r["symbol"]: (r["lo"], r["hi"]) for r in rows}
+
+    return {isin: {s: date_ranges[s] for s in symbols if s in date_ranges}
+            for isin, symbols in multi_symbol_isins.items()}
+
+def build_rows_and_report(actions: list[dict], announcements_by_key: dict[str, list[dict]], source_file: str,
+                           isin_candidates: dict[str, dict[str, tuple[str, str]]] | None = None) -> tuple[list[dict], IngestionReport]:
     """Pure function: no I/O. `announcements_by_key` must already contain, for every bonus/split
     action, the fetched announcement window keyed by `announcement_cache_key(symbol, ex_date)`
-    (see `fetch_all`)."""
+    (see `fetch_all`). `isin_candidates` (from `build_isin_candidates_for_actions`, optional,
+    default None = no resolution attempted -- identical behavior to before P8-010) resolves a raw
+    action's reported symbol to whichever same-ISIN symbol was actually trading on its ex_date."""
     rows = []
     tier_counts: dict[str, int] = {}
     quarantined = []
     downgraded = 0
     unhandled = 0
+    isin_candidates = isin_candidates or {}
 
     for action in actions:
         if action.get("series") != "EQ":
             continue
         symbol = action["symbol"]
         ex_date = datetime.strptime(action["exDate"], "%d-%b-%Y").date()
+        isin = action.get("isin")
+        if isin and isin in isin_candidates:
+            symbol = resolve_isin_symbol(symbol, ex_date, isin_candidates[isin])
         subject = action.get("subject", "") or ""
 
         if is_demerger_subject(subject, symbol=symbol, ex_date=ex_date.isoformat()):
@@ -402,10 +464,14 @@ def build_rows_and_report(actions: list[dict], announcements_by_key: dict[str, l
                               quarantined=quarantined, unhandled_action_types=unhandled)
     return rows, report
 
-def ingest_corporate_actions(conn, actions: list[dict], announcements_by_key: dict[str, list[dict]], source_file: str) -> tuple[IngestionReport, object]:
+def ingest_corporate_actions(conn, actions: list[dict], announcements_by_key: dict[str, list[dict]], source_file: str,
+                              isin_map: dict[str, str] | None = None) -> tuple[IngestionReport, object]:
     """Builds rows (pure), then writes them through the Phase 1 store -- the only write path,
-    same as bhavcopy. QUARANTINE rows are never passed to `write_facts`."""
-    rows, report = build_rows_and_report(actions, announcements_by_key, source_file)
+    same as bhavcopy. QUARANTINE rows are never passed to `write_facts`. `isin_map` (P8-010,
+    optional, default None = no resolution attempted) enables ISIN-based symbol resolution for
+    renamed securities -- see `build_isin_candidates_for_actions`/`resolve_isin_symbol`."""
+    isin_candidates = build_isin_candidates_for_actions(conn, actions, isin_map) if isin_map else None
+    rows, report = build_rows_and_report(actions, announcements_by_key, source_file, isin_candidates=isin_candidates)
     if not rows:
         from ...bitemporal.store import BulkWriteResult
         return report, BulkWriteResult(inserted=0, skipped_duplicate=0)

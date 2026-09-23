@@ -202,6 +202,78 @@ class SymbolHistoryReturnTest(unittest.TestCase):
         self.assertEqual(before_correction["close_price"], 100.0)
         self.assertEqual(after_correction["close_price"], 105.0)
 
+class SymbolGroupStitchingTest(unittest.TestCase):
+    """Amendment 4 prep item 5: a rename (OLDCO -> NEWCO, real shape: HEG -> HEGAM, P8-010) makes
+    the pre-rename symbol's own trading history end abruptly. Without `symbol_group`, a return
+    spanning the boundary is impossible to compute (the two symbols' histories don't overlap in
+    build_symbol_history's default, single-symbol query) -- exactly the missing-outcome shape
+    measured in docs/phase10_amendment4_prep.md item 3."""
+
+    def setUp(self):
+        self.conn = get_connection(":memory:")
+        init_db(self.conn)
+        d0, d1, d2, d3 = _dates(4)
+        self.d0, self.d1, self.d2, self.d3 = d0, d1, d2, d3
+        write_facts(self.conn, "bhavcopy", [
+            make_bhavcopy_row("OLDCO", d0, close_price=1000.0),
+            make_bhavcopy_row("OLDCO", d1, close_price=1010.0),
+        ])
+        write_facts(self.conn, "bhavcopy", [
+            make_bhavcopy_row("NEWCO", d2, close_price=1020.0),
+            make_bhavcopy_row("NEWCO", d3, close_price=1030.0),
+        ])
+
+    def test_without_symbol_group_return_across_the_rename_is_not_computable(self):
+        hist = build_symbol_history(self.conn, "OLDCO")
+        r = _return(hist, self.d1, self.d2, as_of=self.d3)
+        self.assertIsNone(r, "OLDCO's own history has no row for NEWCO's date -- unstitched, this must be None.")
+
+    def test_with_symbol_group_return_spans_the_rename_continuously(self):
+        hist = build_symbol_history(self.conn, "OLDCO", symbol_group=["OLDCO", "NEWCO"])
+        self.assertEqual(hist.trading_days, [self.d0, self.d1, self.d2, self.d3])
+        r = _return(hist, self.d1, self.d3, as_of=self.d3)
+        self.assertAlmostEqual(r, (1030.0 / 1010.0) - 1)
+
+    def test_requesting_history_via_either_group_member_gives_the_identical_stitched_series(self):
+        hist_old = build_symbol_history(self.conn, "OLDCO", symbol_group=["OLDCO", "NEWCO"])
+        hist_new = build_symbol_history(self.conn, "NEWCO", symbol_group=["OLDCO", "NEWCO"])
+        self.assertEqual(hist_old.trading_days, hist_new.trading_days)
+
+    def test_bonus_filed_under_new_symbol_still_adjusts_a_return_starting_before_the_rename(self):
+        """P8-010's own fix means a real action's ex_date determines which symbol it's filed
+        under; this confirms the stitched history correctly folds in an action filed under NEWCO
+        when computing a return that starts on OLDCO's side of the rename."""
+        write_fact(self.conn, "corporate_actions", make_action("NEWCO", BONUS, self.d2, self.d2, ratio_numerator=1, ratio_denominator=1))
+        hist = build_symbol_history(self.conn, "OLDCO", symbol_group=["OLDCO", "NEWCO"])
+        r = _return(hist, self.d1, self.d3, as_of=self.d3)
+        # raw 1030/1010 - 1 would be the naive (WRONG) unadjusted figure; g(D) = close(D) *
+        # cum_factor_up_to(D) brings the post-bonus raw close back onto a pre-bonus-comparable
+        # basis by MULTIPLYING by the factor (2, for a 1:1 bonus), not dividing -- see g(D)'s own
+        # definition in this module's docstring, cross-checked against the BAJFINANCE fixture.
+        self.assertAlmostEqual(r, (1030.0 * 2.0 / 1010.0) - 1)
+
+    def test_compute_daily_stats_labels_each_row_by_its_own_real_traded_symbol(self):
+        """A stitched history's output rows must be labeled by whichever symbol ACTUALLY traded
+        on that date (today_row['symbol']), not by a single fixed hist.symbol -- otherwise every
+        post-rename day would be mislabeled under the pre-rename symbol in the real catalogue."""
+        conn = get_connection(":memory:")
+        init_db(conn)
+        # OLDCO2 alone is already long enough to emit rows (TRAILING_WINDOW+5) before NEWCO2's
+        # days begin, so both symbols get emitted, labeled, rows -- not just whichever is longer.
+        dates = _dates(TRAILING_WINDOW + 10)
+        old_dates, new_dates = dates[:TRAILING_WINDOW + 5], dates[TRAILING_WINDOW + 5:]
+        write_facts(conn, "bhavcopy", [make_bhavcopy_row("OLDCO2", d, 100.0 + i) for i, d in enumerate(old_dates)])
+        write_facts(conn, "bhavcopy", [make_bhavcopy_row("NEWCO2", d, 130.0 + i) for i, d in enumerate(new_dates)])
+        hist = build_symbol_history(conn, "OLDCO2", symbol_group=["OLDCO2", "NEWCO2"])
+        from src.signals.event_catalogue import compute_daily_stats
+        stats = compute_daily_stats(hist)
+        self.assertTrue(any(s.symbol == "OLDCO2" for s in stats))
+        self.assertTrue(any(s.symbol == "NEWCO2" for s in stats))
+        for s in stats:
+            self.assertIn(s.symbol, ("OLDCO2", "NEWCO2"))
+            expected = "OLDCO2" if s.event_date in old_dates else "NEWCO2"
+            self.assertEqual(s.symbol, expected)
+
 class ComputeDailyStatsTest(unittest.TestCase):
     def setUp(self):
         self.conn = get_connection(":memory:")

@@ -9,17 +9,15 @@ from datetime import date
 
 from ..bitemporal.guard import latest_as_of
 from ..ingestion.nse_market_data.corporate_actions import (
-    BONUS, CAPITAL_REDUCTION, DEMERGER, RATIO_CONFLICT, RIGHTS, SPLIT,
+    BONUS, SPLIT, STRUCTURAL_BREAK_ACTION_TYPES,
 )
 
-# RIGHTS and RATIO_CONFLICT added in P8-007 corrections (docs/phase10_p8007_corrections.md):
-# both are written as no-ratio exclusion markers now (build_rows_and_report), the identical shape
-# DEMERGER/CAPITAL_REDUCTION already use here. This tuple is deliberately mirrored, not shared,
-# with event_catalogue.py's STRUCTURAL_BREAK_ACTION_TYPES (see that module's docstring for why the
-# duplication exists -- a vectorized fast path vs. this per-pair-verified slow path); the two must
-# be kept in sync by hand, which the original P8-007 corrections change missed for this file until
-# a direct check of every consumer of the old DEMERGER/CAPITAL_REDUCTION pairing found it.
-UNADJUSTABLE_ACTION_TYPES = (DEMERGER, CAPITAL_REDUCTION, RIGHTS, RATIO_CONFLICT)
+# P8-009 root-cause fix: this used to be its own hand-mirrored copy of
+# event_catalogue.py's STRUCTURAL_BREAK_ACTION_TYPES (a vectorized fast path vs. this
+# per-pair-verified slow path) -- adding RIGHTS/RATIO_CONFLICT to only one copy (the original
+# P8-007 corrections change) silently left this one stale. Both modules now import the single
+# definition in corporate_actions.py instead, so they cannot drift apart again by construction.
+UNADJUSTABLE_ACTION_TYPES = STRUCTURAL_BREAK_ACTION_TYPES
 
 class UnadjustableWindowError(ValueError):
     """Raised when a demerger, capital-reduction, rights, or ratio-conflict ex-date falls inside

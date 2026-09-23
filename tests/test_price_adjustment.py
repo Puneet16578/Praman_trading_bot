@@ -10,9 +10,12 @@ from src.bitemporal.connection import get_connection, init_db
 from src.bitemporal.store import write_fact
 from src.ingestion.nse_market_data.corporate_actions import (
     BONUS, CONFIRMED, DEMERGER, DEMERGER_EXCLUSION, RATIO_CONFLICT, RATIO_CONFLICT_EXCLUSION,
-    RIGHTS, RIGHTS_EXCLUSION, SPLIT,
+    RIGHTS, RIGHTS_EXCLUSION, SPLIT, STRUCTURAL_BREAK_ACTION_TYPES,
 )
-from src.signals.price_adjustment import UnadjustableWindowError, adjusted_close, compute_adjustment_factor, factor_for_action
+from src.signals.price_adjustment import (
+    UNADJUSTABLE_ACTION_TYPES, UnadjustableWindowError, adjusted_close, compute_adjustment_factor,
+    factor_for_action,
+)
 
 def make_bhavcopy(symbol, event_date, knowledge_date, close_price):
     return {
@@ -145,6 +148,18 @@ class RightsAndRatioConflictUnadjustableTest(unittest.TestCase):
     def test_rights_outside_range_does_not_raise(self):
         factor = compute_adjustment_factor(self.conn, "MMFIN", "2020-06-01", "2020-07-01")
         self.assertEqual(factor, 1.0)
+
+class SharedStructuralBreakDefinitionTest(unittest.TestCase):
+    """P8-009 root-cause fix: UNADJUSTABLE_ACTION_TYPES and event_catalogue.py's
+    STRUCTURAL_BREAK_ACTION_TYPES used to be two independently hand-mirrored tuples that silently
+    drifted apart when RIGHTS/RATIO_CONFLICT were added to only one. Both now import the single
+    definition in corporate_actions.py -- this test locks that in, so a future addition to one
+    without the other fails loudly here instead of silently reintroducing the same gap."""
+
+    def test_both_modules_use_the_identical_object(self):
+        from src.signals.event_catalogue import STRUCTURAL_BREAK_ACTION_TYPES as catalogue_tuple
+        self.assertIs(UNADJUSTABLE_ACTION_TYPES, catalogue_tuple)
+        self.assertIs(UNADJUSTABLE_ACTION_TYPES, STRUCTURAL_BREAK_ACTION_TYPES)
 
 if __name__ == "__main__":
     unittest.main()

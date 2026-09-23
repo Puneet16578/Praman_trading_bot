@@ -10,14 +10,24 @@ import unittest
 
 from src.bitemporal.connection import get_connection, init_db
 from src.bitemporal.guard import read_as_of
+from src.bitemporal.store import write_fact
 from src.ingestion.nse_market_data.corporate_actions import (
     BONUS, CAPITAL_REDUCTION, CAPITAL_REDUCTION_EXCLUSION, CONFIRMED, DEMERGER, DEMERGER_EXCLUSION,
     EX_DATE_FALLBACK, MATCHED_UNCONFIRMED, QUARANTINE, RATIO_CONFLICT, RATIO_CONFLICT_EXCLUSION,
     RIGHTS, RIGHTS_EXCLUSION, SPLIT, announcement_cache_key,
-    build_rows_and_report, classify_bonus_split, collapse_clusters, find_announcement,
-    ingest_corporate_actions, is_capital_reduction_subject, is_deferred_text, is_demerger_subject,
-    is_rights_subject, parse_announcement_ratio, parse_subject_ratio,
+    build_isin_candidates_for_actions, build_rows_and_report, classify_bonus_split,
+    collapse_clusters, find_announcement, ingest_corporate_actions, is_capital_reduction_subject,
+    is_deferred_text, is_demerger_subject, is_rights_subject, parse_announcement_ratio,
+    parse_subject_ratio, resolve_isin_symbol,
 )
+
+def make_bhavcopy_row(symbol: str, event_date: str) -> dict:
+    return {
+        "symbol": symbol, "event_date": event_date, "knowledge_date": event_date,
+        "open_price": 100.0, "high_price": 100.0, "low_price": 100.0, "close_price": 100.0,
+        "prev_close": 100.0, "traded_qty": 1000, "delivery_qty": 500, "delivery_pct": 50.0,
+        "series": "EQ", "source_file": "fixture.csv",
+    }
 
 def ann(sort_date: str, desc: str, text: str) -> dict:
     return {"sort_date": sort_date, "desc": desc, "attchmntText": text}
@@ -306,6 +316,71 @@ class BuildRowsAndReportTest(unittest.TestCase):
         self.assertEqual(rows, [])
         self.assertEqual(report.unhandled_action_types, 0)  # never even considered -- filtered before the parser
 
+    def test_isin_resolution_rewrites_symbol_to_the_one_actually_trading_on_ex_date(self):
+        """P8-010 fix: real case, HEG renamed to HEGAM around its 2026-09-07 demerger. NSE's live
+        feed reports HEGAM even for HEG's own pre-rename 2024-10-18 split -- resolved back to HEG
+        (the symbol this project's own bhavcopy needs it filed under) via isin_candidates."""
+        isin_candidates = {
+            "INE545A01024": {"HEG": ("2019-10-01", "2026-09-21"), "HEGAM": ("2026-09-22", "2026-09-22")},
+        }
+        actions = [{"symbol": "HEGAM", "series": "EQ", "exDate": "18-Oct-2024", "subject": "Demerger",
+                    "isin": "INE545A01024"}]
+        rows, report = build_rows_and_report(actions, {}, "test.json", isin_candidates=isin_candidates)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["symbol"], "HEG")
+
+    def test_no_isin_candidates_leaves_symbol_unchanged(self):
+        """Default (isin_candidates=None) behavior is unchanged from before P8-010 -- backward
+        compatible with every existing fixture that never passes this parameter."""
+        actions = [{"symbol": "HEGAM", "series": "EQ", "exDate": "18-Oct-2024", "subject": "Demerger",
+                    "isin": "INE545A01024"}]
+        rows, report = build_rows_and_report(actions, {}, "test.json")
+        self.assertEqual(rows[0]["symbol"], "HEGAM")
+
+class ResolveIsinSymbolTest(unittest.TestCase):
+    def test_picks_candidate_whose_window_covers_ex_date(self):
+        candidates = {"HEG": ("2019-10-01", "2026-09-21"), "HEGAM": ("2026-09-22", "2026-09-22")}
+        self.assertEqual(resolve_isin_symbol("HEGAM", date(2024, 10, 18), candidates), "HEG")
+
+    def test_raw_symbol_kept_when_its_own_window_matches(self):
+        candidates = {"HEG": ("2019-10-01", "2026-09-21"), "HEGAM": ("2026-09-22", "2026-09-22")}
+        self.assertEqual(resolve_isin_symbol("HEGAM", date(2026, 9, 22), candidates), "HEGAM")
+
+    def test_falls_back_to_raw_symbol_when_no_window_covers(self):
+        candidates = {"HEG": ("2019-10-01", "2026-09-21")}
+        self.assertEqual(resolve_isin_symbol("HEGAM", date(2030, 1, 1), candidates), "HEGAM")
+
+    def test_empty_candidates_is_a_no_op(self):
+        self.assertEqual(resolve_isin_symbol("ANY", date(2024, 1, 1), {}), "ANY")
+
+class BuildIsinCandidatesForActionsTest(unittest.TestCase):
+    def setUp(self):
+        self.conn = get_connection(":memory:")
+        init_db(self.conn)
+        write_fact(self.conn, "bhavcopy", make_bhavcopy_row("HEG", "2020-01-01"))
+        write_fact(self.conn, "bhavcopy", make_bhavcopy_row("HEG", "2026-09-21"))
+        write_fact(self.conn, "bhavcopy", make_bhavcopy_row("HEGAM", "2026-09-22"))
+        write_fact(self.conn, "bhavcopy", make_bhavcopy_row("RELIANCE", "2020-01-01"))
+
+    def test_multi_symbol_isin_present_in_actions_gets_date_ranges(self):
+        isin_map = {"HEG": "INE545A01024", "HEGAM": "INE545A01024", "RELIANCE": "INE002A01018"}
+        actions = [{"symbol": "HEGAM", "isin": "INE545A01024", "exDate": "18-Oct-2024"}]
+        candidates = build_isin_candidates_for_actions(self.conn, actions, isin_map)
+        self.assertEqual(candidates, {
+            "INE545A01024": {"HEG": ("2020-01-01", "2026-09-21"), "HEGAM": ("2026-09-22", "2026-09-22")},
+        })
+
+    def test_single_symbol_isin_not_included(self):
+        isin_map = {"HEG": "INE545A01024", "HEGAM": "INE545A01024", "RELIANCE": "INE002A01018"}
+        actions = [{"symbol": "RELIANCE", "isin": "INE002A01018", "exDate": "01-Jan-2020"}]
+        candidates = build_isin_candidates_for_actions(self.conn, actions, isin_map)
+        self.assertEqual(candidates, {})
+
+    def test_no_actions_with_isin_returns_empty(self):
+        isin_map = {"HEG": "INE545A01024", "HEGAM": "INE545A01024"}
+        candidates = build_isin_candidates_for_actions(self.conn, [{"symbol": "HEG"}], isin_map)
+        self.assertEqual(candidates, {})
+
 class IngestCorporateActionsTest(unittest.TestCase):
     def setUp(self):
         self.conn = get_connection(":memory:")
@@ -340,6 +415,31 @@ class IngestCorporateActionsTest(unittest.TestCase):
         self.assertEqual(stored[0]["confidence_tier"], RATIO_CONFLICT_EXCLUSION)
         self.assertIsNone(stored[0]["ratio_numerator"])
         self.assertEqual(len(report.quarantined), 1)
+
+    def test_isin_map_resolves_symbol_end_to_end(self):
+        """P8-010 fix, full path: HEGAM-labeled action with an ex_date inside HEG's own bhavcopy
+        window is written under HEG, not HEGAM, when isin_map is supplied."""
+        write_fact(self.conn, "bhavcopy", make_bhavcopy_row("HEG", "2020-01-01"))
+        write_fact(self.conn, "bhavcopy", make_bhavcopy_row("HEG", "2026-09-21"))
+        write_fact(self.conn, "bhavcopy", make_bhavcopy_row("HEGAM", "2026-09-22"))
+        isin_map = {"HEG": "INE545A01024", "HEGAM": "INE545A01024"}
+        actions = [{"symbol": "HEGAM", "series": "EQ", "exDate": "18-Oct-2024", "subject": "Demerger",
+                    "isin": "INE545A01024"}]
+        report, write_result = ingest_corporate_actions(self.conn, actions, {}, "test.json", isin_map=isin_map)
+        self.assertEqual(write_result.inserted, 1)
+        heg_rows = read_as_of(self.conn, "corporate_actions", "2099-01-01", symbol="HEG")
+        hegam_rows = read_as_of(self.conn, "corporate_actions", "2099-01-01", symbol="HEGAM")
+        self.assertEqual(len(heg_rows), 1)
+        self.assertEqual(len(hegam_rows), 0)
+
+    def test_no_isin_map_keeps_prior_behavior(self):
+        write_fact(self.conn, "bhavcopy", make_bhavcopy_row("HEG", "2020-01-01"))
+        actions = [{"symbol": "HEGAM", "series": "EQ", "exDate": "18-Oct-2024", "subject": "Demerger",
+                    "isin": "INE545A01024"}]
+        report, write_result = ingest_corporate_actions(self.conn, actions, {}, "test.json")
+        self.assertEqual(write_result.inserted, 1)
+        hegam_rows = read_as_of(self.conn, "corporate_actions", "2099-01-01", symbol="HEGAM")
+        self.assertEqual(len(hegam_rows), 1)
 
     def test_reingesting_identical_data_is_idempotent(self):
         symbol, ex_date_str = "TESTCO", "01-Mar-2021"
