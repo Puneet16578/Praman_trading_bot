@@ -357,11 +357,15 @@ def _session_with_cookie(timeout: float = 20.0) -> requests.Session:
     session.get("https://www.nseindia.com", timeout=timeout)
     return session
 
-def fetch_corporate_actions_year(session: requests.Session, year: int, timeout: float = 30.0) -> list[dict]:
+def _fetch_corporate_actions_range(session: requests.Session, from_date: date, to_date: date, timeout: float = 30.0) -> list[dict]:
     r = session.get("https://www.nseindia.com/api/corporates-corporateActions",
-                     params={"index": "equities", "from_date": f"01-01-{year}", "to_date": f"31-12-{year}"}, timeout=timeout)
+                     params={"index": "equities", "from_date": from_date.strftime("%d-%m-%Y"), "to_date": to_date.strftime("%d-%m-%Y")},
+                     timeout=timeout)
     r.raise_for_status()
     return r.json()
+
+def fetch_corporate_actions_year(session: requests.Session, year: int, timeout: float = 30.0) -> list[dict]:
+    return _fetch_corporate_actions_range(session, date(year, 1, 1), date(year, 12, 31), timeout)
 
 def fetch_announcements_window(session: requests.Session, symbol: str, ex_date: date, timeout: float = 25.0) -> list[dict]:
     from_date = (ex_date - timedelta(days=FETCH_WINDOW_DAYS)).strftime("%d-%m-%Y")
@@ -372,17 +376,12 @@ def fetch_announcements_window(session: requests.Session, symbol: str, ex_date: 
         return []
     return r.json()
 
-def fetch_all(year_from: int, year_to: int, delay_seconds: float = 0.3,
-              session_factory: Callable[[], requests.Session] = _session_with_cookie) -> tuple[list[dict], dict[str, list[dict]]]:
-    """Real network fetch: the corporate-actions sweep, then one announcements-window fetch per
-    distinct (symbol, ex_date) pair among bonus/split-eligible EQ rows (demergers need no
-    announcement fetch at all -- see CLAUDE.md). Not called by tests."""
-    session = session_factory()
-    actions: list[dict] = []
-    for year in range(year_from, year_to + 1):
-        actions.extend(fetch_corporate_actions_year(session, year))
-        time.sleep(delay_seconds)
-
+def _fetch_announcements_for_actions(session: requests.Session, actions: list[dict],
+                                      delay_seconds: float) -> dict[str, list[dict]]:
+    """Shared by `fetch_all` and `fetch_recent`: one announcements-window fetch per distinct
+    (symbol, ex_date) pair among bonus/split-eligible EQ rows (demergers need no announcement
+    fetch at all -- see CLAUDE.md)."""
+    session_ = session
     announcements_by_key: dict[str, list[dict]] = {}
     seen: set[str] = set()
     for action in actions:
@@ -397,6 +396,35 @@ def fetch_all(year_from: int, year_to: int, delay_seconds: float = 0.3,
         if key in seen:
             continue
         seen.add(key)
-        announcements_by_key[key] = fetch_announcements_window(session, symbol, ex_date)
+        announcements_by_key[key] = fetch_announcements_window(session_, symbol, ex_date)
         time.sleep(delay_seconds)
+    return announcements_by_key
+
+def fetch_all(year_from: int, year_to: int, delay_seconds: float = 0.3,
+              session_factory: Callable[[], requests.Session] = _session_with_cookie) -> tuple[list[dict], dict[str, list[dict]]]:
+    """Real network fetch, full-historical shape: the corporate-actions sweep by whole calendar
+    year(s), then one announcements-window fetch per distinct (symbol, ex_date) pair. Not called
+    by tests."""
+    session = session_factory()
+    actions: list[dict] = []
+    for year in range(year_from, year_to + 1):
+        actions.extend(fetch_corporate_actions_year(session, year))
+        time.sleep(delay_seconds)
+    announcements_by_key = _fetch_announcements_for_actions(session, actions, delay_seconds)
+    return actions, announcements_by_key
+
+def fetch_recent(lookback_days: int = 60, delay_seconds: float = 0.3,
+                  session_factory: Callable[[], requests.Session] = _session_with_cookie,
+                  today: date | None = None) -> tuple[list[dict], dict[str, list[dict]]]:
+    """Real network fetch, weekly-incremental shape: corporate actions over a trailing window
+    (default 60 days -- wide enough that an action announced with some lag is still caught by the
+    next weekly run, narrow enough to stay fast), reusing the identical announcement-fetch logic
+    `fetch_all` uses. Safe to re-run with overlapping windows: `write_facts`'s own
+    duplicate-business-key skip (P4-009) makes re-ingesting an already-stored action a no-op, not
+    a duplicate row. `today` is injectable for tests; defaults to the real current date."""
+    session = session_factory()
+    to_date = today or date.today()
+    from_date = to_date - timedelta(days=lookback_days)
+    actions = _fetch_corporate_actions_range(session, from_date, to_date)
+    announcements_by_key = _fetch_announcements_for_actions(session, actions, delay_seconds)
     return actions, announcements_by_key

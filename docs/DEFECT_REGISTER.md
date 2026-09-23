@@ -33,6 +33,7 @@ honesty rule.
 | P8-004 | Ph. 9 (writing `scripts/weekly_ingest.py`, first real end-to-end run) | **High** | `src/ingestion/nse_market_data/{asm,gsm}.py`'s `fetch_circular_index` returned `r.json()` directly, typed `-> list[dict]`. The REAL, live `nseindia.com/api/circulars` response is an envelope, `{"data": [...circulars...], "fromDate": ..., "toDate": ...}`, not a bare list. `for c in circulars` in `fetch_and_ingest_{asm,gsm}_range` therefore iterated the envelope dict's own keys (three strings) instead of its circulars, crashing on the very first real call: `AttributeError: 'str' object has no attribute 'get'`. Both functions' own docstrings already said "Not called by the fixture-based test suite" — this is why: neither had ever been run against real or realistically-shaped data in this project's history before this session's first attempt to automate weekly ingestion. | Fixed — both `fetch_circular_index` functions now return `r.json()["data"]`, confirmed against a real live call (26 real circulars returned for a real 2026-09 window, correct dict shape). Two regression tests added (`tests/test_asm_gsm_ingestion.py::FetchCircularIndexEnvelopeTest`), mocking the real envelope shape observed live — both pass. Full suite re-run after the fix; see re-verification below. |
 | P8-005 | Ph. 9 (same first real run of `scripts/weekly_ingest.py`) | Medium | `weekly_ingest.py`'s own `_extract_gaps_and_mismatches` matched any line starting with `"GAP "` — but `ingest_bhavcopy_full_history.py` also prints an unconditional summary line, `"GAP (confirmed trading day, this request failed): 0"`, every run regardless of whether a real gap occurred. The bare-prefix match flagged that summary line as a real gap on every single run, including runs with zero real gaps — a false-positive that would have paged/alarmed on a clean week, every week. | Fixed — the match is now anchored on a trailing date (`^GAP \d{4}-\d{2}-\d{2}:`), matching only the real per-date gap lines. Re-verified live: a second end-to-end run (2026-09-22T17:17:03–17:42:13) reported a clean `GAPs: 0`, `overall=OK`. |
 | P8-006 | Ph. 10 housekeeping (reproducibility gap flagged after `P8-004`) | **Critical** | Three scripts — `scripts/ingest_asm_gsm_sample.py`, `scripts/retry_asm_gsm_failures.py`, `scripts/ingest_corporate_actions_sample.py` — hardcoded paths into a PAST Claude session's own temp scratchpad directory (`C:\Users\...\Temp\claude\...\693aa27b-.../scratchpad\{sebi,cache}`) as their only source of historical circular/corporate-action/announcement data. Windows can delete that directory at any time; it does not exist on a fresh clone at all. A fresh clone therefore could not rebuild `surveillance_flags` or `corporate_actions` from scratch — directly contradicting this project's own README claim that its scripts do exactly that. `ingest_asm_gsm_sample.py` additionally duplicated `fetch_and_ingest_{asm,gsm}_range`'s own sweep logic in a second, parallel `run_asm`/`run_gsm` implementation (CLAUDE.md invariant 1). | Fixed, all three, by delegating to the live-network functions each domain already has (`fetch_and_ingest_{asm,gsm}_range`, `P8-004`-fixed; `fetch_all` for corporate actions) instead of any cache. `git grep` for the literal temp-directory path prefix across all of `scripts/` now returns zero matches. Full comparison and verification scope: `docs/phase10_housekeeping2.md`. |
+| P8-007 | Ph. 10 housekeeping (Amendment 3's pre-specified split/bonus scan, run as a mechanism check against historical data) | **Critical, found not fixed** | This project's `corporate_actions` ingestion never captures ETF unit splits. A pre-specified scan for one-day returns shaped like a common unadjusted split/bonus ratio, run against the EXISTING historical catalogue as a mechanism check, found 96 hits, **zero** explained by an existing `BONUS`/`SPLIT` record — a large cluster are ETFs (`HDFCNIFETF`, `HDFCSENSEX`, `ICICI500`, `KOTAKGOLD`, etc.) sharing near-identical dates and near-exact ratios. Traced directly, not inferred from the shape alone: `HDFCNIFETF`'s raw bhavcopy close fell from 1628.18 (2021-02-16) to 162.44 (2021-02-17) — a real 10:1 unit split, `series='EQ'` (the same series equities use, so not a series-filtering gap), absent from `corporate_actions` entirely. This is the exact false-positive shape CLAUDE.md's own "Hard blocker" section already warns adjusted-return code about, occurring for real, for a whole instrument class this project's ingestion has never covered. | **Found, not fixed — logged and scoped, not investigated or corrected today.** Full historical scale (how many of the 96, or of the wider catalogue, are ETF splits vs. genuine equity actions vs. real large moves) was not determined; fixing ingestion for ETF-issued corporate actions is a real, separate undertaking (a different NSE disclosure path, not yet identified) out of scope for this pass. `docs/phase10_housekeeping3.md` has the full hit list and reasoning. |
 
 ## P2-001 — `full_bhavcopy_save` silent failure on HTTP error
 
@@ -876,3 +877,48 @@ fixed the three files known about going in.
   nothing has failed. Nothing to falsely claim was tested.
 - All three scripts: `python -m py_compile` and a real `importlib` load (not just a syntax check)
   confirm each still defines and can execute `main()`.
+
+## P8-007 — ETF unit splits are entirely uncaptured by corporate-actions ingestion
+
+**Root cause.** `src/ingestion/nse_market_data/corporate_actions.py`'s live fetch
+(`fetch_corporate_actions_year`/`fetch_recent`, both hitting `nseindia.com/api/corporates-
+corporateActions`) and its subject-ratio parser were built and validated against equity BONUS/SPLIT
+actions. Real ETF unit splits — a routine AMC practice to keep an ETF's per-unit NAV in a
+retail-friendly range — either are not returned by this endpoint at all, or are returned in a shape
+`parse_subject_ratio` does not recognize; either way, zero rows for this action type exist anywhere
+in `corporate_actions`.
+
+**How it was found.** `docs/phase10_preregistration_amendment3.md`'s pre-specified split/bonus
+shape scan (`scripts/phase10_scan_split_bonus_shapes.py`), run as a mechanism check against the
+EXISTING historical catalogue (not the still-nonexistent forward window, and inspecting prices, not
+outcomes) rather than assumed to be forward-only. 96 events matched a common split/bonus shape
+within 2 percentage points; **zero** had a corresponding `corporate_actions` row. Traced one
+directly to raw `bhavcopy`, not left at the statistical shape alone: `HDFCNIFETF`, `series='EQ'`
+(so not a series-scoping gap), close 1628.18 -> 162.44 from 2021-02-16 to 2021-02-17 — exactly a
+10:1 ratio. A large share of the 96 hits are ETFs clustering on shared dates near-exact ratios
+(`HDFCLOWVOL`/`HDFCMID150`/`HDFCMOMENT`/`HDFCNEXT50`/`HDFCNIF100`/`HDFCNIFBAN`/`HDFCNIFETF`/
+`HDFCNIFIT`/`HDFCPVTBAN`/`HDFCSENETF`/`HDFCSENSEX` all near -90% on 2023-10-20 or 2024-02-02 alone)
+— a pattern far too coordinated to be coincidental genuine price moves.
+
+**Why this matters beyond the forward window this amendment is actually about:** this is the exact
+false-positive shape `CLAUDE.md`'s own "Hard blocker — adjusted price series does not exist yet"
+section already warns about in the abstract ("a 1-for-1 bonus looks like a ~50% overnight crash on
+unadjusted closes... precisely the shape of false positive this project exists to distinguish from
+a genuine manipulation-consistent signature") — happening for real, today, in the ALREADY-BUILT
+historical event catalogue, for an entire instrument class (ETFs) nobody had previously checked for
+this specific gap.
+
+**Fix.** **Not applied.** Determining how many of the 96 (or of the wider ~75,300-event catalogue)
+are ETF splits vs. genuine equity actions this project's parser still misses vs. real large moves
+requires per-hit investigation this pass did not do at scale (one was traced fully; 95 were not).
+Building real ETF corporate-action ingestion requires first identifying what NSE/AMC disclosure
+path actually carries this information, since the standard equity endpoint apparently doesn't (or
+doesn't in a recognized shape) — genuine new development, not a config or parser tweak, and out of
+scope for this pass. A scoping question this raises but does not answer: whether ETFs belong in
+this project's catalogue at all, given the project's actual purpose (equity manipulation forensics)
+— filtering them out may be more appropriate than adjusting for their splits, but that is a decision
+for the project owner, not assumed here.
+
+**Re-verification.** N/A — nothing was fixed. The scan script and its full, real 96-event output
+are the evidence trail: `scripts/phase10_scan_split_bonus_shapes.py`,
+`docs/phase10_housekeeping3.md`.

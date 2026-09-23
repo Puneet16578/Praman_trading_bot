@@ -1,12 +1,26 @@
 """One entry point for scheduled, unattended weekly ingestion: bhavcopy -> corporate
-announcements -> ASM/GSM circulars, in that order, then a dated summary block appended to
-`logs/weekly_ingest.log`.
+announcements -> corporate actions -> ASM/GSM circulars, in that order, then a dated summary block
+appended to `logs/weekly_ingest.log`.
+
+Corporate actions (docs/phase10_preregistration_amendment3.md): without this step, a forward-window
+split or bonus goes unadjusted -- a 1:2 split reads as a spurious -50% single-day return, producing
+a fabricated catalogue event and a false "underperformed" label for any event whose 90-session
+window spans the ex-date. The pre-registration's 5%-missing-data COMPROMISED rule cannot catch this
+-- the row is present and looks complete, it is just wrong, the same class of silent-failure this
+project's own CLAUDE.md warns adjusted-return code about explicitly.
 
 Idempotent and safe to re-run or run late, by design, inherited from each underlying step:
   - bhavcopy (`scripts/ingest_bhavcopy_full_history.py`) skips every weekday already confirmed in
     the store before making a network call.
   - announcements (`scripts/ingest_announcements_full_history.py`) skips every symbol already
     fetched.
+  - corporate actions (`src/ingestion/nse_market_data/corporate_actions.py`'s `fetch_recent`) is
+    called over a deliberately overlapping trailing window (`CORPORATE_ACTIONS_LOOKBACK_DAYS`),
+    safe for the same P4-009 duplicate-business-key reason as ASM/GSM below -- same tier logic
+    (announcement-derived knowledge_date, subject-field ratio, quarantine on disagreement) and the
+    same demerger/capital-reduction exclusion-marker handling as the historical ingestion path,
+    unchanged, since `fetch_recent` differs from `fetch_all` only in HOW it fetches (a narrow
+    window vs. whole calendar years), not in how what it fetches gets written.
   - ASM/GSM (`src/ingestion/nse_market_data/{asm,gsm}.py`'s `fetch_and_ingest_*_range`) is called
     over a deliberately overlapping trailing window (`ASM_GSM_LOOKBACK_DAYS`, not just "since last
     Monday"), safe because `write_facts`'s own duplicate detection (P4-009,
@@ -40,6 +54,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # project root, fo
 ROOT = Path(__file__).resolve().parents[1]
 LOG_PATH = ROOT / "logs" / "weekly_ingest.log"
 ASM_GSM_LOOKBACK_DAYS = 10  # deliberate overlap margin -- see module docstring
+CORPORATE_ACTIONS_LOOKBACK_DAYS = 60  # matches fetch_recent's own default; stated here too so a
+                                       # change to one is not silently out of sync with the other
 
 
 def step_bhavcopy() -> None:
@@ -50,6 +66,31 @@ def step_bhavcopy() -> None:
 def step_announcements() -> None:
     from ingest_announcements_full_history import main as announcements_main
     announcements_main()
+
+
+def step_corporate_actions() -> None:
+    from src.bitemporal.connection import get_connection, init_db
+    from src.config.settings import get_settings
+    from src.ingestion.nse_market_data.corporate_actions import fetch_recent, ingest_corporate_actions
+
+    settings = get_settings()
+    conn = get_connection(settings.database_path)
+    init_db(conn)
+    print(f"[CORP_ACTIONS] sweeping trailing {CORPORATE_ACTIONS_LOOKBACK_DAYS} days")
+
+    actions, announcements_by_key = fetch_recent(lookback_days=CORPORATE_ACTIONS_LOOKBACK_DAYS)
+    print(f"[CORP_ACTIONS] fetched {len(actions)} actions, {len(announcements_by_key)} announcement windows")
+
+    report, write_result = ingest_corporate_actions(conn, actions, announcements_by_key, source_file="weekly_ingest_fetch_recent")
+    total = sum(report.tier_counts.values())
+    print(f"[CORP_ACTIONS] tier_counts={dict(report.tier_counts)} total_rows_built={total}")
+    print(f"[CORP_ACTIONS] inserted={write_result.inserted} skipped_duplicate={write_result.skipped_duplicate}")
+    print(f"[CORP_ACTIONS] downgraded_to_ex_date_fallback={report.downgraded_count} "
+          f"unhandled_action_types={report.unhandled_action_types} quarantined={len(report.quarantined)}")
+    for q in report.quarantined:
+        print(f"[CORP_ACTIONS] QUARANTINED {q}")
+
+    conn.close()
 
 
 def step_asm_gsm() -> None:
@@ -83,7 +124,12 @@ def step_asm_gsm() -> None:
     conn.close()
 
 
-STEPS = [("bhavcopy", step_bhavcopy), ("announcements", step_announcements), ("asm_gsm", step_asm_gsm)]
+STEPS = [
+    ("bhavcopy", step_bhavcopy),
+    ("announcements", step_announcements),
+    ("corporate_actions", step_corporate_actions),
+    ("asm_gsm", step_asm_gsm),
+]
 
 
 def _run_capturing(label: str, fn) -> dict:
