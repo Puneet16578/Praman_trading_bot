@@ -18,7 +18,7 @@ monotonic gradient by cap_band -- scripts/phase10_amendment4_selection_problem.p
 thinly-traded stock takes longer in CALENDAR time to accumulate 90 REAL sessions, and no fixed
 buffer can bound that tail (round 3's own decay-curve measurement found no plateau within 120
 sessions). The label now uses a GLOBAL 90-session horizon instead: the return from close(event_date)
-to the LAST AVAILABLE close (across EQ, extended through BE/BZ per P8-012) ON OR BEFORE the 90th
+to the LAST AVAILABLE close (across EQ, bridged through BE/BZ per P8-012/P8-014) ON OR BEFORE the 90th
 GLOBAL trading session after event_date -- with a STALENESS CAP (10 global sessions): if the last
 available close is more than 10 sessions stale relative to that global target date, the outcome is
 MISSING (a genuine, uncensored gap -- likely suspension/delisting -- not silently extrapolated
@@ -165,7 +165,7 @@ def main() -> None:
     # (P8-006's lesson -- not a hard dependency).
     symbol_groups = build_symbol_groups(load_isin_map(ISIN_MAP_PATH)) if ISIN_MAP_PATH.exists() else {}
 
-    # Amendment 4 prep round 2, item 1(b)/2 fix (P8-012): extend through BE/BZ (trade-for-trade
+    # Amendment 4/5 prep (P8-012, bridged per P8-014): extend through BE/BZ (trade-for-trade
     # settlement), labels only -- the event catalogue itself stays EQ-only. See
     # compute_outcome_labels.py's identical wiring for the full rationale.
     out_rows = []

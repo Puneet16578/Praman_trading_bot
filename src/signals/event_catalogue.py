@@ -153,32 +153,46 @@ def build_symbol_history(conn, symbol: str, series: str = "EQ", symbol_group: li
     `symbol_group` via `src/ingestion/nse_market_data/isin_mapping.py`'s `build_symbol_groups` --
     this module stays decoupled from the ISIN-mapping mechanism itself, accepting only plain data.
 
-    `extend_with_series` (Amendment 4 prep round 2, item 1(b)/2 fix -- P8-012, default `()` =
-    IDENTICAL to before): additional series (e.g. `("BE", "BZ")`, trade-for-trade settlement) whose
-    rows, STRICTLY AFTER this symbol's own last `series`-series trading date, are appended for
-    forward continuity. A stock moved to trade-for-trade settlement leaves the EQ series but keeps
-    trading -- without this, its own trading_days list stops abruptly, exactly mimicking
-    "delisted" for any forward-looking label (measured: docs/phase10_amendment4_prep2.md item 1(b),
-    ~30% of HOLD-OUT's fully-elapsed-but-missing-outcome events). Only rows STRICTLY LATER than the
-    primary series' own last date are appended -- a concurrent BE-designated lot trading alongside
-    EQ (observed in real data) is a different, ambiguous case this project does not attempt to
-    reconcile, so the overlap period is left alone rather than guessed at. This parameter is for
-    LABEL/OUTCOME computation only -- the event CATALOGUE itself stays EQ-only (callers building
-    the catalogue never pass this)."""
+    `extend_with_series` (P8-012, default `()` = IDENTICAL to before): additional series (e.g.
+    `("BE", "BZ")`, trade-for-trade settlement) BRIDGED into the primary series' calendar --
+    a row from an extension series is used for any DATE the primary series has no row of its own,
+    regardless of whether that date falls before, during, or after the primary series' own date
+    range; the primary series always wins on a date where both have a row (Amendment 5 prep,
+    P8-014). A stock moved to trade-for-trade settlement leaves the EQ series but keeps trading --
+    without this, its own trading_days list has a gap (or stops abruptly) exactly mimicking
+    "delisted" for any forward-looking label.
+
+    Superseded design, kept here as a documented lesson, not a live behavior: the original P8-012
+    fix (Amendment 4 prep round 2) only appended an extension series' rows STRICTLY AFTER the
+    primary series' own LAST-EVER date -- correct for a PERMANENT migration (EQ ends, BE begins,
+    never returns), but blind to a TEMPORARY stint (EQ -> BE -> EQ) where the security resumes the
+    primary series afterward: the gap during the stint was never filled, so a forward-looking
+    target date landing inside it saw a stale pre-stint close and was wrongly marked missing. This
+    was found, the same session it shipped, by measuring the NEW label's own missingness against
+    model inputs rather than assuming a fix that removed one bias couldn't introduce another:
+    92.37% of P8-013-era events missing due to the staleness cap had a BE/BZ close in the exact
+    window the old logic never looked at, and the resulting missingness was even MORE
+    cap_band-correlated than before the fix (Micro-minus-Mega gap 14.1pp) -- confirmed directly,
+    not inferred, before committing to the fuller bridge below (`docs/phase10_amendment5_prep.md`).
+
+    A concurrent same-date row in more than one series (observed in real data) is resolved by
+    series priority (the primary series, then `extend_with_series` in the order given) rather than
+    left ambiguous -- this is a real, if rare, case worth an explicit rule now that bridging spans
+    the whole calendar, not just its tail. This parameter is for LABEL/OUTCOME computation only --
+    the event CATALOGUE itself stays EQ-only (callers building the catalogue never pass this)."""
     symbols = symbol_group or [symbol]
 
     raw_rows = []
     for s in symbols:
         raw_rows.extend(read_as_of(conn, "bhavcopy", FAR_FUTURE_AS_OF, symbol=s, series=series))
     if extend_with_series:
-        primary_last_date = max((r["event_date"] for r in raw_rows), default=None)
-        if primary_last_date is not None:
+        covered_dates = {r["event_date"] for r in raw_rows}
+        for extra_series in extend_with_series:
             for s in symbols:
-                for extra_series in extend_with_series:
-                    raw_rows.extend(
-                        r for r in read_as_of(conn, "bhavcopy", FAR_FUTURE_AS_OF, symbol=s, series=extra_series)
-                        if r["event_date"] > primary_last_date
-                    )
+                extra_rows = read_as_of(conn, "bhavcopy", FAR_FUTURE_AS_OF, symbol=s, series=extra_series)
+                new_rows = [r for r in extra_rows if r["event_date"] not in covered_dates]
+                raw_rows.extend(new_rows)
+                covered_dates.update(r["event_date"] for r in new_rows)
     vintages: dict[str, list[tuple[str, dict]]] = {}
     for row in raw_rows:
         vintages.setdefault(row["event_date"], []).append((row["knowledge_date"], row))

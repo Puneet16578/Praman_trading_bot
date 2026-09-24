@@ -125,7 +125,7 @@ def main() -> None:
     if not symbol_groups:
         print("No ISIN map found -- computing per-symbol, unstitched (run scripts/build_isin_map.py to enable stitching)")
 
-    # Amendment 4 prep round 2, item 1(b)/2 fix (P8-012): extend through BE/BZ (trade-for-trade
+    # Amendment 4/5 prep (P8-012, bridged per P8-014): extend through BE/BZ (trade-for-trade
     # settlement) so a stock that leaves the EQ series but keeps trading isn't treated as if it
     # had gone silent -- measured to explain ~30% of HOLD-OUT's fully-elapsed-but-missing-outcome
     # events (docs/phase10_amendment4_prep2.md item 1(b)). Labels only -- the event catalogue

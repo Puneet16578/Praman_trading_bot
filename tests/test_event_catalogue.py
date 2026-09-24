@@ -275,10 +275,15 @@ class SymbolGroupStitchingTest(unittest.TestCase):
             self.assertEqual(s.symbol, expected)
 
 class ExtendWithSeriesTest(unittest.TestCase):
-    """Amendment 4 prep round 2, item 1(b)/2 fix (P8-012): a stock moved to trade-for-trade
-    settlement (BE/BZ) leaves the EQ series but keeps trading -- without extend_with_series, its
-    own trading_days list stops abruptly at the series change, exactly mimicking "delisted" for a
-    forward-looking label. Real shape confirmed via docs/phase10_amendment4_prep2.md item 1(b)."""
+    """P8-012 (a stock moved to trade-for-trade settlement (BE/BZ) leaves the EQ series but keeps
+    trading) and its own P8-014 correction (the original P8-012 fix only appended an extension
+    series' rows STRICTLY AFTER the primary series' own last-ever date -- correct for a PERMANENT
+    migration, but blind to a TEMPORARY EQ -> BE -> EQ stint, where the gap during the stint was
+    never filled and a target date landing inside it saw a stale pre-stint close. Found by
+    measuring the P8-013 label's own missingness against model inputs and finding it even MORE
+    cap_band-correlated than before that fix -- docs/phase10_amendment5_prep.md. Now a full
+    per-date bridge: an extension series' row is used for any date the primary series lacks one,
+    regardless of whether that date is before, during, or after the primary series' own range."""
 
     def setUp(self):
         self.conn = get_connection(":memory:")
@@ -306,14 +311,43 @@ class ExtendWithSeriesTest(unittest.TestCase):
         r = _return(hist, self.d1, self.d3, as_of=self.d3)
         self.assertAlmostEqual(r, (510.0 / 1010.0) - 1)
 
-    def test_extension_rows_strictly_after_primary_last_date_only(self):
-        """A row landing ON OR BEFORE the primary series' own last date is never pulled in from the
-        extension series, even if present -- only strictly-later rows are appended."""
+    def test_same_date_conflict_primary_series_wins(self):
+        """A row landing on a date the PRIMARY series already has one is never pulled in from an
+        extension series -- the primary series always wins on a shared date."""
         write_fact(self.conn, "bhavcopy", make_bhavcopy_row("MOVED", self.d1, close_price=999.0, series="BZ"))
         hist = build_symbol_history(self.conn, "MOVED", extend_with_series=("BE", "BZ"))
         self.assertEqual(hist.trading_days, [self.d0, self.d1, self.d2, self.d3])
         row = hist.price_row_as_of(self.d1, as_of=self.d3)
-        self.assertEqual(row["close_price"], 1010.0, "The EQ row for d1 must win -- the same-date BZ row is inside the overlap period, not appended.")
+        self.assertEqual(row["close_price"], 1010.0, "The EQ row for d1 must win over the same-date BZ row.")
+
+    def test_temporary_stint_bridged_not_just_the_tail(self):
+        """P8-014: a TEMPORARY EQ -> BE -> EQ stint (the security resumes the primary series
+        afterward) must have its BE-only dates filled in too, not just BE rows after EQ's own
+        overall last date -- the real-world shape a surveillance-driven trade-for-trade period
+        followed by a return to normal trading actually takes."""
+        conn = get_connection(":memory:")
+        init_db(conn)
+        d = _dates(6)
+        # EQ trades d0,d1, then a BE-only stint at d2,d3, then EQ RESUMES at d4,d5.
+        write_facts(conn, "bhavcopy", [
+            make_bhavcopy_row("STINT", d[0], close_price=100.0, series="EQ"),
+            make_bhavcopy_row("STINT", d[1], close_price=110.0, series="EQ"),
+            make_bhavcopy_row("STINT", d[4], close_price=130.0, series="EQ"),
+            make_bhavcopy_row("STINT", d[5], close_price=140.0, series="EQ"),
+        ])
+        write_facts(conn, "bhavcopy", [
+            make_bhavcopy_row("STINT", d[2], close_price=55.0, series="BE"),
+            make_bhavcopy_row("STINT", d[3], close_price=60.0, series="BE"),
+        ])
+        hist = build_symbol_history(conn, "STINT", extend_with_series=("BE", "BZ"))
+        self.assertEqual(hist.trading_days, d, "All 6 dates must be present -- the BE-only stint bridged in, not skipped.")
+        # A return spanning the whole stint must be computable, not None.
+        r = _return(hist, d[1], d[5], as_of=d[5])
+        self.assertAlmostEqual(r, (140.0 / 110.0) - 1)
+        # And a target date landing INSIDE the stint must resolve to the real BE close that day,
+        # not a stale pre-stint EQ close.
+        row = hist.price_row_as_of(d[2], as_of=d[5])
+        self.assertEqual(row["close_price"], 55.0)
 
     def test_default_extend_with_series_is_a_no_op(self):
         hist = build_symbol_history(self.conn, "MOVED", extend_with_series=())
