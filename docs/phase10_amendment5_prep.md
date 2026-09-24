@@ -87,5 +87,5 @@ before this round's amendment document was written.
 per-date bridge). This is the value recorded in `docs/phase10_preregistration_amendment5.md` §9 as
 the new pinned commit for the forward evaluation.
 
-Doc commit hash (this file and the amendment document): `8173097` (amendment) — placeholder below
-to be filled in with this prep doc's own hash once committed: PENDING_HASH
+Doc commit hashes: amendment document `81730977f77bfee55f9d524b9dda7db85d675fa6`; this prep doc
+itself `cad54af97537f02e3da03c78738e3be58e555bcc`.
