@@ -150,6 +150,12 @@ comparison; §6 Phase 8b table updated; §8 re-pinned to `c4925b6fb4016a942d49bd
 (pipeline code changed this round, unlike round 3). **Committed as its own commit, per the
 passing commit rule — the rule itself was the review, no further approval step.**
 
-**Final commit hash (this round's own work — decay curve... selection-problem script, relabel
-redefinition, defect register entries, and the amendment itself, across several commits)**:
-`<filled in below, after the commits land>`
+**Final commit hash: `7dd939b15ee930e702890876d05b1be2eff0bc42`** — the commit that adds
+`docs/phase10_preregistration_amendment4.md` itself. This round's full commit sequence: the
+relabel redefinition and diagnostic scripts (`c4925b6`), the `P8-012`/`P8-013` defect register
+entries (`fd36f95`), this document (`d10064a`), and the amendment itself (`7dd939b`).
+
+**Amendment 4 is now committed.** The pinned pipeline commit for the forward evaluation is
+`c4925b6fb4016a942d49bd8d9b4270a977f3ed97` (stated in the amendment's own §8) — the last commit
+that touched pinned pipeline code; `fd36f95`, `d10064a`, and `7dd939b` are documentation-only and
+do not change what that pin points to.
