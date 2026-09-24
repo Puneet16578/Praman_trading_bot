@@ -7,15 +7,30 @@ Pre-registered in docs/phase8_robustness_checks.md BEFORE this script was run:
   PRIMARY:   signed 90-session market-relative forward return from close(event_date) < 0
   SECONDARY: the same return < -0.10
 "signed" = multiplied by the event's own initial direction (return_1d sign), the same
-direction-aware convention collapsed_90d/collapsed_relative already use. This is an ENDPOINT
-return (t to t+90), not the path-dependent "crossed back at any point" scan those two labels use --
-a real methodological difference, stated in the pre-registration rather than discovered later.
+direction-aware convention collapsed_90d/collapsed_relative already use.
+
+Amendment 4 prep round 4 (docs/phase10_amendment4_prep4.md): the "90-session" horizon itself is
+REDEFINED here, superseding the own-session definition rounds 1-3 used. The own-session definition
+(the symbol's own 90th real EQ/BE/BZ-extended trading day) was found, by direct diagnosis, to
+create a real selection problem: missingness under it is NOT random -- it is highest for the
+smallest, least liquid names (TRAIN, buffer>=30: Micro 2.09% vs. Mega 1.20% missing, a clean
+monotonic gradient by cap_band -- scripts/phase10_amendment4_selection_problem.py), because a
+thinly-traded stock takes longer in CALENDAR time to accumulate 90 REAL sessions, and no fixed
+buffer can bound that tail (round 3's own decay-curve measurement found no plateau within 120
+sessions). The label now uses a GLOBAL 90-session horizon instead: the return from close(event_date)
+to the LAST AVAILABLE close (across EQ, extended through BE/BZ per P8-012) ON OR BEFORE the 90th
+GLOBAL trading session after event_date -- with a STALENESS CAP (10 global sessions): if the last
+available close is more than 10 sessions stale relative to that global target date, the outcome is
+MISSING (a genuine, uncensored gap -- likely suspension/delisting -- not silently extrapolated
+across). The market index is evaluated at the SAME date as whichever close is actually used (the
+existing `relative_g` convention, unchanged) -- comparing a stock's own last real observation to
+the market AS OF THAT SAME DATE, never to a later index level the stock itself never had a chance
+to keep pace with.
 
 Also computes, for every 2026 hold-out event with no computable 90-session outcome, whether that
 is because the GLOBAL calendar (market_index.csv's own dates) also lacks 90 sessions after
-event_date (genuine "too close to data's own end") or because the global calendar has enough
-sessions but THIS SYMBOL's own trading history ends first (heuristic flag for delisting/suspension
-inside the window -- addition 4 of the robustness review). Stated as a heuristic, not a confirmed
+event_date (genuine "too close to data's own end") or because the staleness cap was exceeded
+(heuristic flag for delisting/suspension inside the window). Stated as a heuristic, not a confirmed
 delisting determination -- this project has no direct delisting-event feed.
 """
 from __future__ import annotations
@@ -36,6 +51,9 @@ from src.signals.event_catalogue import FAR_FUTURE_AS_OF, build_symbol_history
 HORIZON = 90
 TRAIN_CUTOFF = "2026-01-01"
 SECONDARY_THRESHOLD = -0.10
+STALENESS_CAP_SESSIONS = 10  # Amendment 4 prep round 4: beyond this many GLOBAL sessions of
+                              # staleness relative to the target date, the outcome is MISSING
+                              # (genuine suspension/delisting), not extrapolated across the gap
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOGUE_PATH = ROOT / "data" / "processed" / "event_catalogue_loose_zscore_only.csv"
@@ -65,27 +83,54 @@ def relative_g(hist, event_date: str, market_index: dict[str, float]) -> float |
 
 def compute_t0_relative(hist, event_date: str, direction: int, market_index: dict[str, float],
                           global_dates: list[str]) -> dict:
+    """Amendment 4 prep round 4: GLOBAL 90-session horizon with a staleness cap, superseding the
+    own-session definition (see module docstring). `target_date` is the 90th GLOBAL trading
+    session after event_date; the outcome uses the symbol's own LAST AVAILABLE close on or before
+    `target_date` (across EQ/BE/BZ, via hist's own extend_with_series), evaluating the market
+    index at that SAME observed date (relative_g's existing convention) -- never comparing a
+    stale price to a later index level the symbol had no chance to keep pace with. If that last
+    available close is more than STALENESS_CAP_SESSIONS global sessions before target_date, the
+    outcome is MISSING, not extrapolated across the gap."""
     days = hist.trading_days
     idx = bisect.bisect_left(days, event_date)
     if idx >= len(days) or days[idx] != event_date:
         return {"signed_return_90d": None, "collapsed_t0_primary": None, "collapsed_t0_secondary": None,
                 "excluded_reason": "event_date not in symbol's trading calendar", "survivorship_flag": ""}
 
-    end_idx = idx + HORIZON
-    if end_idx >= len(days):
-        g_idx = bisect.bisect_left(global_dates, event_date)
-        global_has_horizon = (g_idx + HORIZON) < len(global_dates)
-        flag = "possible_delisting_or_suspension" if global_has_horizon else "data_cutoff_proximity"
+    g_idx = bisect.bisect_left(global_dates, event_date)
+    if g_idx >= len(global_dates) or global_dates[g_idx] != event_date:
         return {"signed_return_90d": None, "collapsed_t0_primary": None, "collapsed_t0_secondary": None,
-                "excluded_reason": "insufficient forward history", "survivorship_flag": flag}
+                "excluded_reason": "event_date not in global trading calendar", "survivorship_flag": ""}
 
-    end_date = days[end_idx]
-    if hist.structural_break_in_window(event_date, end_date):
+    target_idx = g_idx + HORIZON
+    if target_idx >= len(global_dates):
+        return {"signed_return_90d": None, "collapsed_t0_primary": None, "collapsed_t0_secondary": None,
+                "excluded_reason": "insufficient forward history (global calendar)",
+                "survivorship_flag": "data_cutoff_proximity"}
+    target_date = global_dates[target_idx]
+
+    last_idx = bisect.bisect_right(days, target_date) - 1
+    if last_idx < idx:
+        # No trading day at all for this symbol between event_date and target_date (should only
+        # happen if event_date is itself the symbol's last-ever row) -- treat as maximally stale,
+        # not as "no data."
+        last_idx = idx
+    last_date = days[last_idx]
+
+    last_g_idx = bisect.bisect_left(global_dates, last_date)
+    staleness_sessions = target_idx - last_g_idx
+    if staleness_sessions > STALENESS_CAP_SESSIONS:
+        return {"signed_return_90d": None, "collapsed_t0_primary": None, "collapsed_t0_secondary": None,
+                "excluded_reason": f"stale beyond {STALENESS_CAP_SESSIONS}-session cap "
+                                    f"({staleness_sessions} sessions stale)",
+                "survivorship_flag": "possible_delisting_or_suspension"}
+
+    if hist.structural_break_in_window(event_date, last_date):
         return {"signed_return_90d": None, "collapsed_t0_primary": None, "collapsed_t0_secondary": None,
                 "excluded_reason": "structural break inside the label window", "survivorship_flag": ""}
 
     base = relative_g(hist, event_date, market_index)
-    end = relative_g(hist, end_date, market_index)
+    end = relative_g(hist, last_date, market_index)
     if base is None or base == 0 or end is None:
         return {"signed_return_90d": None, "collapsed_t0_primary": None, "collapsed_t0_secondary": None,
                 "excluded_reason": "no usable relative price (market index gap)", "survivorship_flag": ""}
