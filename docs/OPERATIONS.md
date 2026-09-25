@@ -76,6 +76,19 @@ recorded snapshot hash does not have a reproducible data state, only a reproduci
 |---|---|---|---|---|
 | 2026-09-25T03:27:52 | `amendment5_frozen` | `data/snapshots/2026-09-25T032745_amendment5_frozen.sqlite` | `069cd86f515883bf274fe42efa904ad3bd912c00b2842f9a181a41aaa3129a79` | `cbb9dda75c8fd1b99428b9e79a60a6c55325e336` |
 
+## Demo store (separate from the snapshot table above -- structurally cutoff-truncated, not a
+## point-in-time backup of the full store)
+
+`demo/build_demo_store.py` produces `data/demo/praman_demo.sqlite` (gitignored): a backup-API copy
+of production, then every row with `event_date` OR `knowledge_date` after `2026-09-15` deleted from
+every fact table, `VACUUM`ed. This is what the Streamlit demo (`demo/`) opens, read-only, and it
+never opens production. Re-run whenever you want a fresher demo; the file is fully reproducible
+from production + the fixed cutoff, so it is not itself treated as a durable snapshot.
+
+| Built (UTC) | File | SHA-256 | Cutoff | Built from git HEAD |
+|---|---|---|---|---|
+| 2026-09-25 | `data/demo/praman_demo.sqlite` | `d8bf91bd92ebea2c439e0623b21722c29cfa3e07a92bd13cb4a5431558cce3df` | `2026-09-15` | `4e35329` |
+
 ## Pre-existing backup, kept
 
 `data/processed/praman_pre_p8007_promotion_backup_20260923T174335.db` — taken by
