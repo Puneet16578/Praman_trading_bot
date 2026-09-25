@@ -16,10 +16,15 @@ correct or incorrect:**
   `_return()`, the same corporate-action-adjusted function every other return feature uses;
   `prev_close` is referenced nowhere in `src/` or `scripts/` outside its own declaration and raw
   storage (confirmed by grep, and now permanently guarded by `tests/
-  test_no_raw_prev_close_in_signals.py`). `close_to_close_60d`'s own measured standalone AUC
-  (0.35-0.42, oriented) is one of the strongest single features this project found, not a dead one.
-  See `docs/phase6_signals.md`'s own addendum for the full trace. There is no P7-001 to report the
-  Adversary catching, here or anywhere.
+  test_no_raw_prev_close_in_signals.py`). `close_to_close_60d`'s own measured standalone AUC —
+  0.35-0.42 under the original, oriented convention this section is correcting — is now **0.5122
+  [0.5075,0.5170] TRAIN / 0.4768 [0.4620,0.4915] HOLD-OUT** under Amendment 5's frozen, un-oriented
+  label (`docs/phase10_preregistration_amendment5.md` §6; its own feature file was not rebuilt this
+  session, an unchanged caveat carried from every prior correction round) — still one of the
+  strongest single raw features this project found, not a dead one, now measured on a
+  direction-consistent scale instead of an oriented one. See `docs/phase6_signals.md`'s own
+  addendum for the full original trace. There is no P7-001 to report the Adversary catching, here
+  or anywhere.
 - **"Full system AUC 0.588 vs. disclosure-tier-alone AUC 0.588"** does not match any number this
   project has computed. The real Layer 3 comparison (Brier score + top-tier precision, categorical
   scoring, `docs/phase8_evaluation_results.md`) shows the full system's top-tier precision (90.6%)
@@ -36,18 +41,32 @@ correct or incorrect:**
 - **"Lead time led by p25 = 14 sessions"** — the real p25 is 3 sessions; 14 is the real median.
   Both are reported, correctly labeled, in §5 and in `docs/phase8_evaluation_results.md`.
 - **The clean-label feature AUC table cited below (§ "zscore_60d falls to 15.0%... pooled hold-out
-  AUC (0.537)") was computed on PRE-`P8-007`/Amendment-4-correction data** — before the equity-only
-  universe rule, ISIN-resolved corporate actions, and cross-series (EQ→BE/BZ) label continuity were
-  applied (`docs/phase10_preregistration_amendment4.md` §6). Re-run on the corrected data
-  (`scripts/phase10_amendment4_phase8b_reauc.py`, full table with Hanley-McNeil 95% CIs in
-  `docs/phase10_amendment4_prep3.md` §3): **`zscore_60d`'s pooled HOLD-OUT AUC is now 0.5234
-  [0.5081,0.5387]** (was 0.5374) — still weak-but-consistent in the collapse-predicting direction,
-  CI still excludes 0.5, no conclusion below changes. Every other feature in that table moved
-  similarly (largest shift: `delivery_pct_percentile_60d` HOLD-OUT 0.4347→0.4618) with **no feature
-  reversing direction** — the qualitative narrative in this section stands; only the specific
-  decimal figures it cites are superseded. The precision@20 figures (15.0%/40.0%/80.0%/95.0%, from
-  a separate script, `scripts/phase8_robustness_check1_direction.py`) were NOT re-run this session
-  and are not corrected here.
+  AUC (0.537)") is now superseded twice over, and the current numbers are FROZEN, not provisional.**
+  It was first re-run on Amendment 4's equity-only/ISIN-corrected data (`zscore_60d` HOLD-OUT 0.5234
+  [0.5081,0.5387], `docs/phase10_amendment4_prep3.md` §3) — itself superseded before Amendment 4 was
+  even committed, once Amendment 5 (`P8-014`, `docs/DEFECT_REGISTER.md`) fixed a second, unrelated
+  defect in the outcome label's own EQ/BE/BZ bridging. **The final, frozen table**
+  (`docs/phase10_preregistration_amendment5.md` §6, `scripts/phase10_amendment4_phase8b_reauc.py`,
+  re-run against the `P8-014`-corrected label, TRAIN n=59,899 / HOLD-OUT n=5,966 unless noted):
+
+  | Feature | TRAIN AUC [95% CI] | HOLD-OUT AUC [95% CI] | Excludes 0.5? |
+  |---|---|---|---|
+  | `zscore_60d` | 0.5285 [0.5238,0.5332] | 0.5250 [0.5104,0.5397] | Yes (both) |
+  | `volume_ratio` | 0.5765 [0.5719,0.5811] | 0.5374 [0.5227,0.5520] | Yes (both) |
+  | `delivery_pct_percentile_60d` | 0.4217 [0.4170,0.4264] | 0.4683 [0.4536,0.4830] | Yes (both) |
+  | `return_20d_context_only` | 0.5253 [0.5206,0.5300] | 0.4853 [0.4706,0.5000] | HOLD-OUT borderline — upper CI is exactly 0.5000 |
+  | `close_to_close_60d`* | 0.5122 [0.5075,0.5170] | 0.4768 [0.4620,0.4915] | Yes (both) |
+  | `same_date_event_count` | 0.4776 [0.4729,0.4823] | 0.4835 [0.4688,0.4982] | Yes (both) |
+  | `asm_gsm_labelled` | 0.5000 [0.4952,0.5047] | 0.5061 [0.4914,0.5208] | No (both) |
+
+  *`close_to_close_60d`'s own feature file was not rebuilt this session — an unchanged caveat
+  carried from every prior correction round. **No feature reverses direction across any correction
+  round** — the qualitative narrative in this section and in §5 below stands; only the decimal
+  figures were superseded, and are now frozen along with the rest of the Phase 10 pre-registration
+  (`docs/phase10_preregistration_amendment5.md`, closing section). The precision@20 figures
+  (15.0%/40.0%/80.0%/95.0%, from a separate script, `scripts/phase8_robustness_check1_direction.py`)
+  have never been re-run against any corrected data — a real, standing gap, named here rather than
+  silently dropped.
 
 ---
 
@@ -342,6 +361,53 @@ merely unbuilt:**
   these labels, features, or outcomes against ground truth outside this project's own construction
   of them.
 
+## 7. The Phase 10 forward pre-registration — frozen, nothing evaluated yet
+
+**A separate, new evaluation design from the Phase 6-8 classifier above, built because §1's
+retraction showed that classifier's core axis (`momentum_high`/`return_20d_context_only`) does not
+survive a clean label.** `docs/phase10_preregistration.md` and five amendments
+(`docs/phase10_preregistration_amendments.md` through
+[`_amendment5.md`](docs/phase10_preregistration_amendment5.md)) specify a new, four-input logistic
+scoring function, fit once on 2019-2025 TRAIN data, evaluated **FORWARD-only** — 2026 is spent for
+model selection (Evaluation Integrity note above) and is never reused as a hold-out for this design.
+
+**Frozen inputs and coefficients** (`docs/phase10_preregistration_amendment5.md` §5, TRAIN
+n=59,896): `delivery_low` (`delivery_pct_percentile_60d < 15.0`, coefficient +0.430, z=+23.88),
+`isolated` (`same_date_event_count < 47`, +0.005, z=+0.30 — not distinguishable from zero, kept per
+the original spec but not weighted as evidence), `volume_ratio_high_band_eligible` (Small/Large/Mega
+only, +0.186, z=+9.36), and one-hot disclosure tier against a `NONE` reference
+(`SUBSTANTIVE` −0.218 z=−8.88, `ROUTINE_ONLY` −0.062 z=−2.40, `UNKNOWN_COVERAGE` −0.162 z=−3.75),
+intercept +0.262.
+
+**Missing-data threshold: 4.3%** (TRAIN's final missing rate, 1.310%, plus a 3-point margin) — below
+even the original pre-registration's speculative 5%, after `P8-012`/`P8-013`/`P8-014` together cut
+what would otherwise have been a 6.838% TRAIN missing rate (a defect Amendment 4 asserted was
+already unbiased without measuring it, and Amendment 5 found was not — `docs/DEFECT_REGISTER.md`
+`P8-014`) down to 1.310%, with the gap that originally motivated this whole investigation (HOLD-OUT
+missing far more than TRAIN) closed to 0.413pp.
+
+**Evaluation window: 2026-09-16 through 2027-01-15 (~5,100 events expected), running no earlier than
+~early June 2027** (10 sessions past the window's last event's own 90-session global horizon).
+**Success requires BOTH**: a bootstrap 95% CI on Brier Skill Score (vs. a FAIR constant baseline)
+that excludes zero, AND the new design's top-decile LIFT beating the CURRENT classifier's own
+top-decile LIFT with a paired-bootstrap CI lower bound strictly above zero
+(`docs/phase10_preregistration.md`; `docs/phase10_preregistration_amendments.md` §2;
+`docs/phase10_preregistration_amendment2.md` §1).
+
+**Pinned commit for the entire forward pipeline: `afe3e2bd07abe8b602c4119b916f7696a3c12131`**
+(`docs/phase10_preregistration_amendment5.md` §9). **No forward outcome has existed at any point
+this pre-registration was written or amended.** As of Amendment 5, it is declared FROZEN: a sixth
+amendment is warranted only for a defect that would make the evaluation impossible to run, not for
+further refinement of numbers already measured and settled.
+
+**35 defects are logged against this project as a whole** (`docs/DEFECT_REGISTER.md`): 5 in NSE
+ingestion (Phase 2), 3 in corporate-actions parsing (Phase 3, deferred/low severity), 13 in ASM/GSM
+surveillance ingestion (Phase 4), and 14 across the evaluation and Phase 10 redesign work (Phase
+8-10). The most recent, `P8-014`, is also the most structurally instructive: a fix for one
+outcome-label selection bias (`P8-013`) silently introduced a second, worse one on exactly the
+dimension it existed to fix, caught only because Amendment 5 measured the first fix's own effect
+rather than assuming it had worked.
+
 ---
 
 ## The 2026 hold-out, run and reported
@@ -390,6 +456,15 @@ exposed to the same anchor-coupling problem.**
 Several specific figures in the request (P7-001 as a real defect, a 0.588/0.588 AUC tie, z_score
 vs volume_ratio at 40%/65%, lead time p25=14) do not match this project's real computed output and
 are not in this document. Real numbers used instead throughout, all traceable to source.
+
+**A separate, forward-only redesign (`docs/phase10_preregistration.md` and five amendments) is now
+FROZEN**, not evaluated: a four-input logistic scoring function fit on 2019-2025 TRAIN data,
+missing-data threshold 4.3%, evaluation window 2026-09-16 through 2027-01-15, earliest possible run
+~early June 2027, pinned to commit `afe3e2bd07abe8b602c4119b916f7696a3c12131`. Getting there took
+five rounds of amendment because the pre-registration's own outcome label carried two real,
+sequentially-discovered defects (`P8-013`, then `P8-014` — a fix for the first quietly introducing
+a second, worse one) — both found by measuring the label's own statistical properties against model
+inputs, not by looking at any forward result, since none exists yet.
 
 What surprised me: baseline 5's point-estimate lead is real and consistent at every single k, wide
 enough to look meaningful, but this hold-out (n=6,049) is too small to confirm it at k=20/50 under

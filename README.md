@@ -28,12 +28,22 @@ coupling, neither disclosure tier nor the classifier shows top-tier lift over it
    retraction above, not the original (now-superseded) headline.
 2. [`docs/DEFECT_REGISTER.md`](docs/DEFECT_REGISTER.md) — every defect this project has found in
    itself, including ones in its own evaluation methodology, with root cause and re-verification
-   evidence. `P8-003` (resolved) is why the architecture paragraph below reads the way it does —
-   production report text was corrected to stop citing a withdrawn ceiling figure, and a real
-   coverage gap in the manipulation-language lint was resolved architecturally, not by patching
-   the lint.
-3. [`docs/phase10_preregistration.md`](docs/phase10_preregistration.md) — the frozen spec for
-   whatever redesign follows, committed before any forward evaluation data exists.
+   evidence. **35 logged as of `P8-014`** (5 in NSE ingestion, 3 in corporate-actions parsing, 13
+   in ASM/GSM surveillance ingestion, 14 across the evaluation and Phase 10 redesign work).
+   `P8-003` (resolved) is why the architecture paragraph below reads the way it does — production
+   report text was corrected to stop citing a withdrawn ceiling figure, and a real coverage gap in
+   the manipulation-language lint was resolved architecturally, not by patching the lint. `P8-014`
+   is the most recent and instructive: a fix for one outcome-label selection bias (`P8-013`)
+   silently introduced a second, worse one, caught only because a later review measured the first
+   fix's own effect rather than assuming it had worked.
+3. [`docs/phase10_preregistration.md`](docs/phase10_preregistration.md) — the spec for whatever
+   redesign follows the retraction above, committed before any forward evaluation data existed.
+   Amended five times as real defects in the label and data pipeline were found and fixed
+   (`docs/phase10_preregistration_amendments.md`, `_amendment2.md`, `_amendment3.md`,
+   `_amendment4.md`, [`_amendment5.md`](docs/phase10_preregistration_amendment5.md)) —
+   **Amendment 5 is the current state, and declares the whole pre-registration FROZEN**: features,
+   coefficients, a 4.3% missing-data threshold, and a pinned commit are all fixed, and no forward
+   outcome has been evaluated yet (the earliest possible run is ~early June 2027).
 4. [`CLAUDE.md`](CLAUDE.md) — the project's own working invariants, data-sourcing decisions (including
    the disclosed, knowing decision to scrape nseindia.com against its Terms of Use, for research/
    personal use only), and recurring-failure-mode notes. Binding on any future work in this repo.
