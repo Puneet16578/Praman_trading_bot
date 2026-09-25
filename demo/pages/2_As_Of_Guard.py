@@ -12,14 +12,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import streamlit as st
 
+from demo import ui
 from demo.lib.cutoff import DEMO_DATA_CUTOFF, cutoff_as_date, redact_post_cutoff
 from demo.lib.store import get_demo_connection
 from src.bitemporal.guard import read_as_of
 from src.signals.price_adjustment import UnadjustableWindowError, adjusted_close, compute_adjustment_factor
 
 st.set_page_config(page_title="As-of Guard -- Praman demo", layout="wide")
-st.title("As-of Guard")
-st.caption(f"Both as-of dates are capped at this demo's own cutoff, {DEMO_DATA_CUTOFF}.")
+ui.inject_theme()
+ui.page_header("\U0001F551", "As-of Guard", f"Both as-of dates are capped at this demo's own cutoff, {DEMO_DATA_CUTOFF}.")
 
 symbol = st.text_input("Symbol", value="BAJFINANCE").strip().upper()
 price_date = st.date_input("Price date (the historical close being queried)", value=None, max_value=cutoff_as_date())

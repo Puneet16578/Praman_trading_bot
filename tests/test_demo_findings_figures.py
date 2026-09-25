@@ -83,5 +83,40 @@ class FrozenPreregistrationFiguresMatchSourceTest(unittest.TestCase):
         self.assertIn(findings.FROZEN_PREREGISTRATION["pinned_commit"], AMENDMENT5_TEXT)
 
 
+class Layer1VerificationFiguresMatchSourceTest(unittest.TestCase):
+    def test_claims_verified_and_withheld(self):
+        self.assertIn("29,764 claims verified, one correctly withheld", RESULTS_TEXT)
+        self.assertEqual(findings.LAYER1_VERIFICATION["claims_verified"], 29764)
+        self.assertEqual(findings.LAYER1_VERIFICATION["claims_withheld"], 1)
+
+    def test_derivation_sample(self):
+        self.assertIn("786 of 4,000 eligible claims, 19.65%", RESULTS_TEXT)
+        self.assertEqual(findings.LAYER1_VERIFICATION["derivation_sample_n"], 786)
+        self.assertEqual(findings.LAYER1_VERIFICATION["derivation_sample_of"], 4000)
+        self.assertEqual(findings.LAYER1_VERIFICATION["derivation_sample_pct"], 19.65)
+
+
+class LiveComputedProjectStatsTest(unittest.TestCase):
+    """These are NOT hand-transcribed -- count_defects()/count_preregistration_amendments()/
+    count_test_files() parse or glob their source fresh on every call, so there is nothing here to
+    drift. These tests just sanity-check the parse against known structure, not a frozen number."""
+
+    def test_defect_count_matches_known_id_prefixes_only(self):
+        text = findings.DEFECT_REGISTER_PATH.read_text(encoding="utf-8")
+        rows = [l for l in text.splitlines() if findings._DEFECT_ROW_RE.match(l.strip())]
+        self.assertEqual(findings.count_defects(), len(rows))
+        self.assertGreaterEqual(len(rows), 35, "Expected at least the 35 defects known as of this test's writing.")
+        for row in rows:
+            self.assertRegex(row, r"^\|\s*P[2348]-\d+\s*\|", f"Unexpected defect ID prefix in: {row}")
+
+    def test_amendment_count_at_least_five(self):
+        self.assertGreaterEqual(findings.count_preregistration_amendments(), 5)
+
+    def test_test_file_count_matches_glob(self):
+        import glob
+        expected = len(glob.glob(str(findings.PROJECT_ROOT / "tests" / "test_*.py")))
+        self.assertEqual(findings.count_test_files(), expected)
+
+
 if __name__ == "__main__":
     unittest.main()

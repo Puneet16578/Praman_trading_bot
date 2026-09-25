@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import streamlit as st
 
+from demo import ui
 from demo.lib import catalogue
 from demo.lib.anonymize import build_symbol_map, company_names_for_event, mask_value
 from demo.lib.cutoff import DEMO_DATA_CUTOFF, cutoff_as_date, redact_post_cutoff
@@ -16,8 +17,8 @@ from demo.lib.store import get_demo_connection
 from src.agent.orchestrator import MultiAgentOrchestrator
 
 st.set_page_config(page_title="Event Browser -- Praman demo", layout="wide")
-st.title("Event Browser")
-st.caption(f"Only events on or before {DEMO_DATA_CUTOFF} exist in this demo's own store.")
+ui.inject_theme()
+ui.page_header("\U0001F4C2", "Event Browser", f"Only events on or before {DEMO_DATA_CUTOFF} exist in this demo's own store.")
 
 anonymise = st.session_state.get("anonymise", False)
 
@@ -110,7 +111,11 @@ if selected:
             report_dict = mask_value(report_dict, symbol, label, names)
             display_symbol = label
 
-        st.markdown(f"### {display_symbol} / {event_date} -- **{report_dict['classification']}**")
+        title_col, badge_col = st.columns([4, 1])
+        with title_col:
+            st.markdown(f"### {display_symbol} / {event_date}")
+        with badge_col:
+            ui.classification_badge(report_dict["classification"])
         st.markdown(f"Disclosure tier: **{report_dict['disclosure_tier']}**")
 
         for note in report_dict["classification_notes"]:

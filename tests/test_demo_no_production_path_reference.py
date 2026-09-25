@@ -11,7 +11,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEMO_RUNTIME_FILES = (
-    [PROJECT_ROOT / "demo" / "Home.py"]
+    [PROJECT_ROOT / "demo" / "Home.py", PROJECT_ROOT / "demo" / "ui.py"]
     + sorted((PROJECT_ROOT / "demo" / "pages").glob("*.py"))
     + sorted((PROJECT_ROOT / "demo" / "lib").glob("*.py"))
 )

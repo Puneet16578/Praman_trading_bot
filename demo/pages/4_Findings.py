@@ -10,11 +10,21 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import streamlit as st
 
+from demo import ui
 from demo.lib import findings
 
 st.set_page_config(page_title="Findings -- Praman demo", layout="wide")
-st.title("Findings")
-st.caption("Static. No live query on this page.")
+ui.inject_theme()
+ui.page_header("\U0001F4CA", "Findings", "Static. No live query on this page.")
+
+st.markdown("## Layer 1 -- factual accuracy")
+st.caption(f"Source: {findings.LAYER1_VERIFICATION['source']}")
+l1 = findings.LAYER1_VERIFICATION
+c1, c2, c3 = st.columns(3)
+c1.metric("Claims verified", f"{l1['claims_verified_pct']}%", help=f"{l1['claims_verified']:,} claims checked, {l1['claims_withheld']} correctly withheld")
+c2.metric("Independently re-derived sample", f"{l1['derivation_sample_pct']}%", help=f"{l1['derivation_sample_n']} of {l1['derivation_sample_of']:,} eligible claims, via a separate code path from raw data")
+c3.metric("Defects logged project-wide", str(findings.count_defects()), help="Live count from docs/DEFECT_REGISTER.md")
+st.caption("Unaffected by the retraction below -- Layer 1 tests transcription/derivation correctness, not classification performance.")
 
 st.markdown("## The headline, and its retraction")
 st.caption(f"Source: {findings.RETRACTION['source']}")

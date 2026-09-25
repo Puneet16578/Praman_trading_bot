@@ -14,6 +14,9 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RESULTS_PATH = PROJECT_ROOT / "docs" / "RESULTS.md"
 AMENDMENT5_PATH = PROJECT_ROOT / "docs" / "phase10_preregistration_amendment5.md"
+DEFECT_REGISTER_PATH = PROJECT_ROOT / "docs" / "DEFECT_REGISTER.md"
+
+_DEFECT_ROW_RE = re.compile(r"^\|\s*P\d+-\d+\s*\|")
 
 _AUC_ROW_RE = re.compile(
     r"^\|\s*`([\w_]+)`\*?\s*\|\s*([\d.]+)\s*\[([\d.]+),\s*([\d.]+)\]\s*\|\s*([\d.]+)\s*\[([\d.]+),\s*([\d.]+)\]\s*\|\s*(.+?)\s*\|\s*$"
@@ -75,3 +78,35 @@ FROZEN_PREREGISTRATION = {
     "earliest_run": "~early June 2027",
     "source": "docs/phase10_preregistration_amendment5.md",
 }
+
+LAYER1_VERIFICATION = {
+    "claims_verified": 29764,
+    "claims_verified_pct": 100,
+    "claims_withheld": 1,
+    "derivation_sample_n": 786,
+    "derivation_sample_of": 4000,
+    "derivation_sample_pct": 19.65,
+    "source": "docs/RESULTS.md §3",
+}
+
+
+def count_defects() -> int:
+    """Live count of defect-register rows (`| P2-001 |`, `| P8-014 |`, ...) -- computed fresh from
+    docs/DEFECT_REGISTER.md every call, never hand-transcribed, so this number cannot go stale as
+    new defects are logged."""
+    text = DEFECT_REGISTER_PATH.read_text(encoding="utf-8")
+    return sum(1 for line in text.splitlines() if _DEFECT_ROW_RE.match(line.strip()))
+
+
+def count_preregistration_amendments() -> int:
+    """Live count of docs/phase10_preregistration_amendment*.md files (Amendment 1 is named
+    phase10_preregistration_amendments.md, plural, without a number)."""
+    docs_dir = PROJECT_ROOT / "docs"
+    amendment1 = 1 if (docs_dir / "phase10_preregistration_amendments.md").exists() else 0
+    numbered = len(list(docs_dir.glob("phase10_preregistration_amendment[0-9].md")))
+    return amendment1 + numbered
+
+
+def count_test_files() -> int:
+    """Live count of tests/test_*.py files."""
+    return len(list((PROJECT_ROOT / "tests").glob("test_*.py")))
