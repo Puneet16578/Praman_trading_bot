@@ -3,6 +3,8 @@ __pycache__/
 .pytest_cache/
 data/raw/
 data/processed/
+data/snapshots/
+data/demo/
 *.db
 .env
 logs/

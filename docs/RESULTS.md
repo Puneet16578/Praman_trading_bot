@@ -88,6 +88,30 @@ below. **This script was deliberately NOT re-run this session for exactly that r
 reproduce §1's or §4's figures exactly, check out `1c3f655` (or `681fa1b` for the Phase 6 ceiling
 alone); do not run current scripts against `HEAD` and expect them to match.
 
+**Verified, not merely argued — and it reproduces EXACTLY.** The code-level pinning above is only
+half the question: rows added to the store SINCE `1c3f655` (the P8-007/P8-008/P8-010 corrections
+promotion) carry their genuine, original PUBLICATION dates as `knowledge_date`, so the as-of guard
+shows them to `1c3f655`'s own code just as readily as to `HEAD`'s — pinning the CODE alone does not
+guarantee the DATA old code sees is the data that actually existed then. Resolved using the store's
+`recorded_at` column (`src/bitemporal/schema.py`, stamped by `_now()` at write time, present on
+every fact table, never writer-supplied) — a value that tracks THIS DATABASE's own ingestion
+history, not the public world `knowledge_date` tracks (full design discussion, and the checks
+confirming `recorded_at` is trustworthy and that no row has ever been updated/deleted/rebuilt since
+`1c3f655`: `docs/OPERATIONS.md`). **Filtered a copy of the live store to `recorded_at <=`
+`1c3f655`'s own commit timestamp (2026-09-22T04:53:49 UTC), checked out `1c3f655` into a separate
+git worktree, and re-ran the entire original pipeline** (`build_final_event_catalogue.py` →
+`compute_clustering.py` → `compute_close_to_close.py` → `compute_outcome_labels.py` →
+`phase8_freeze_thresholds.py` → `phase8_classify_holdout.py` → `build_event_classifications.py` →
+`measure_collapse_rate_by_class.py` → `phase8_layer2_metrics.py` → `phase8_layer3_baselines.py`)
+against that filtered snapshot, using only that commit's own code. **Every figure reproduced
+exactly**: 75,300 total catalogued events (64,450 TRAIN / 10,850 HOLD-OUT, matching every count
+cited elsewhere in this document), disclosure-tier-alone 285/362 = **78.7%** [74.2%,82.6%], the
+classifier 231/255 = **90.6%** [86.4%,93.6%], Brier 0.2024 vs. 0.2091, base rate 74.1% (n=6,049),
+the lead-time distribution (median 14, p25 3, p75 52), and even the single agent-vs-deterministic
+spot-check mismatch (`CIEINDIA`/2026-02-10) landed on the identical event. Nothing here required
+guessing at what the data looked like — the actual historical data state was reconstructed and
+re-scored, and it produced the documented numbers precisely.
+
 ---
 
 ## 1. Headline — the original result was a label artifact, retracted under `P8-001`
