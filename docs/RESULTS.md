@@ -68,6 +68,26 @@ correct or incorrect:**
   have never been re-run against any corrected data — a real, standing gap, named here rather than
   silently dropped.
 
+**A reproducibility note, added because it is not otherwise obvious from reading this document
+alone: the Phase 6-8 figures below — including the retracted headline (classifier top-tier
+precision 90.6% vs. disclosure-tier-alone's 78.7%) and the original, WITHDRAWN 0.611-0.70
+discriminative-power ceiling (§4) — reproduce at their ORIGINAL commit, not at `HEAD`.** Phase 8's
+evaluation and its own retraction were committed together, in a single commit,
+`1c3f6551da0efc2a20cbe56a3059647295e9f70b` (`git log --follow -- docs/phase8_evaluation_results.md`);
+Phase 6's ceiling figures were computed at `681fa1b7ddd2ba1d4eb1477eb506e77965cdfbf7`, and
+`src/signals/event_catalogue.py`/`scripts/compute_outcome_labels.py` were untouched between that
+commit and `1c3f655` (confirmed: `git log 681fa1b~1..1c3f655 -- src/signals/event_catalogue.py
+scripts/compute_outcome_labels.py` shows only `681fa1b` itself). **`scripts/compute_outcome_labels.py`
+was retrofitted AFTER Phase 6/8 to call `build_symbol_history(..., extend_with_series=("BE","BZ"))`**
+(Amendment 4 prep round 2, `97a459e`) — a parameter that did not exist, and was not used, when the
+figures below were produced — **and that same function's `extend_with_series` logic was itself
+corrected this session (`P8-014`, `afe3e2b`)**. Re-running `compute_outcome_labels.py` at `HEAD`
+today would therefore score the ORIGINAL Phase 6/8 raw feature inputs against a label-computation
+path that did not exist at the time — a different pipeline state, not a reproduction of the numbers
+below. **This script was deliberately NOT re-run this session for exactly that reason.** To
+reproduce §1's or §4's figures exactly, check out `1c3f655` (or `681fa1b` for the Phase 6 ceiling
+alone); do not run current scripts against `HEAD` and expect them to match.
+
 ---
 
 ## 1. Headline — the original result was a label artifact, retracted under `P8-001`
