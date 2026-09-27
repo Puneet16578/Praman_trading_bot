@@ -1,0 +1,9 @@
+# Rulebook and cost-config files are identified by SHA-256 of their content, recorded on every
+# desk decision for exact replay. core.autocrlf (set true on this checkout) would otherwise let
+# the SAME committed content check out as LF on one machine and CRLF on another, changing the hash
+# of "the same file" depending on checkout settings alone. Forcing eol=lf here means git always
+# checks these out with LF regardless of core.autocrlf -- desk/lib/rulebook.py and desk/lib/costs.py
+# additionally normalize CRLF->LF before hashing, so the hash is stable even for a file that was
+# already checked out or edited with CRLF before this rule existed.
+rulebook/* text eol=lf
+config/* text eol=lf

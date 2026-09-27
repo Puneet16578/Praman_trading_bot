@@ -1,0 +1,130 @@
+"""Sizing and stress loss. Long-only in Phase 1 (entry > stop < target is the only shape the
+rulebook and gates assume) -- nothing here computes or accepts a short position.
+
+Costs are computed from the loaded cost config only -- never hardcoded here. Circuit bands are
+UNKNOWN in Phase 1 (item 5/7): stress loss does NOT account for a circuit-locked exit becoming
+impossible; this is stated in the returned StressLoss record, not silently omitted.
+"""
+from __future__ import annotations
+from dataclasses import dataclass
+
+from src.signals.event_catalogue import build_symbol_history
+from src.signals.price_adjustment import adjusted_close, compute_adjustment_factor
+
+from ..lib.costs import CostConfig
+from ..lib.rulebook import DeskRulebook
+
+
+def round_trip_cost_inr(price: float, quantity: float, costs: CostConfig, side: str) -> float:
+    """`side` is "buy" or "sell" -- stamp duty is buy-side only, depository charges are (in this
+    cost model) sell-side only, matching real NSE/CDSL practice; every other charge applies to
+    both legs identically."""
+    if side not in ("buy", "sell"):
+        raise ValueError(f"side must be 'buy' or 'sell', got {side!r}")
+    turnover = price * quantity
+    stt = turnover * costs.securities_transaction_tax.rate / 100.0
+    exchange = turnover * costs.exchange_transaction_charges.rate / 100.0
+    sebi = turnover * costs.sebi_turnover_fee.rate / 100.0
+    brokerage = costs.brokerage.rate
+    stamp = turnover * costs.stamp_duty.rate / 100.0 if side == "buy" else 0.0
+    depository = costs.depository_charges.rate if side == "sell" else 0.0
+    gst = (brokerage + exchange + sebi) * costs.gst.rate / 100.0
+    return stt + exchange + sebi + brokerage + stamp + depository + gst
+
+
+def planned_loss_inr(entry: float, stop: float, quantity: float, costs: CostConfig) -> float:
+    """Gross per-share loss times quantity, PLUS round-trip costs on both legs (buy at entry,
+    sell at stop) -- costs on both sides, per item 7's explicit instruction."""
+    gross = abs(entry - stop) * quantity
+    return gross + round_trip_cost_inr(entry, quantity, costs, "buy") + round_trip_cost_inr(stop, quantity, costs, "sell")
+
+
+def worst_overnight_gap_loss_inr(conn, symbol: str, as_of_date: str, quantity: float, lookback_sessions: int) -> float | None:
+    """The largest adverse (downward) overnight gap -- close(t) to adjusted open(t+1) -- over the
+    trailing `lookback_sessions`, expressed as an INR loss on `quantity` shares at TODAY's price
+    scale (the gap's own percentage size, applied to `quantity` at the CURRENT close, not at the
+    historical price level, so this is a forward-looking risk estimate, not a historical dollar
+    figure). Returns None if there isn't enough history to compute even one gap.
+    """
+    hist = build_symbol_history(conn, symbol)
+    days = hist.trading_days
+    if as_of_date not in days:
+        return None
+    idx = days.index(as_of_date)
+    start_idx = max(0, idx - lookback_sessions)
+    if start_idx >= idx:
+        return None
+
+    current_close_row = hist.price_row_as_of(as_of_date, as_of_date)
+    if current_close_row is None:
+        return None
+    current_close = current_close_row["close_price"] * hist.cum_factor_up_to(as_of_date)
+
+    worst_pct = 0.0
+    for i in range(start_idx, idx):
+        d0, d1 = days[i], days[i + 1]
+        try:
+            close0 = adjusted_close(conn, symbol, d0, as_of_date)
+            row1 = hist.price_row_as_of(d1, as_of_date)
+            if row1 is None:
+                continue
+            factor1 = compute_adjustment_factor(conn, symbol, d1, as_of_date)
+            open1 = row1["open_price"] / factor1
+        except Exception:
+            continue  # an unadjustable window inside this trailing scan is skipped, not fatal to the whole computation
+        if close0 <= 0:
+            continue
+        gap_pct = (open1 - close0) / close0
+        worst_pct = min(worst_pct, gap_pct)  # most negative = worst
+
+    if worst_pct >= 0:
+        return 0.0
+    return abs(worst_pct) * current_close * quantity
+
+
+@dataclass
+class StressLossResult:
+    stress_loss_inr: float
+    planned_loss_component_inr: float
+    worst_gap_component_inr: float | None
+    floor_component_inr: float
+    circuit_band_caveat: str = "Circuit bands are UNKNOWN in Phase 1 -- this figure does not account for a circuit-locked exit becoming impossible."
+
+
+def compute_stress_loss(conn, symbol: str, as_of_date: str, entry: float, stop: float, quantity: float,
+                         costs: CostConfig, rulebook: DeskRulebook, stress_loss_floor_inr: float) -> StressLossResult:
+    planned = planned_loss_inr(entry, stop, quantity, costs)
+    gap_loss = worst_overnight_gap_loss_inr(conn, symbol, as_of_date, quantity, rulebook.behavioural_brakes.stress_loss_lookback_sessions)
+    components = [planned, stress_loss_floor_inr] + ([gap_loss] if gap_loss is not None else [])
+    return StressLossResult(
+        stress_loss_inr=max(components),
+        planned_loss_component_inr=planned,
+        worst_gap_component_inr=gap_loss,
+        floor_component_inr=stress_loss_floor_inr,
+    )
+
+
+def compute_position_size(entry: float, stop: float, rulebook: DeskRulebook,
+                           open_risk_used_inr: float, capital_at_stock_inr: float,
+                           capital_at_sector_inr: float) -> float:
+    """Size = risk per trade / (entry - stop), then capped by whatever budget is left in the
+    open-risk, per-stock, and per-sector limits (never negative -- a fully-used budget caps size to
+    zero, it does not go negative and it is not the risk officer's job to say VETO; G6 does that)."""
+    per_share_risk = abs(entry - stop)
+    if per_share_risk <= 0:
+        raise ValueError("entry and stop must differ -- cannot size a position with zero per-share risk.")
+
+    capital = rulebook.risk.capital_allocated_inr
+    risk_budget_inr = capital * rulebook.risk.risk_per_trade_pct / 100.0
+    raw_size = risk_budget_inr / per_share_risk
+
+    open_risk_room = max(0.0, capital * rulebook.risk.max_open_risk_pct / 100.0 - open_risk_used_inr)
+    size_from_open_risk = open_risk_room / per_share_risk
+
+    stock_room = max(0.0, capital * rulebook.risk.max_per_stock_pct / 100.0 - capital_at_stock_inr)
+    size_from_stock_cap = stock_room / entry if entry > 0 else 0.0
+
+    sector_room = max(0.0, capital * rulebook.risk.max_per_sector_pct / 100.0 - capital_at_sector_inr)
+    size_from_sector_cap = sector_room / entry if entry > 0 else 0.0
+
+    return max(0.0, min(raw_size, size_from_open_risk, size_from_stock_cap, size_from_sector_cap))

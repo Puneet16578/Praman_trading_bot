@@ -3,16 +3,19 @@
 demo/build_demo_store.py produces. No function in this module accepts a caller-supplied path for
 that reason: there is exactly one path the demo is allowed to read, and it is a constant.
 
-Opened via `mode=ro` (SQLite's read-only URI mode), never `src.bitemporal.connection.get_connection`
--- verified directly (see tests/test_demo_readonly_guard.py) that mode=ro permits every read this
-demo needs and raises sqlite3.OperationalError on any write attempt. init_db() is deliberately never
-called here: the demo store already has the full schema (it is a backup of the production store),
-and calling a schema-bootstrap function against a read-only connection is not a step this demo
-needs, however harmless it happens to be.
+Opened via `mode=ro` (SQLite's read-only URI mode, `shared/sqlite_readonly.py`), never
+`src.bitemporal.connection.get_connection` -- verified directly (see
+tests/test_demo_readonly_guard.py) that mode=ro permits every read this demo needs and raises
+sqlite3.OperationalError on any write attempt. init_db() is deliberately never called here: the demo
+store already has the full schema (it is a backup of the production store), and calling a
+schema-bootstrap function against a read-only connection is not a step this demo needs, however
+harmless it happens to be.
 """
 from __future__ import annotations
 import sqlite3
 from pathlib import Path
+
+from shared.sqlite_readonly import open_readonly
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEMO_DB_PATH = PROJECT_ROOT / "data" / "demo" / "praman_demo.sqlite"
@@ -32,11 +35,7 @@ def get_demo_connection() -> sqlite3.Connection:
             f"{DEMO_DB_PATH} does not exist. Run `python demo/build_demo_store.py` first -- "
             "the demo never opens the production store."
         )
-    uri = f"file:{DEMO_DB_PATH.as_posix()}?mode=ro"
-    conn = sqlite3.connect(uri, uri=True)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    return conn
+    return open_readonly(DEMO_DB_PATH)
 
 
 def patch_reference_data_paths() -> None:

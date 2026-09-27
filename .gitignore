@@ -5,6 +5,7 @@ data/raw/
 data/processed/
 data/snapshots/
 data/demo/
+data/desk/
 *.db
 .env
 logs/

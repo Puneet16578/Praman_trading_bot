@@ -5,3 +5,4 @@ pdfplumber
 pandas==3.0.5
 pydantic
 mcp
+PyYAML
