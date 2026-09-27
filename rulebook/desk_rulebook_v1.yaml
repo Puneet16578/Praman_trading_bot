@@ -1,0 +1,95 @@
+# Praman Expert Desk -- Rulebook v1
+#
+# APPROVED at STOP 2. capital_allocated_inr is the user's own confirmed figure, not a suggestion.
+# Every other numeric limit was proposed by Claude with a one-line reason, reviewed, and approved
+# or adjusted by the user before this file was committed. This is the version every Desk decision
+# is checked against -- see rulebook/ACTIVE and desk/lib/rulebook.py.
+version: v1
+dated: "2026-09-27"
+
+risk:
+  # CONFIRMED: the user's own real allocated trading capital.
+  capital_allocated_inr: 500000
+  # APPROVED: a standard, conservative per-trade risk convention for discretionary equity trading.
+  risk_per_trade_pct: 1.0
+  # APPROVED: caps aggregate STRESS-loss exposure across all open positions at ~5x one trade's
+  # normal risk -- measured on stress loss (the worse of planned loss / historical gap / floor),
+  # not on planned loss alone, so a cluster of positions can't quietly stack tail risk.
+  max_open_risk_pct: 5.0
+  # APPROVED: a standard single-position concentration cap.
+  max_per_stock_pct: 10.0
+  # APPROVED: a four-sector minimum-diversification floor.
+  max_per_sector_pct: 25.0
+  # APPROVED: pause new entries for the rest of the month once realized drawdown crosses this --
+  # a common discretionary-trading circuit breaker.
+  monthly_drawdown_brake_pct: 6.0
+  # APPROVED (schema addition at STOP 2): stress loss floor as a % of position VALUE (entry x
+  # quantity), replacing what would otherwise be a fixed rupee floor -- a fixed rupee number means
+  # nothing across different capital sizes and would be a hardcoded constant in code, which the
+  # Desk constitution forbids.
+  stress_loss_floor_pct_of_position: 10.0
+
+liquidity:
+  # APPROVED: keeps a single order from being a material fraction of a stock's own daily volume.
+  max_order_pct_of_adv: 1.0
+  # APPROVED: assumes only a quarter of average daily volume is actually available under stress --
+  # deliberately conservative, not an empirical estimate.
+  stressed_volume_factor: 0.25
+  # APPROVED (schema addition at STOP 2): you cannot BE the entire stressed-volume pool without
+  # moving the market against yourself -- days-to-exit assumes you only take this share of the
+  # already-stressed daily volume. days_to_exit = order_value / (participation_pct/100 *
+  # stressed_volume_factor * avg_daily_turnover).
+  participation_pct_of_stressed_volume: 10.0
+  # APPROVED: if unwinding at stressed volume would take longer than this, flag the liquidity gate.
+  max_days_to_exit_stressed: 3
+
+surveillance_exclusions:
+  # APPROVED: BE/BZ (trade-for-trade) names are exactly the surveillance-affected, thin-liquidity
+  # stocks Praman's own research repeatedly found least reliable -- excluded outright.
+  exclude_trade_for_trade_series: true
+  # APPROVED: capital-preservation-first default -- ANY ASM stage vetoes a new entry. The schema
+  # (desk/lib/rulebook.py) rejects any non-null value at load time -- stage-ordering logic does not
+  # exist in Phase 1, so this cannot be loosened until a later phase builds it.
+  max_asm_stage: null
+  # APPROVED: same reasoning as ASM -- excluded outright.
+  exclude_gsm: true
+
+behavioural_brakes:
+  # APPROVED: overriding a behavioural veto should be rare and deliberate, not routine.
+  max_g7_overrides_per_month: 2
+  # APPROVED: three consecutive losing trades triggers a pause for reflection -- a common
+  # discretionary-trading discipline, not derived from this project's own data.
+  consecutive_loss_brake_count: 3
+  # APPROVED: one trading year -- long enough to capture a real tail gap without being dominated
+  # by one recent outlier.
+  stress_loss_lookback_sessions: 252
+
+inference_rules:
+  # Empty in Phase 1 on purpose: no inference rules are defined yet (later phases add specific,
+  # named rules here). Phase 1 only needs this registry to exist so Inference's constructor has
+  # something real to validate a rule_id against, not that it be populated.
+  thresholds: {}
+
+required_evidence_dimensions:
+  # APPROVED: every dimension Phase 1 can actually compute. Deliberately excludes fundamentals,
+  # bid-ask spread, and circuit band -- those are UNKNOWN by design in Phase 1 (item 5), and
+  # requiring an always-UNKNOWN dimension would make G2 fail on every single assessment.
+  required: [price, volume, delivery, disclosures, surveillance, sector]
+
+paper_to_live_criteria:
+  # APPROVED at STOP 2, "ALL of" -- checked together, not any subset (see
+  # desk/lib/rulebook.py's PaperToLiveCriteria docstring).
+  #
+  # A statistically meaningful minimum sample -- still small, but enough to see a real calibration
+  # and behavioural pattern before considering live use.
+  min_paper_trades: 30
+  # At least one quarter of paper-trading history.
+  min_paper_trade_days: 90
+  # Zero tolerance for acting against the rulebook WITHOUT a logged G7 override during
+  # qualification (a logged override itself is separately capped by max_g7_overrides_per_month).
+  max_unlogged_rule_violations: 0
+  # Zero tolerance for exceeding the open-risk budget during qualification.
+  max_open_risk_budget_breaches: 0
+  # Every closed paper trade must show it exited on a real, named trigger (stop/target/thesis
+  # invalidation/time), not on an untracked, undocumented decision.
+  require_exit_trigger_on_every_closed_trade: true
