@@ -1,0 +1,98 @@
+# Praman Expert Desk -- Cost model, NSE equity delivery trading
+#
+# Six of the eight rate blocks below are CONFIRMED against the user's own broker (Zerodha)'s
+# official charges page (https://zerodha.com/charges/), checked 2026-09-27: brokerage,
+# depository_charges, securities_transaction_tax, exchange_transaction_charges, sebi_turnover_fee,
+# stamp_duty. `gst` (a statutory rate, not a Zerodha-specific figure) stays TO_VERIFY.
+# `slippage_by_liquidity_bucket` is a modelling ASSUMPTION, not a published rate -- see its own
+# section below.
+#
+# NSE's investor-protection-fund charge (~Rs 0.01 per crore of turnover) is negligible at any
+# realistic Desk position size and is deliberately OMITTED from this cost model rather than carried
+# as a near-zero line item.
+version: v1
+dated: "2026-09-27"
+
+securities_transaction_tax:
+  # CONFIRMED: delivery equity STT is charged on BOTH the buy and the sell leg (unlike intraday,
+  # which is sell-side only) -- this rate applies per leg, not once per round trip.
+  rate: 0.1
+  unit: pct_of_turnover_per_leg
+  source: "Zerodha official charges page (https://zerodha.com/charges/), checked 2026-09-27"
+  as_of_date: "2026-09-27"
+  status: CONFIRMED
+
+stamp_duty:
+  # CONFIRMED: buy-side only.
+  rate: 0.015
+  unit: pct_of_buy_value_only
+  source: "Zerodha official charges page (https://zerodha.com/charges/), checked 2026-09-27"
+  as_of_date: "2026-09-27"
+  status: CONFIRMED
+
+exchange_transaction_charges:
+  # CONFIRMED. CORRECTION: an earlier draft of this file had 0.00297%; the current published NSE
+  # rate, confirmed against Zerodha's charges page, is 0.00307% per leg.
+  rate: 0.00307
+  unit: pct_of_turnover_per_leg
+  source: "Zerodha official charges page (https://zerodha.com/charges/), checked 2026-09-27 -- NSE equity delivery transaction charge"
+  as_of_date: "2026-09-27"
+  status: CONFIRMED
+
+sebi_turnover_fee:
+  # CONFIRMED: Rs 10 per crore = 0.0001%, per leg.
+  rate: 0.0001
+  unit: pct_of_turnover_per_leg
+  source: "Zerodha official charges page (https://zerodha.com/charges/), checked 2026-09-27 -- SEBI turnover fee, Rs 10/crore"
+  as_of_date: "2026-09-27"
+  status: CONFIRMED
+
+gst:
+  # TO_VERIFY: a statutory rate, not a broker-specific figure, so it was not part of the Zerodha
+  # charges-page confirmation pass. Base is (brokerage + exchange transaction charges + SEBI fee)
+  # ONLY -- explicitly NOT applied to STT, stamp duty, or the depository (DP) charge.
+  rate: 18.0
+  unit: pct_of_brokerage_plus_exchange_charges_plus_sebi_fee
+  source: "Standard GST rate applied to brokerage + exchange transaction charges + SEBI fee, not to principal, STT, stamp duty, or the DP charge"
+  as_of_date: "2026-09-27"
+  status: TO_VERIFY
+
+depository_charges:
+  # CONFIRMED. Rs 15.34 = Rs 3.50 CDSL + Rs 9.50 Zerodha + Rs 2.34 GST, INCLUSIVE of GST, charged
+  # once per scrip per sell day irrespective of quantity. Do NOT apply the `gst` block to this
+  # charge again -- see desk/risk/officer.py:round_trip_cost_inr, which already excludes it from
+  # the GST base, and tests/test_desk_cost_round_trip.py, which checks this explicitly.
+  rate: 15.34
+  unit: flat_inr_per_scrip_per_sell_transaction
+  source: "Zerodha official charges page (https://zerodha.com/charges/), checked 2026-09-27 -- CDSL Rs 3.50 + Zerodha Rs 9.50 + GST Rs 2.34, GST-inclusive"
+  as_of_date: "2026-09-27"
+  status: CONFIRMED
+
+brokerage:
+  # CONFIRMED: Zerodha charges Rs 0 per order for equity delivery.
+  rate: 0.0
+  unit: flat_inr_per_order
+  source: "Zerodha official charges page (https://zerodha.com/charges/), checked 2026-09-27 -- Rs 0 brokerage for equity delivery"
+  as_of_date: "2026-09-27"
+  status: CONFIRMED
+
+slippage_by_liquidity_bucket:
+  # ASSUMPTION, not TO_VERIFY: there is no published rate to check here at all -- these are rule-
+  # of-thumb modelling estimates for retail-sized order slippage by liquidity bucket. They can
+  # never graduate to CONFIRMED by looking anything up; they can only be replaced once enough real
+  # paper-trade fills exist to measure observed slippage from (Desk phase 9, the evaluator).
+  - liquidity_bucket: high
+    slippage_pct: 0.05
+    source: "Modelling ASSUMPTION for retail-sized orders in highly liquid large-cap NSE equities -- not a published or confirmed rate"
+    as_of_date: "2026-09-27"
+    status: ASSUMPTION
+  - liquidity_bucket: medium
+    slippage_pct: 0.15
+    source: "Modelling ASSUMPTION for retail-sized orders in mid-liquidity NSE equities -- not a published or confirmed rate"
+    as_of_date: "2026-09-27"
+    status: ASSUMPTION
+  - liquidity_bucket: low
+    slippage_pct: 0.40
+    source: "Modelling ASSUMPTION for retail-sized orders in thin/illiquid NSE equities -- not a published or confirmed rate"
+    as_of_date: "2026-09-27"
+    status: ASSUMPTION
