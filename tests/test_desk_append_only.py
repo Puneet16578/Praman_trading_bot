@@ -16,8 +16,8 @@ _SAMPLE_INSERT = {
     "decisions": (
         "INSERT INTO decisions (symbol, as_of_date, evidence_bundle_hash, gate_results, state, "
         "rulebook_version, rulebook_hash, cost_config_version, cost_config_hash, code_commit, "
-        "praman_watermark, desk_watermark, recorded_at) VALUES "
-        "('X','2026-01-01','h','{}','WATCH','v1','rh','v1','ch','sha','2026-01-01T00:00:00+00:00','2026-01-01T00:00:00+00:00','2026-01-01T00:00:00+00:00')"
+        "praman_watermark, desk_watermark, as_of_is_live, recorded_at) VALUES "
+        "('X','2026-01-01','h','{}','WATCH','v1','rh','v1','ch','sha','2026-01-01T00:00:00+00:00','2026-01-01T00:00:00+00:00',1,'2026-01-01T00:00:00+00:00')"
     ),
     "theses": (
         "INSERT INTO theses (symbol, evidence_cutoff, hypotheses, drivers, horizon, "

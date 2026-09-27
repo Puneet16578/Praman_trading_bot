@@ -34,8 +34,7 @@ class StressLossExceedsPlannedLossTest(unittest.TestCase):
             rulebook = make_test_rulebook()
             entry, stop, quantity = 750.0, 749.5, 10  # a 0.5-rupee stop -- planned loss is tiny
             planned = planned_loss_inr(entry, stop, quantity, costs)
-            result = compute_stress_loss(conn, "AXISBANK", "2021-10-27", entry, stop, quantity,
-                                          costs, rulebook, stress_loss_floor_inr=1000.0)
+            result = compute_stress_loss(conn, "AXISBANK", "2021-10-27", entry, stop, quantity, costs, rulebook)
             self.assertLess(planned, result.stress_loss_inr)
             self.assertGreaterEqual(result.stress_loss_inr, result.floor_component_inr)
         finally:

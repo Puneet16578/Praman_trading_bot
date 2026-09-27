@@ -6,21 +6,46 @@ file+git loader at all.
 """
 from __future__ import annotations
 
+from src.bitemporal.schema import BITEMPORAL_TABLES
+
 from desk.lib.costs import CostConfig
 from desk.lib.rulebook import DeskRulebook
+from desk.lib.store import PRAMAN_FACT_TABLES
+
+
+def copy_symbol_rows(prod_conn, scratch_conn, symbol: str) -> None:
+    """Copies one real symbol's rows, across every Praman fact table, from a live/production
+    connection into a fresh scratch Praman-schema store -- so tests get REAL, working data
+    (build_symbol_history, get_disclosure_window, etc. all behave normally) without needing a full
+    multi-GB store copy."""
+    for table in PRAMAN_FACT_TABLES:
+        cols = sorted(BITEMPORAL_TABLES[table].columns - {"row_id"})
+        rows = prod_conn.execute(f"SELECT {', '.join(cols)} FROM {table} WHERE symbol = ?", (symbol,)).fetchall()
+        if not rows:
+            continue
+        placeholders = ", ".join("?" for _ in cols)
+        scratch_conn.executemany(
+            f"INSERT INTO {table} ({', '.join(cols)}) VALUES ({placeholders})",
+            [tuple(r[c] for c in cols) for r in rows],
+        )
+    scratch_conn.commit()
 
 
 def make_test_rulebook(**overrides) -> DeskRulebook:
     base = {
         "version": "test", "dated": "2026-01-01",
         "risk": {"capital_allocated_inr": 500000, "risk_per_trade_pct": 1, "max_open_risk_pct": 5,
-                  "max_per_stock_pct": 10, "max_per_sector_pct": 25, "monthly_drawdown_brake_pct": 6},
-        "liquidity": {"max_order_pct_of_adv": 1, "stressed_volume_factor": 0.25, "max_days_to_exit_stressed": 3},
+                  "max_per_stock_pct": 10, "max_per_sector_pct": 25, "monthly_drawdown_brake_pct": 6,
+                  "stress_loss_floor_pct_of_position": 10},
+        "liquidity": {"max_order_pct_of_adv": 1, "stressed_volume_factor": 0.25,
+                       "participation_pct_of_stressed_volume": 10, "max_days_to_exit_stressed": 3},
         "surveillance_exclusions": {"exclude_trade_for_trade_series": True, "max_asm_stage": None, "exclude_gsm": True},
         "behavioural_brakes": {"max_g7_overrides_per_month": 2, "consecutive_loss_brake_count": 3, "stress_loss_lookback_sessions": 252},
         "inference_rules": {"thresholds": {}},
         "required_evidence_dimensions": {"required": ["price", "volume", "delivery", "disclosures", "surveillance", "sector"]},
-        "paper_to_live_criteria": {"min_paper_trades": 30, "min_paper_trade_days": 90, "max_rule_violations": 0},
+        "paper_to_live_criteria": {"min_paper_trades": 30, "min_paper_trade_days": 90,
+                                     "max_unlogged_rule_violations": 0, "max_open_risk_budget_breaches": 0,
+                                     "require_exit_trigger_on_every_closed_trade": True},
     }
     base.update(overrides)
     return DeskRulebook.model_validate(base)

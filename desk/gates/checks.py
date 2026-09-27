@@ -99,12 +99,10 @@ def g4_surveillance(conn, symbol: str, as_of_date: str, bundle: EvidenceBundle, 
             reasons.append(f"{symbol} trades in series {sorted(trade_for_trade)} (trade-for-trade), excluded by the rulebook.")
 
     asm_stage, gsm_stage = ev.claim.cited_value
-    if rulebook.surveillance_exclusions.max_asm_stage is not None:
-        raise NotImplementedError(
-            "Phase 1 only implements max_asm_stage=null (any ASM stage vetoes). A rulebook setting "
-            "a specific tolerated stage needs stage-ordering logic not built yet -- propose that "
-            "explicitly before setting max_asm_stage to a non-null value."
-        )
+    # max_asm_stage is validated at rulebook LOAD time now (desk/lib/rulebook.py's
+    # SurveillanceExclusions field_validator rejects any non-null value outright) -- a rulebook
+    # object reaching this function is therefore guaranteed to have max_asm_stage=None, so the
+    # only real rule here is "any ASM stage vetoes."
     if asm_stage is not None:
         reasons.append(f"{symbol} is under ASM (stage {asm_stage}) as of {as_of_date}; rulebook tolerates no ASM stage.")
     if rulebook.surveillance_exclusions.exclude_gsm and gsm_stage is not None:
@@ -116,22 +114,34 @@ def g4_surveillance(conn, symbol: str, as_of_date: str, bundle: EvidenceBundle, 
 
 
 def g5_liquidity(order_value_inr: float | None, avg_daily_turnover_inr: float | None,
-                  order_qty: float | None, avg_daily_volume_shares: float | None,
                   rulebook: DeskRulebook) -> GateResult:
-    if order_value_inr is None or avg_daily_turnover_inr is None or avg_daily_volume_shares is None or order_qty is None:
+    """days_to_exit = order_value / (participation_pct/100 * stressed_volume_factor *
+    avg_daily_turnover) -- you cannot BE the entire stressed-volume pool without moving the market
+    against yourself, so days-to-exit assumes you only take `participation_pct` of the already-
+    stressed daily turnover, not all of it. (Previously computed from raw share volume alone,
+    without a participation assumption -- for an order already capped at ~1% of ADV by the check
+    above, that made this specific cap unable to ever bind; participation_pct closes that gap.)
+    """
+    if order_value_inr is None or avg_daily_turnover_inr is None:
         return GateResult("G5", UNKNOWN, ("No candidate order size to check -- supply a thesis with a planned entry/stop.",))
-    if avg_daily_turnover_inr <= 0 or avg_daily_volume_shares <= 0:
-        return GateResult("G5", UNKNOWN, ("Average daily turnover/volume is not computable (insufficient trailing history).",))
+    if avg_daily_turnover_inr <= 0:
+        return GateResult("G5", UNKNOWN, ("Average daily turnover is not computable (insufficient trailing history).",))
 
     reasons = []
     order_pct_of_adv = 100.0 * order_value_inr / avg_daily_turnover_inr
     if order_pct_of_adv > rulebook.liquidity.max_order_pct_of_adv:
         reasons.append(f"Order is {order_pct_of_adv:.2f}% of average daily turnover, exceeding the {rulebook.liquidity.max_order_pct_of_adv}% cap.")
 
-    stressed_available = avg_daily_volume_shares * rulebook.liquidity.stressed_volume_factor
-    days_to_exit = order_qty / stressed_available if stressed_available > 0 else float("inf")
+    achievable_daily_turnover = (
+        rulebook.liquidity.participation_pct_of_stressed_volume / 100.0
+        * rulebook.liquidity.stressed_volume_factor
+        * avg_daily_turnover_inr
+    )
+    days_to_exit = order_value_inr / achievable_daily_turnover if achievable_daily_turnover > 0 else float("inf")
     if days_to_exit > rulebook.liquidity.max_days_to_exit_stressed:
-        reasons.append(f"Exiting under stressed volume would take {days_to_exit:.1f} sessions, exceeding the {rulebook.liquidity.max_days_to_exit_stressed}-session cap.")
+        reasons.append(f"Exiting under stressed volume at {rulebook.liquidity.participation_pct_of_stressed_volume}% "
+                        f"participation would take {days_to_exit:.1f} sessions, exceeding the "
+                        f"{rulebook.liquidity.max_days_to_exit_stressed}-session cap.")
 
     if reasons:
         return GateResult("G5", FAIL, tuple(reasons))

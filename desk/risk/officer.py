@@ -92,15 +92,20 @@ class StressLossResult:
 
 
 def compute_stress_loss(conn, symbol: str, as_of_date: str, entry: float, stop: float, quantity: float,
-                         costs: CostConfig, rulebook: DeskRulebook, stress_loss_floor_inr: float) -> StressLossResult:
+                         costs: CostConfig, rulebook: DeskRulebook) -> StressLossResult:
+    """Floor is now `stress_loss_floor_pct_of_position` (rulebook), not a hardcoded rupee constant
+    -- a fixed rupee floor means nothing across different capital sizes, and hardcoding it in code
+    is exactly what the constitution's "gates, not scores; nothing invented" discipline forbids."""
     planned = planned_loss_inr(entry, stop, quantity, costs)
     gap_loss = worst_overnight_gap_loss_inr(conn, symbol, as_of_date, quantity, rulebook.behavioural_brakes.stress_loss_lookback_sessions)
-    components = [planned, stress_loss_floor_inr] + ([gap_loss] if gap_loss is not None else [])
+    position_value = entry * quantity
+    floor = position_value * rulebook.risk.stress_loss_floor_pct_of_position / 100.0
+    components = [planned, floor] + ([gap_loss] if gap_loss is not None else [])
     return StressLossResult(
         stress_loss_inr=max(components),
         planned_loss_component_inr=planned,
         worst_gap_component_inr=gap_loss,
-        floor_component_inr=stress_loss_floor_inr,
+        floor_component_inr=floor,
     )
 
 

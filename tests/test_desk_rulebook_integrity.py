@@ -146,6 +146,18 @@ class SchemaValidationTest(unittest.TestCase):
         with self.assertRaises(ValidationError):
             DeskRulebook.model_validate(raw)
 
+    def test_non_null_max_asm_stage_is_rejected_at_load_time(self):
+        """Fixed per review: previously a non-null max_asm_stage would only fail with a
+        NotImplementedError raised MID-ASSESSMENT (inside g4_surveillance). Now the schema itself
+        rejects it at LOAD time, before any assessment can even start."""
+        from pydantic import ValidationError
+        from tests.desk_fixtures import make_test_rulebook
+
+        with self.assertRaises(ValidationError):
+            make_test_rulebook(surveillance_exclusions={
+                "exclude_trade_for_trade_series": True, "max_asm_stage": "ASM_ST I", "exclude_gsm": True,
+            })
+
     def test_missing_required_section_fails_schema_validation(self):
         import yaml
         from pydantic import ValidationError

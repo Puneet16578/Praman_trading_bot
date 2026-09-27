@@ -100,6 +100,30 @@ class DecisionStateRealDataTest(unittest.TestCase):
         self.assertEqual(result.state, "INSUFFICIENT")
         self.assertEqual(result.gate_results["G1"].result, "FAIL")
 
+
+class AllGatesRunEveryTimeTest(DecisionStateRealDataTest):
+    """Instruction 4: no short-circuit -- every gate is recorded on every assessment, even when an
+    earlier one in priority order already determines the final state."""
+
+    def test_insufficient_case_still_records_all_eight_gates(self):
+        result = run_assessment(self.praman_conn, self.desk_conn, symbol="THISSYMBOLDOESNOTEXIST",
+                                 as_of_date="2026-01-05", sector=None, thesis=None,
+                                 rulebook=self.rulebook, costs=self.costs)
+        self.assertEqual(result.state, "INSUFFICIENT")
+        self.assertEqual(set(result.gate_results.keys()), {"G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8"})
+
+    def test_veto_case_still_records_g1_through_g3_and_g7_g8(self):
+        """CAPTRUST is VETOed by G4 -- confirms G1-G3 and G7-G8 are ALSO recorded, not skipped just
+        because G4 already determines VETO. G5/G6 are UNKNOWN here (no thesis), which is itself a
+        recorded result, not an absence."""
+        result = run_assessment(self.praman_conn, self.desk_conn, symbol="CAPTRUST", as_of_date="2026-08-05",
+                                 sector="Test", thesis=None, rulebook=self.rulebook, costs=self.costs)
+        self.assertEqual(result.state, "VETO")
+        self.assertEqual(set(result.gate_results.keys()), {"G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8"})
+        self.assertEqual(result.gate_results["G1"].result, "PASS")
+        self.assertEqual(result.gate_results["G3"].result, "PASS")
+        self.assertEqual(result.gate_results["G8"].result, "FAIL")  # no thesis supplied -- still evaluated and recorded
+
     def test_lapsed_thesis_horizon_with_no_trade_is_expired(self):
         lapsed = dict(COMPLETE_AXISBANK_THESIS)
         lapsed["horizon"] = "2021-10-28"  # the very next day -- as_of_date below is well past it

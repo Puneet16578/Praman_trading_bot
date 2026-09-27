@@ -44,6 +44,13 @@ DECISIONS = DeskTable(
             model_version TEXT,                -- NULL in Phase 1 (no LLM)
             prompt_version TEXT,               -- NULL in Phase 1
             override_reason TEXT,              -- non-NULL only for a logged G7 override
+            position_size REAL,                -- PERSISTED at assessment time -- `paper open` reads
+            stress_loss_inr REAL,              -- this, and stop/target on the linked thesis, and
+                                                -- NEVER re-runs the assessment (integrity fix b)
+            as_of_is_live INTEGER NOT NULL,    -- 1 if as_of_date was the live/latest available
+                                                -- trading day at ASSESSMENT time (0 = an explicit
+                                                -- historical --as-of -- such a decision can never
+                                                -- be paper-opened; that would be backtesting)
             recorded_at TEXT NOT NULL
         )
     """,

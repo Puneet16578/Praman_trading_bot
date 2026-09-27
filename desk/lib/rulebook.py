@@ -12,7 +12,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from .versioned_config import (
     VersionedConfigError, resolve_active_version, require_git_clean_and_tracked, sha256_lf_normalized,
@@ -29,11 +29,24 @@ class RiskLimits(BaseModel):
     max_per_stock_pct: float = Field(..., gt=0, le=100)
     max_per_sector_pct: float = Field(..., gt=0, le=100)
     monthly_drawdown_brake_pct: float = Field(..., gt=0, le=100)
+    stress_loss_floor_pct_of_position: float = Field(
+        ..., gt=0, le=100,
+        description="Stress loss floor as a % of position VALUE (entry x quantity), replacing a "
+                    "fixed rupee floor -- a fixed rupee number means nothing across capital sizes "
+                    "and was a hardcoded constant in code, which the constitution forbids.",
+    )
 
 
 class LiquidityLimits(BaseModel):
     max_order_pct_of_adv: float = Field(..., gt=0, le=100, description="Order value as a share of average daily turnover")
     stressed_volume_factor: float = Field(..., gt=0, le=1, description="Assumed fraction of ADV actually available under stress")
+    participation_pct_of_stressed_volume: float = Field(
+        ..., gt=0, le=100,
+        description="You cannot BE the entire stressed-volume pool without moving the market "
+                    "against yourself -- days-to-exit assumes you only take this share of the "
+                    "already-stressed daily volume. days_to_exit = order_value / "
+                    "(participation_pct/100 * stressed_volume_factor * avg_daily_turnover).",
+    )
     max_days_to_exit_stressed: float = Field(..., gt=0)
 
 
@@ -41,6 +54,18 @@ class SurveillanceExclusions(BaseModel):
     exclude_trade_for_trade_series: bool
     max_asm_stage: str | None = Field(None, description="Highest tolerated ASM stage; null means any ASM stage vetoes")
     exclude_gsm: bool
+
+    @field_validator("max_asm_stage")
+    @classmethod
+    def _reject_non_null_stage_for_now(cls, value: str | None) -> str | None:
+        if value is not None:
+            raise ValueError(
+                f"max_asm_stage={value!r} is not supported yet -- stage-ordering logic (deciding "
+                "whether a given ASM stage is 'within' a tolerated ceiling) does not exist in "
+                "Phase 1. Rejected at LOAD time, not deferred to a NotImplementedError mid-"
+                "assessment. Only null (any ASM stage vetoes) is accepted until that logic is built."
+            )
+        return value
 
 
 class BehaviouralBrakes(BaseModel):
@@ -58,9 +83,15 @@ class RequiredEvidenceDimensions(BaseModel):
 
 
 class PaperToLiveCriteria(BaseModel):
+    """ALL of these must hold before live use per the rulebook's own approved criteria -- checked
+    together, not any subset. A "rule violation" is acting against the rulebook WITHOUT a logged
+    override; a logged G7 override is a separate, explicitly-permitted event and is not counted
+    here (see behavioural_brakes.max_g7_overrides_per_month for that limit instead)."""
     min_paper_trades: int = Field(..., ge=1)
     min_paper_trade_days: int = Field(..., ge=1)
-    max_rule_violations: int = Field(..., ge=0)
+    max_unlogged_rule_violations: int = Field(..., ge=0)
+    max_open_risk_budget_breaches: int = Field(..., ge=0)
+    require_exit_trigger_on_every_closed_trade: bool
 
 
 class DeskRulebook(BaseModel):

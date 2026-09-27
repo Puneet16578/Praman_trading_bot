@@ -17,15 +17,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.bitemporal.connection import get_connection, init_db
-from src.bitemporal.schema import BITEMPORAL_TABLES
 
 from desk.evidence.bundle import assemble_evidence_bundle
 from desk.gates.engine import run_assessment
 from desk.journal import store as jstore
 from desk.lib.connection import get_desk_connection
-from desk.lib.store import PRAMAN_FACT_TABLES, ProductionStoreMissingError, get_live_connection, max_recorded_at
+from desk.lib.store import ProductionStoreMissingError, get_live_connection, max_recorded_at
 
-from tests.desk_fixtures import COMPLETE_AXISBANK_THESIS, make_test_costs, make_test_rulebook
+from tests.desk_fixtures import COMPLETE_AXISBANK_THESIS, copy_symbol_rows, make_test_costs, make_test_rulebook
 
 _PRODUCTION_STORE_EXISTS = True
 try:
@@ -37,20 +36,6 @@ SCRATCH_PRAMAN_DB = Path(__file__).resolve().parents[1] / "data" / "desk" / "_te
 SCRATCH_DESK_DB = Path(__file__).resolve().parents[1] / "data" / "desk" / "_test_replay_desk.sqlite"
 
 
-def _copy_symbol_rows(prod_conn, scratch_conn, symbol: str) -> None:
-    for table in PRAMAN_FACT_TABLES:
-        cols = sorted(BITEMPORAL_TABLES[table].columns - {"row_id"})
-        rows = prod_conn.execute(f"SELECT {', '.join(cols)} FROM {table} WHERE symbol = ?", (symbol,)).fetchall()
-        if not rows:
-            continue
-        placeholders = ", ".join("?" for _ in cols)
-        scratch_conn.executemany(
-            f"INSERT INTO {table} ({', '.join(cols)}) VALUES ({placeholders})",
-            [tuple(r[c] for c in cols) for r in rows],
-        )
-    scratch_conn.commit()
-
-
 @unittest.skipUnless(_PRODUCTION_STORE_EXISTS, "Real Praman production store not found.")
 class ReplayMatchesOriginalDecisionTest(unittest.TestCase):
     def setUp(self):
@@ -60,7 +45,7 @@ class ReplayMatchesOriginalDecisionTest(unittest.TestCase):
         prod = get_live_connection()
         self.scratch_praman = get_connection(str(SCRATCH_PRAMAN_DB))
         init_db(self.scratch_praman)
-        _copy_symbol_rows(prod, self.scratch_praman, "AXISBANK")
+        copy_symbol_rows(prod, self.scratch_praman, "AXISBANK")
         prod.close()
         self.desk_conn = get_desk_connection(SCRATCH_DESK_DB)
 
@@ -91,6 +76,8 @@ class ReplayMatchesOriginalDecisionTest(unittest.TestCase):
             cost_config_version="test", cost_config_hash="test-cost-hash",
             code_commit=_git_head(), praman_watermark=praman_watermark,
             desk_watermark_value=jstore.desk_watermark(self.desk_conn),
+            as_of_is_live=result.as_of_is_live, position_size=result.position_size,
+            stress_loss_inr=result.stress_loss.stress_loss_inr if result.stress_loss else None,
         )
 
         # Append a row that arrives AFTER the decision -- a new bhavcopy row for the SAME symbol on

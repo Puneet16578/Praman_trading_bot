@@ -69,6 +69,8 @@ def cmd_assess(args):
         cost_config_version=costs.version_file, cost_config_hash=costs.sha256,
         code_commit=current_git_head(), praman_watermark=max_recorded_at(praman_conn),
         desk_watermark_value=jstore.desk_watermark(desk_conn),
+        as_of_is_live=result.as_of_is_live, position_size=result.position_size,
+        stress_loss_inr=result.stress_loss.stress_loss_inr if result.stress_loss else None,
     )
 
     print(f"decision_id={decision_id} state={result.state}")
@@ -90,47 +92,37 @@ def cmd_status(args):
     desk_conn = get_desk_connection()
     rulebook = load_active_rulebook()
     from desk.gates.engine import _open_risk_used_inr
+    from desk.ingestion_health import ingestion_health_line
 
     open_risk = _open_risk_used_inr(desk_conn)
     budget = rulebook.rulebook.risk.capital_allocated_inr * rulebook.rulebook.risk.max_open_risk_pct / 100.0
     print(f"Open risk used: {open_risk:.2f} / {budget:.2f}")
     print(f"Open positions: {jstore.open_trade_ids(desk_conn)}")
+    print(ingestion_health_line())
     desk_conn.close()
 
 
 def cmd_paper_open(args):
-    """Simplified in Phase 1: re-runs the assessment at the decision's own inputs to recover the
-    position size that was computed at decision time, rather than persisting it on the decision
-    record itself (a real gap, named in docs/desk/phase1.md, not hidden) -- fine for Phase 1 since
-    nothing about the Praman inputs can have changed between assess and open on the same day."""
-    from desk.lib.costs import load_active_cost_config
-    from desk.lib.rulebook import load_active_rulebook
-    from desk.paper.execution import fill_entry
+    """Executes the ALREADY-APPROVED decision exactly as persisted -- never re-assesses (integrity
+    fix b). See desk/paper/open.py for the two hindsight guards (integrity fix a)."""
+    from desk.paper.open import PaperOpenRefused, PendingOpen, open_approved_decision
 
     praman_conn = get_live_connection()
     desk_conn = get_desk_connection()
-    decision = jstore.get_decision(desk_conn, args.decision_id)
-    if decision is None or decision["state"] != "ELIGIBLE":
-        print(f"decision {args.decision_id} is not ELIGIBLE -- refusing to open a paper trade.", file=sys.stderr)
+    try:
+        result = open_approved_decision(praman_conn, desk_conn, args.decision_id)
+    except PaperOpenRefused as exc:
+        print(f"REFUSED: {exc}", file=sys.stderr)
         raise SystemExit(1)
-    thesis = jstore.get_thesis(desk_conn, decision["thesis_id"])
-    thesis["thesis_id"] = decision["thesis_id"]
-    rulebook = load_active_rulebook()
-    costs = load_active_cost_config()
-    result = run_assessment(praman_conn, desk_conn, symbol=decision["symbol"], as_of_date=decision["as_of_date"],
-                             sector=thesis.get("sector"), thesis=thesis, rulebook=rulebook.rulebook, costs=costs.costs)
+    finally:
+        praman_conn.close()
+        desk_conn.close()
 
-    fill = fill_entry(praman_conn, decision["symbol"], decision["as_of_date"], slippage_pct=0.0, as_of=max_recorded_at(praman_conn))
-    if fill is None:
-        print("No next session available yet to fill entry.", file=sys.stderr)
-        raise SystemExit(1)
-    trade_id = f"{decision['symbol']}:{decision['thesis_id']}"
-    jstore.open_paper_trade(desk_conn, trade_id=trade_id, decision_id=args.decision_id,
-                             event_date=fill.event_date, price=fill.price, quantity=result.position_size or 0.0,
-                             stop=thesis["planned_stop"], target=thesis["planned_target"])
-    print(f"opened {trade_id} at {fill.price} on {fill.event_date}, quantity={result.position_size}")
-    praman_conn.close()
-    desk_conn.close()
+    if isinstance(result, PendingOpen):
+        print(f"PENDING: no session with data yet after {result.not_before_date} -- "
+              f"re-run `desk paper open {args.decision_id}` once the next session is ingested.")
+    else:
+        print(f"opened at {result.price} on {result.event_date}")
 
 
 def cmd_paper_close(args):

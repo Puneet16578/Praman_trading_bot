@@ -1,7 +1,13 @@
-"""Orchestrates G1-G8 into a single decision state, per the exact priority order specified: EXPIRED
-is checked first (a lapsed thesis with no entry is reported regardless of what the gates would say);
-then G1/G2 (INSUFFICIENT); G3 (RESEARCH_REQUIRED); G4-G6 (VETO, final); G7 (VETO unless a logged
-override); G8 (WATCH if incomplete); otherwise ELIGIBLE.
+"""Orchestrates G1-G8. EVERY gate is evaluated on EVERY assessment -- no short-circuiting -- and the
+final state is DERIVED from the full set of eight results afterward, by the same priority order as
+before (G1/G2 -> INSUFFICIENT; G3 -> RESEARCH_REQUIRED; G4-G6 -> VETO, final; G7 -> VETO unless a
+logged override; G8 -> WATCH if incomplete; otherwise ELIGIBLE). This is a deliberate change from an
+earlier version that stopped at the first failing gate: with short-circuiting, a trade-for-trade
+stock with an UNKNOWN delivery dimension showed INSUFFICIENT (from G2) with no record that G4 would
+ALSO have vetoed it -- silently hiding information later phases' shadow policies (and a human
+reviewing the decision record) need. EXPIRED remains a distinct pre-check: a thesis whose horizon has
+already lapsed with no trade ever opened is reported as EXPIRED without running the gate suite at
+all, since there is no live decision left to evaluate.
 """
 from __future__ import annotations
 import json
@@ -22,12 +28,6 @@ INSUFFICIENT, RESEARCH_REQUIRED, WATCH, ELIGIBLE, VETO, EXPIRED = (
     "INSUFFICIENT", "RESEARCH_REQUIRED", "WATCH", "ELIGIBLE", "VETO", "EXPIRED",
 )
 
-STRESS_LOSS_FLOOR_INR = 1000.0  # PROPOSED elsewhere would live in the rulebook; kept as a code
-                                 # constant here since item 2 lists "a rulebook floor" but the
-                                 # rulebook schema (desk/lib/rulebook.py) does not yet have a
-                                 # dedicated field for it -- flagged in the phase-1 report as a
-                                 # real gap to fold into the rulebook schema in v2, not hidden.
-
 ADV_LOOKBACK_SESSIONS = 60
 
 
@@ -38,6 +38,7 @@ class AssessmentResult:
     evidence_bundle: EvidenceBundle | None
     position_size: float | None = None
     stress_loss: StressLossResult | None = None
+    as_of_is_live: bool = True
 
     def gate_results_json(self) -> dict:
         return {g: {"result": r.result, "reasons": list(r.reasons)} for g, r in self.gate_results.items()}
@@ -93,29 +94,46 @@ def _capital_at_stock_and_sector(desk_conn, symbol: str, sector: str | None, sym
     return at_stock, at_sector
 
 
+def _derive_state(gate_results: dict[str, GateResult], g7_override_reason: str | None) -> str:
+    """The priority mapping, applied to an already-COMPLETE set of eight gate results -- this
+    function does not run anything, it only reads results computed elsewhere."""
+    if gate_results["G1"].result == FAIL or gate_results["G2"].result == FAIL:
+        return INSUFFICIENT
+    if gate_results["G3"].result == FAIL:
+        return RESEARCH_REQUIRED
+    if gate_results["G4"].result == FAIL or gate_results["G5"].result == FAIL or gate_results["G6"].result == FAIL:
+        return VETO
+    if gate_results["G7"].result == FAIL and not g7_override_reason:
+        return VETO
+    if gate_results["G8"].result == FAIL:
+        return WATCH
+    return ELIGIBLE
+
+
 def run_assessment(conn, desk_conn, *, symbol: str, as_of_date: str, sector: str | None,
                     thesis: dict | None, rulebook: DeskRulebook, costs: CostConfig,
                     g7_override_reason: str | None = None,
                     symbol_to_sector: dict[str, str] | None = None) -> AssessmentResult:
+    from desk.paper.open import is_as_of_live
+
+    as_of_live = is_as_of_live(conn, as_of_date)
+
     has_trade_history = thesis is not None and _thesis_has_any_trade(desk_conn, thesis)
     if thesis is not None and is_expired(thesis, as_of_date, has_trade_history):
-        return AssessmentResult(state=EXPIRED, gate_results={}, evidence_bundle=None)
+        return AssessmentResult(state=EXPIRED, gate_results={}, evidence_bundle=None, as_of_is_live=as_of_live)
 
     bundle = assemble_evidence_bundle(conn, symbol, as_of_date, sector)
     gate_results: dict[str, GateResult] = {}
 
+    # Every gate below is evaluated unconditionally -- none of them depend on an EARLIER gate's
+    # PASS/FAIL result to run (G3/G4 read the evidence bundle directly; G5/G6 depend only on
+    # whether a THESIS was supplied, not on G1-G4's outcome; G7/G8 depend on the journal/thesis
+    # only). Deriving the state from the complete set afterward, via _derive_state(), is what makes
+    # "record every gate's result every time" possible.
     gate_results["G1"] = g1_data_quality(conn, symbol, as_of_date)
     gate_results["G2"] = g2_evidence_sufficiency(bundle, rulebook)
-    if gate_results["G1"].result == FAIL or gate_results["G2"].result == FAIL:
-        return AssessmentResult(state=INSUFFICIENT, gate_results=gate_results, evidence_bundle=bundle)
-
     gate_results["G3"] = g3_structural_integrity(bundle)
-    if gate_results["G3"].result == FAIL:
-        return AssessmentResult(state=RESEARCH_REQUIRED, gate_results=gate_results, evidence_bundle=bundle)
-
     gate_results["G4"] = g4_surveillance(conn, symbol, as_of_date, bundle, rulebook)
-    if gate_results["G4"].result == FAIL:
-        return AssessmentResult(state=VETO, gate_results=gate_results, evidence_bundle=bundle)
 
     position_size = None
     stress_loss = None
@@ -125,13 +143,12 @@ def run_assessment(conn, desk_conn, *, symbol: str, as_of_date: str, sector: str
         capital_at_stock, capital_at_sector = _capital_at_stock_and_sector(desk_conn, symbol, sector, symbol_to_sector)
 
         position_size = compute_position_size(entry, stop, rulebook, open_risk_used, capital_at_stock, capital_at_sector)
-        stress_loss = compute_stress_loss(conn, symbol, as_of_date, entry, stop, position_size, costs, rulebook, STRESS_LOSS_FLOOR_INR)
+        stress_loss = compute_stress_loss(conn, symbol, as_of_date, entry, stop, position_size, costs, rulebook)
         planned = planned_loss_inr(entry, stop, position_size, costs)
 
-        adv_shares, adv_turnover = _average_daily_volume_and_turnover(conn, symbol, as_of_date, ADV_LOOKBACK_SESSIONS)
+        _adv_shares, adv_turnover = _average_daily_volume_and_turnover(conn, symbol, as_of_date, ADV_LOOKBACK_SESSIONS)
         gate_results["G5"] = g5_liquidity(
-            order_value_inr=position_size * entry, avg_daily_turnover_inr=adv_turnover,
-            order_qty=position_size, avg_daily_volume_shares=adv_shares, rulebook=rulebook,
+            order_value_inr=position_size * entry, avg_daily_turnover_inr=adv_turnover, rulebook=rulebook,
         )
         gate_results["G6"] = g6_risk(
             planned_loss_inr=planned, stress_loss_inr=stress_loss.stress_loss_inr,
@@ -142,27 +159,17 @@ def run_assessment(conn, desk_conn, *, symbol: str, as_of_date: str, sector: str
         gate_results["G5"] = GateResult("G5", UNKNOWN, ("No thesis supplied.",))
         gate_results["G6"] = GateResult("G6", UNKNOWN, ("No thesis supplied.",))
 
-    if gate_results["G5"].result == FAIL or gate_results["G6"].result == FAIL:
-        return AssessmentResult(state=VETO, gate_results=gate_results, evidence_bundle=bundle,
-                                 position_size=position_size, stress_loss=stress_loss)
-
     gate_results["G7"] = g7_behavioural(
         recent_g7_overrides_this_month=_g7_overrides_this_month(desk_conn, as_of_date),
         consecutive_losses=_consecutive_losses(desk_conn),
         monthly_drawdown_pct=_monthly_drawdown_pct(desk_conn, rulebook, as_of_date),
         rulebook=rulebook,
     )
-    if gate_results["G7"].result == FAIL and not g7_override_reason:
-        return AssessmentResult(state=VETO, gate_results=gate_results, evidence_bundle=bundle,
-                                 position_size=position_size, stress_loss=stress_loss)
-
     gate_results["G8"] = g8_thesis_completeness(thesis)
-    if gate_results["G8"].result == FAIL:
-        return AssessmentResult(state=WATCH, gate_results=gate_results, evidence_bundle=bundle,
-                                 position_size=position_size, stress_loss=stress_loss)
 
-    return AssessmentResult(state=ELIGIBLE, gate_results=gate_results, evidence_bundle=bundle,
-                             position_size=position_size, stress_loss=stress_loss)
+    state = _derive_state(gate_results, g7_override_reason)
+    return AssessmentResult(state=state, gate_results=gate_results, evidence_bundle=bundle,
+                             position_size=position_size, stress_loss=stress_loss, as_of_is_live=as_of_live)
 
 
 def _thesis_has_any_trade(desk_conn, thesis: dict) -> bool:
