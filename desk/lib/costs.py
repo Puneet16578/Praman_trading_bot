@@ -35,7 +35,12 @@ class SlippageBucket(BaseModel):
     slippage_pct: float = Field(..., ge=0)
     source: str
     as_of_date: str
-    status: Literal["TO_VERIFY", "CONFIRMED"]
+    status: Literal["TO_VERIFY", "CONFIRMED", "ASSUMPTION"]
+    # ASSUMPTION is distinct from TO_VERIFY: TO_VERIFY means a real published/broker rate that
+    # simply hasn't been checked yet. ASSUMPTION means there is no published rate to check at all
+    # -- this is a modelling estimate (retail-order slippage by liquidity bucket) and can never
+    # graduate to CONFIRMED by looking anything up; it can only be replaced once real paper-trade
+    # fills exist to measure it from.
 
 
 class CostConfig(BaseModel):
