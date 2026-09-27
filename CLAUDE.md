@@ -240,3 +240,34 @@ re-verification evidence — including ones you introduced yourself.
 6. Propose a commit message; do not commit without asking.
 
 Stop and ask if a task is ambiguous or if what you read contradicts what I described.
+
+## Desk invariants
+
+The Praman Expert Desk (`desk/`, `docs/desk/`) is a separate, later-added layer for personal trading
+decisions, built on top of everything above. **The Desk reads Praman; it never modifies it** — no
+writes to the Praman store, no changes to pinned scripts, no changes to `src/` without explicit
+approval. Full design: `docs/desk/DESIGN.md`.
+
+D1. **Point-in-time everything.** Every Desk record carries event date, knowledge date, and
+    `recorded_at`, the same discipline as invariant 7 above, applied to the Desk's own store.
+D2. **The LLM (later Desk phases) reads, challenges, and explains. It never forecasts, calculates, or
+    decides.** Enforced in software, not by prompt.
+D3. **Gates, not scores.** Abstention (`INSUFFICIENT`, `WATCH`, `RESEARCH_REQUIRED`) is a first-class
+    outcome. No numeric trade score anywhere in the Desk.
+D4. **Market and sector context change risk limits, never trade direction.**
+D5. **Probabilities come from data or from the user, never from a model.** User-supplied
+    probabilities do not influence position sizing until the evaluator (Desk phase 9) shows they are
+    calibrated.
+D6. **Every Desk decision is reproducible**: store watermark, rulebook hash, code commit, model and
+    prompt versions are recorded on every decision and must replay to an identical result.
+D7. **Forward-window firewall.** The Desk never computes or reads an outcome label for a catalogue
+    event dated 2026-09-16 onward before the binding evaluation (no earlier than early June 2027, per
+    `docs/phase10_preregistration_amendment5.md`). The frozen pre-registration and its pinned
+    pipeline are never modified by the Desk.
+D8. **Personal use only.** No shared or public Desk output.
+D9. **Paper before live.** Live use only after the rulebook's pre-committed criteria are met. Order
+    placement is always manual — the Desk never places an order.
+
+The Desk never outputs BUY. Its outputs are decision states only:
+`INSUFFICIENT` / `RESEARCH_REQUIRED` / `WATCH` / `ELIGIBLE` / `VETO` / `EXPIRED`. The human makes
+every decision.
