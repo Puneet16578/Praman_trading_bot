@@ -1,11 +1,7 @@
 __pycache__/
 *.pyc
 .pytest_cache/
-data/raw/
-data/processed/
-data/snapshots/
-data/demo/
-data/desk/
+data/
 *.db
 .env
 logs/
