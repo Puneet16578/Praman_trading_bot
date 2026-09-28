@@ -1,7 +1,9 @@
-"""desk monitor -- completes any paper-trade entry left PENDING by a prior `paper open` (Fix 2c,
-post-STOP-3 review), marks open positions against all five exit triggers, and reports what changed
-(new disclosures, surveillance changes, corporate actions, volume/delivery changes) since the
-previous monitor run, by diffing against the most recent monitor_runs report.
+"""desk monitor -- completes any paper-trade entry OR exit left PENDING by a prior `paper open`/
+`paper close` (Fix 2c, post-STOP-3 review; the close side added in the same spirit once manual
+closes gained the identical anti-hindsight design), marks open positions against all five exit
+triggers, and reports what changed (new disclosures, surveillance changes, corporate actions,
+volume/delivery changes) since the previous monitor run, by diffing against the most recent
+monitor_runs report.
 """
 from __future__ import annotations
 
@@ -35,9 +37,37 @@ def complete_pending_paper_opens(praman_conn, desk_conn) -> list[dict]:
     return completed
 
 
+def complete_pending_paper_closes(praman_conn, desk_conn) -> list[dict]:
+    """Completes any manual close a prior `desk paper close` left PENDING, now that the target
+    session's data might be in the store. NOT a new decision: the human already approved closing
+    this exact trade (that's what the original `paper close` call recorded, reason and all); this
+    only finishes a fill that was blocked purely by Praman's own ingestion lag. Reuses
+    `resume_pending_close`, which retries at the ORIGINAL frozen `not_before_date`. Loads the cost
+    config itself since round-trip cost is part of the fill; a trade already closed by something
+    else in the meantime (a real stop hit) is filtered out by `pending_paper_closes` before this is
+    ever called, so it is never double-closed here."""
+    from desk.lib.costs import load_active_cost_config
+    from desk.paper.close import PaperCloseRefused, PendingClose, resume_pending_close
+
+    costs = load_active_cost_config().costs
+    completed = []
+    for trade_id, not_before_date, reason in jstore.pending_paper_closes(desk_conn):
+        try:
+            result = resume_pending_close(praman_conn, desk_conn, trade_id, not_before_date, reason, costs)
+        except PaperCloseRefused as exc:
+            completed.append({"trade_id": trade_id, "status": "REFUSED", "detail": str(exc)})
+            continue
+        if isinstance(result, PendingClose):
+            continue  # still pending -- the target session's data still isn't in the store
+        completed.append({"trade_id": trade_id, "status": "FILLED",
+                           "event_date": result.event_date, "price": result.price})
+    return completed
+
+
 def run_monitor(praman_conn, desk_conn, run_date: str) -> dict:
     report: dict = {"run_date": run_date, "positions": {}, "exits_triggered": []}
     report["pending_opens_completed"] = complete_pending_paper_opens(praman_conn, desk_conn)
+    report["pending_closes_completed"] = complete_pending_paper_closes(praman_conn, desk_conn)
 
     for trade_id in jstore.open_trade_ids(desk_conn):
         latest = jstore.latest_trade_event(desk_conn, trade_id)

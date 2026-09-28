@@ -134,10 +134,34 @@ def cmd_paper_open(args):
 
 
 def cmd_paper_close(args):
+    """Mirrors desk/paper/open.py's anti-hindsight design: no --price or --event-date -- both were
+    the exact same hindsight loophole already closed for entries (they let any exit price be
+    recorded on any past date). The exit fills at the store's own real price for the first session
+    strictly after this command's own recorded_at, net of the real round-trip sell-side cost from
+    the active cost config -- see desk/paper/close.py. A PENDING result logs a PAPER_CLOSE_PENDING
+    journal event so `desk monitor` completes it automatically, exactly like a pending open."""
+    from desk.paper.close import PaperCloseRefused, PendingClose, close_approved_trade
+
+    praman_conn = get_live_connection()
     desk_conn = get_desk_connection()
-    jstore.close_paper_trade(desk_conn, trade_id=args.trade_id, event_date=args.event_date,
-                              price=args.price, reason=args.reason)
-    desk_conn.close()
+    try:
+        costs = load_active_cost_config().costs
+        result = close_approved_trade(praman_conn, desk_conn, args.trade_id, reason=args.reason, costs=costs)
+        if isinstance(result, PendingClose):
+            jstore.record_journal_event(
+                desk_conn, event_type="PAPER_CLOSE_PENDING", trade_id=args.trade_id,
+                detail={"not_before_date": result.not_before_date, "reason": result.reason},
+            )
+            print(f"PENDING: no session with data yet after {result.not_before_date} -- "
+                  f"`desk monitor` will complete this automatically once it is ingested.")
+        else:
+            print(f"closed at {result.price:.2f} on {result.event_date}")
+    except PaperCloseRefused as exc:
+        print(f"REFUSED: {exc}", file=sys.stderr)
+        raise SystemExit(1)
+    finally:
+        praman_conn.close()
+        desk_conn.close()
 
 
 def cmd_monitor(args):
@@ -188,15 +212,25 @@ def cmd_evening(args):
         print(f"=== desk evening: {today} ===")
         print(f"What changed: {report.get('what_changed')}")
 
-        pending = report.get("pending_opens_completed", [])
-        filled = [p for p in pending if p["status"] == "FILLED"]
-        refused = [p for p in pending if p["status"] == "REFUSED"]
-        still_pending = len(pending) - len(filled) - len(refused)
-        print(f"Pending opens: {len(filled)} filled, {len(refused)} refused, {still_pending} still pending")
-        for f in filled:
+        pending_opens = report.get("pending_opens_completed", [])
+        opens_filled = [p for p in pending_opens if p["status"] == "FILLED"]
+        opens_refused = [p for p in pending_opens if p["status"] == "REFUSED"]
+        opens_still_pending = len(pending_opens) - len(opens_filled) - len(opens_refused)
+        print(f"Pending opens: {len(opens_filled)} filled, {len(opens_refused)} refused, {opens_still_pending} still pending")
+        for f in opens_filled:
             print(f"  FILLED decision {f['decision_id']}: {f['event_date']} @ {f['price']:.2f}")
-        for r in refused:
+        for r in opens_refused:
             print(f"  REFUSED decision {r['decision_id']}: {r['detail']}")
+
+        pending_closes = report.get("pending_closes_completed", [])
+        closes_filled = [c for c in pending_closes if c["status"] == "FILLED"]
+        closes_refused = [c for c in pending_closes if c["status"] == "REFUSED"]
+        closes_still_pending = len(pending_closes) - len(closes_filled) - len(closes_refused)
+        print(f"Pending closes: {len(closes_filled)} filled, {len(closes_refused)} refused, {closes_still_pending} still pending")
+        for f in closes_filled:
+            print(f"  CLOSED {f['trade_id']}: {f['event_date']} @ {f['price']:.2f}")
+        for r in closes_refused:
+            print(f"  REFUSED close {r['trade_id']}: {r['detail']}")
 
         exits = report.get("exits_triggered", [])
         print(f"Exits triggered: {len(exits)}")
@@ -243,8 +277,6 @@ def main(argv=None):
     po.set_defaults(func=cmd_paper_open)
     pc = paper_sub.add_parser("close")
     pc.add_argument("trade_id")
-    pc.add_argument("--event-date", dest="event_date", required=True)
-    pc.add_argument("--price", type=float, required=True)
     pc.add_argument("--reason", required=True)
     pc.set_defaults(func=cmd_paper_close)
 

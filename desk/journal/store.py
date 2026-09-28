@@ -216,6 +216,30 @@ def pending_paper_opens(conn: sqlite3.Connection) -> list[tuple[int, str]]:
     return pending
 
 
+def pending_paper_closes(conn: sqlite3.Connection) -> list[tuple[str, str, str]]:
+    """(trade_id, not_before_date, reason) for every trade with an unresolved PAPER_CLOSE_PENDING
+    journal event -- "unresolved" meaning the trade's LATEST event still isn't CLOSE. A trade closed
+    by something else entirely in the meantime (a real stop hit in a normal monitor run) is not an
+    error and not returned here; it's simply already resolved. Mirrors `pending_paper_opens` above
+    for exactly the same reason: `desk monitor` (desk/paper/close.py:resume_pending_close) retries
+    each of these at its OWN frozen `not_before_date`, never a freshly-recomputed one."""
+    rows = conn.execute(
+        """SELECT trade_id, detail FROM journal_events
+           WHERE event_type = 'PAPER_CLOSE_PENDING' AND trade_id IS NOT NULL
+           ORDER BY journal_event_id"""
+    ).fetchall()
+    latest_detail: dict[str, dict] = {}
+    for row in rows:
+        latest_detail[row["trade_id"]] = json.loads(row["detail"])
+
+    pending = []
+    for trade_id, detail in latest_detail.items():
+        current = latest_trade_event(conn, trade_id)
+        if current is not None and current["event_type"] != "CLOSE":
+            pending.append((trade_id, detail["not_before_date"], detail["reason"]))
+    return pending
+
+
 def record_monitor_run(conn: sqlite3.Connection, *, run_date: str, report: dict) -> int:
     cur = conn.execute(
         "INSERT INTO monitor_runs (run_date, report, recorded_at) VALUES (?, ?, ?)",
