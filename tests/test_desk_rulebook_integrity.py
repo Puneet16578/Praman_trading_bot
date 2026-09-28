@@ -23,9 +23,6 @@ from desk.lib.versioned_config import (
 from desk.lib.rulebook import DeskRulebook, load_active_rulebook
 from desk.lib.costs import CostConfig, load_active_cost_config
 
-# Scratch git repos live under data/desk/ (already gitignored) so they never risk being committed.
-SCRATCH_ROOT = Path(__file__).resolve().parents[1] / "data" / "desk" / "_test_scratch_repos"
-
 
 def _run(args, cwd):
     subprocess.run(args, cwd=cwd, check=True, capture_output=True)
@@ -33,8 +30,9 @@ def _run(args, cwd):
 
 class ThrowawayRepoTestCase(unittest.TestCase):
     def setUp(self):
-        SCRATCH_ROOT.mkdir(parents=True, exist_ok=True)
-        self.repo = Path(tempfile.mkdtemp(dir=SCRATCH_ROOT))
+        # The OS's own temp directory (tempfile's default location), not a path under this repo --
+        # a scratch git repo has no reason to live inside (or even near) the project tree at all.
+        self.repo = Path(tempfile.mkdtemp(prefix="praman_desk_test_repo_"))
         _run(["git", "init", "-q"], cwd=self.repo)
         _run(["git", "config", "user.email", "test@example.com"], cwd=self.repo)
         _run(["git", "config", "user.name", "Test"], cwd=self.repo)
@@ -95,9 +93,9 @@ class CommittedFileTest(ThrowawayRepoTestCase):
 
 class HashStabilityTest(unittest.TestCase):
     def test_crlf_and_lf_versions_of_the_same_content_hash_identically(self):
-        SCRATCH_ROOT.mkdir(parents=True, exist_ok=True)
-        lf_path = SCRATCH_ROOT / "_lf.yaml"
-        crlf_path = SCRATCH_ROOT / "_crlf.yaml"
+        scratch_dir = Path(tempfile.mkdtemp(prefix="praman_desk_test_hash_"))
+        lf_path = scratch_dir / "_lf.yaml"
+        crlf_path = scratch_dir / "_crlf.yaml"
         content = "version: v1\nrisk:\n  x: 1\n"
         try:
             lf_path.write_bytes(content.encode("utf-8"))
@@ -105,7 +103,7 @@ class HashStabilityTest(unittest.TestCase):
             self.assertEqual(sha256_lf_normalized(lf_path), sha256_lf_normalized(crlf_path))
             self.assertEqual(read_lf_normalized_bytes(lf_path), read_lf_normalized_bytes(crlf_path))
         finally:
-            lf_path.unlink(missing_ok=True)
+            shutil.rmtree(scratch_dir, ignore_errors=True)
             crlf_path.unlink(missing_ok=True)
 
 
