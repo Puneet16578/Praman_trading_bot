@@ -1,4 +1,11 @@
-# Praman Expert Desk — Phase 1 report (STOP 3)
+# Praman Expert Desk — Phase 1 report (STOP 3, closed)
+
+**Status: CLOSED.** The STOP 3 report below was reviewed; four fixes were required before paper
+trading could start (whole-share position sizing, daily ingestion, automatic pending-open
+completion, and a test-hygiene cleanup). All four are implemented, tested, and committed --
+see "Post-STOP-3 fixes" at the end of this document for what changed and why. The worked examples
+and numbers below are updated to reflect the fixes (in particular, Example 1's position size is now
+the corrected whole-share figure). Phase 1 is closed; paper trading begins.
 
 ## Summary
 
@@ -162,11 +169,12 @@ as_of_is_live = False   (a historical --as-of date, not "today" — expected for
   G6: PASS  []
   G7: PASS  []
   G8: PASS  []
-  position_size = 66.6667 shares
-  stress_loss_inr = 5000.00
-    planned_loss_component_inr = 3456.46
-    worst_gap_component_inr   = 1679.26
-    floor_component_inr       = 5000.00   <- the binding component here
+  position_size = 66 shares          <- whole shares (Fix 1, see "Post-STOP-3 fixes" below);
+                                         raw/capped sizing works out to 66.6667, floored to 66
+  stress_loss_inr = 4950.00
+    planned_loss_component_inr = 3422.04
+    worst_gap_component_inr   = 1662.47
+    floor_component_inr       = 4950.00   <- the binding component here (10% of 66 x Rs 750)
     caveat: Circuit bands are UNKNOWN in Phase 1 -- this figure does not account for
             a circuit-locked exit becoming impossible.
   evidence_bundle.content_hash() = efed2042de8d64cd4286feb7d2f8e4a9c4ebf402b0a7ff343a8b6c14dba89800
@@ -176,7 +184,7 @@ All eight gates pass on real evidence: a real trading day with no gap (G1); pric
 delivery, disclosures, surveillance, corporate-actions and (user-supplied) sector all present as
 Facts (G2); no structural break in the trailing 60 sessions (G3); not under ASM/GSM and not
 trade-for-trade (G4); the order size clears both the ADV and days-to-exit liquidity checks (G5); the
-stress loss (₹5,000, the 10%-of-position floor, exceeding both the planned-loss and worst-historical-
+stress loss (₹4,950, the 10%-of-position floor, exceeding both the planned-loss and worst-historical-
 gap components) fits the open-risk/per-stock/per-sector budgets (G6); no behavioural brakes tripped
 (G7); the thesis supplies every required field (G8). Note that the floor — not the historical gap or
 planned loss — binds here, which is exactly why the rulebook's percentage-of-position floor exists
@@ -221,11 +229,78 @@ c30f3a0 Desk Phase 1, STOP 2 fixes: no-hindsight paper opens, persisted decision
 810b756 Desk tests: real rulebook/cost config now load successfully
 ```
 
-## Awaiting your review (STOP 3)
+## Post-STOP-3 fixes (before Phase 1 close)
 
-Nothing further proceeds automatically. Please confirm:
-1. The two worked examples above match your own read of what should happen for these real cases.
-2. The remaining UNKNOWNs are acceptable to carry into whatever you decide is next (Phase 2 of the
-   build order, live use of `desk assess`/`desk paper open` on real ideas, or something else).
-3. Whether `gst` and the slippage assumption need to be addressed before you start using this for
-   real paper trades, or can stay open while you do.
+Your STOP 3 review confirmed both worked examples and accepted every open UNKNOWN, with one bug and
+three required changes before paper trading starts.
+
+**Fix 1 — whole shares.** NSE trades in whole shares; `compute_position_size` (`desk/risk/officer.py`)
+now floors to a whole share AFTER every risk/liquidity cap is applied, so every downstream figure
+(planned loss, stress loss, G5's order value, G6's capital-at-stock addition) automatically uses the
+same final integer quantity. If the floored size is 0 -- a single share already exceeds the tightest
+cap -- `desk/gates/engine.py` now reports this as a stated G6 FAIL rather than a silent size-zero
+PASS, which VETOes via the existing priority mapping. AXISBANK's ELIGIBLE example above is corrected
+to 66 shares (was 66.6667); a new test (`tests/test_desk_states_real_data.py::test_single_share_
+exceeding_the_per_stock_cap_is_vetoed`, plus two pure unit tests in `test_desk_risk.py`) confirms a
+high-priced thesis where even one share exceeds the per-stock cap is VETOed with a stated reason.
+
+**Fix 2 — daily data for daily paper trading.**
+- **(a) Ingestion is now daily on trading weekdays, not weekly.** `scripts/weekly_ingest.py` (kept
+  its name -- see its own module docstring) gained a sixth step, `bhavcopy_today`, which requests
+  TODAY specifically (the original steps deliberately stop at yesterday) and retries up to 6 times,
+  15 minutes apart, if NSE hasn't published yet. Exact PowerShell to register the new weekday-evening
+  scheduled task, and to confirm registration, is in `docs/OPERATIONS.md`'s "Daily ingestion"
+  section -- **not yet actually registered**, per that section, exactly as before for the same
+  reason (registering a persistent scheduled task is the user's action to take).
+- **(b) Recorded in `docs/OPERATIONS.md`** as an operational note, citing the pre-registration's own
+  weekly-minimum requirement (`docs/phase10_preregistration_amendment2.md` §5) that daily satisfies
+  as a strict superset -- explicitly not a pre-registration amendment, since no reference query or
+  evaluation criterion changes.
+- **(c) `desk monitor` now completes pending paper entries automatically.** `desk paper open`
+  returning PENDING now logs a `PAPER_OPEN_PENDING` journal event with the fill target date FROZEN
+  at that moment; `desk monitor` (`desk/monitor.py:complete_pending_paper_opens`) finds any such
+  still-open entry and retries at that SAME frozen date (`desk/paper/open.py:resume_pending_open`),
+  never a freshly-recomputed "now" -- waiting for ingestion to catch up must not silently push the
+  target fill session forward. This is not a new autonomous decision: the human already approved
+  opening this exact decision when `paper open` was first run. Tested end-to-end with real AXISBANK
+  data (`tests/test_desk_monitor_pending_opens.py`): open on D with D+1 deliberately absent from the
+  store, confirm still-pending with no fill, then a real write_fact of D+1's own real row, then
+  confirm `desk monitor` fills at D+1's real open with no further action.
+- **(d) New `desk evening` command.** Refuses outright if today's data isn't in the store yet (an
+  honest refusal, including on a genuine weekend/holiday, since this command keeps no invented
+  holiday calendar to tell that apart from a late ingestion); otherwise runs the monitor and prints
+  what changed, pending/filled/refused opens, exits, and open positions. New assessments
+  (`desk assess`) remain a separate, manual step.
+
+**Small — test hygiene.** The rulebook/cost-config integrity tests were creating scratch git
+repositories under `data/desk/_test_scratch_repos` (a path inside the project tree). Both that test
+class and the CRLF/LF hash-stability test now use the OS's own temp directory
+(`tempfile.mkdtemp()`), cleaned up in `tearDown`/`finally` exactly as before -- nothing under the
+project tree is created or left behind.
+
+**Full suite after all four fixes: 484/484 passing, 0 skipped** (479 + 2 whole-share tests + 2
+per-stock-cap VETO tests, counted once each under `DecisionStateRealDataTest` and once under its
+`AllGatesRunEveryTimeTest` subclass, per that file's existing pattern + 1 pending-open test):
+
+```
+$ python -m unittest discover -s tests -p "test_*.py"
+...
+Ran 484 tests in 136.378s
+
+OK
+```
+
+**Commits, in order** (appended to the list above):
+
+```
+f0474a1 Fix 1 (post-STOP-3 review): whole-share position sizing
+d87e5f3 Fix 2a/2b (post-STOP-3 review): daily ingestion for daily paper trading
+a5e2cdb Fix 2c/2d (post-STOP-3 review): desk monitor auto-completes pending opens
+c9849e1 Small (post-STOP-3 review): scratch git repos use the OS temp dir
+```
+
+## Phase 1 is closed
+
+Paper trading begins. `desk assess` for a new idea, `desk paper open` to act on an ELIGIBLE decision,
+and `desk evening` as the one daily routine command are the three you'll use going forward; `desk
+status`, `desk journal show`, and `desk replay` remain available for review and audit at any time.
