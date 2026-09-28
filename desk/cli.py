@@ -94,7 +94,7 @@ def cmd_status(args):
     desk_conn = get_desk_connection()
     rulebook = load_active_rulebook()
     from desk.gates.engine import _open_risk_used_inr
-    from desk.ingestion_health import ingestion_health_line, isin_map_health_line
+    from desk.ingestion_health import ingestion_health_line, isin_map_health_line, latest_trading_date_line
 
     open_risk = _open_risk_used_inr(desk_conn)
     budget = rulebook.rulebook.risk.capital_allocated_inr * rulebook.rulebook.risk.max_open_risk_pct / 100.0
@@ -103,6 +103,7 @@ def cmd_status(args):
     print(ingestion_health_line())
     praman_conn = get_live_connection()
     try:
+        print(latest_trading_date_line(praman_conn))
         print(isin_map_health_line(praman_conn, _latest_bhavcopy_date(praman_conn)))
     finally:
         praman_conn.close()

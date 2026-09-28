@@ -21,6 +21,13 @@ _GAPS_RE = re.compile(r"^\s*GAPs: (?P<n>\d+)")
 STALE_AFTER_DAYS = 7  # PROPOSED, matching the roughly-weekly cadence weekly_ingest.py's own name implies
 
 
+def latest_trading_date_line(conn) -> str:
+    """The store's latest bhavcopy date -- the fact the health line alone cannot prove (a run can
+    report OK without having ingested the date you expect)."""
+    row = conn.execute("SELECT MAX(event_date) FROM bhavcopy").fetchone()
+    return f"Latest trading date in store: {row[0] or 'NONE (no bhavcopy rows)'}"
+
+
 def isin_map_health_line(conn, as_of_date: str | None) -> str:
     from shared.isin_map_metadata import MAX_AGE_TRADING_DAYS, read_metadata, trading_days_since_build
     try:

@@ -52,6 +52,17 @@ class SameDayIngestionHealthTest(unittest.TestCase):
         self.assertNotIn("-1d", line)
 
 
+class LatestTradingDateLineTest(unittest.TestCase):
+    def test_reports_max_event_date_and_empty_store(self):
+        from desk.ingestion_health import latest_trading_date_line
+        conn = sqlite3.connect(":memory:")
+        self.addCleanup(conn.close)
+        conn.execute("CREATE TABLE bhavcopy (symbol TEXT, event_date TEXT)")
+        self.assertIn("NONE", latest_trading_date_line(conn))
+        conn.executemany("INSERT INTO bhavcopy VALUES ('X', ?)", [("2026-09-24",), ("2026-09-25",)])
+        self.assertEqual(latest_trading_date_line(conn), "Latest trading date in store: 2026-09-25")
+
+
 class G7OverrideMonthTest(unittest.TestCase):
     def setUp(self):
         self.conn = sqlite3.connect(":memory:")
