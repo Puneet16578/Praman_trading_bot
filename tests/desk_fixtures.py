@@ -13,14 +13,24 @@ from desk.lib.rulebook import DeskRulebook
 from desk.lib.store import PRAMAN_FACT_TABLES
 
 
-def copy_symbol_rows(prod_conn, scratch_conn, symbol: str) -> None:
+def copy_symbol_rows(prod_conn, scratch_conn, symbol: str, *, through_event_date: str | None = None) -> None:
     """Copies one real symbol's rows, across every Praman fact table, from a live/production
     connection into a fresh scratch Praman-schema store -- so tests get REAL, working data
     (build_symbol_history, get_disclosure_window, etc. all behave normally) without needing a full
-    multi-GB store copy."""
+    multi-GB store copy.
+
+    `through_event_date`, when given, excludes any row with `event_date` after it (for a table that
+    HAS an event_date column) -- used to simulate "this date hasn't been ingested yet" with REAL
+    data that already exists in production, rather than fabricating a not-yet-real future date."""
     for table in PRAMAN_FACT_TABLES:
         cols = sorted(BITEMPORAL_TABLES[table].columns - {"row_id"})
-        rows = prod_conn.execute(f"SELECT {', '.join(cols)} FROM {table} WHERE symbol = ?", (symbol,)).fetchall()
+        if through_event_date is not None and "event_date" in cols:
+            rows = prod_conn.execute(
+                f"SELECT {', '.join(cols)} FROM {table} WHERE symbol = ? AND event_date <= ?",
+                (symbol, through_event_date),
+            ).fetchall()
+        else:
+            rows = prod_conn.execute(f"SELECT {', '.join(cols)} FROM {table} WHERE symbol = ?", (symbol,)).fetchall()
         if not rows:
             continue
         placeholders = ", ".join("?" for _ in cols)

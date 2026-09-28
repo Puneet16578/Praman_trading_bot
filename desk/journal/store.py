@@ -185,6 +185,37 @@ def record_opportunity(conn: sqlite3.Connection, *, symbol: str, as_of_date: str
     conn.commit()
 
 
+def pending_paper_opens(conn: sqlite3.Connection) -> list[tuple[int, str]]:
+    """(decision_id, not_before_date) for every decision with a PAPER_OPEN_PENDING journal event and
+    no OPEN paper_trade_event yet for its own trade_id. `not_before_date` is read back from that
+    event's own `detail` -- the date FROZEN when `desk paper open` first returned PENDING, never
+    recomputed from a later 'now' (see desk/paper/open.py:resume_pending_open for why that matters).
+    Used by `desk monitor` to complete a paper entry automatically once the target session's data
+    has been ingested -- not a new autonomous decision, since the human already approved opening
+    this exact decision via the original `desk paper open` call that logged the PENDING event."""
+    rows = conn.execute(
+        """SELECT decision_id, detail FROM journal_events
+           WHERE event_type = 'PAPER_OPEN_PENDING' AND decision_id IS NOT NULL
+           ORDER BY journal_event_id"""
+    ).fetchall()
+    latest_not_before: dict[int, str] = {}
+    for row in rows:
+        latest_not_before[row["decision_id"]] = json.loads(row["detail"])["not_before_date"]
+
+    pending = []
+    for decision_id, not_before_date in latest_not_before.items():
+        decision = get_decision(conn, decision_id)
+        if decision is None or decision["thesis_id"] is None:
+            continue
+        trade_id = f"{decision['symbol']}:{decision['thesis_id']}"
+        already_open = conn.execute(
+            "SELECT 1 FROM paper_trade_events WHERE trade_id = ? AND event_type = 'OPEN' LIMIT 1", (trade_id,)
+        ).fetchone()
+        if already_open is None:
+            pending.append((decision_id, not_before_date))
+    return pending
+
+
 def record_monitor_run(conn: sqlite3.Connection, *, run_date: str, report: dict) -> int:
     cur = conn.execute(
         "INSERT INTO monitor_runs (run_date, report, recorded_at) VALUES (?, ?, ?)",

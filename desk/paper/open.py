@@ -78,39 +78,76 @@ def check_can_open(decision: dict, now: datetime) -> None:
         )
 
 
-def open_approved_decision(praman_conn, desk_conn, decision_id: int, *, now: datetime | None = None):
-    """Returns a `Fill` (desk.paper.execution.Fill) on success, or a `PendingOpen` if the next
-    eligible session's data does not exist in the store yet. Raises PaperOpenRefused on any of the
-    guards above. Uses ONLY the decision's own persisted `position_size` and the linked thesis's
-    `planned_stop`/`planned_target` -- it never calls run_assessment."""
+def _attempt_fill(praman_conn, desk_conn, decision: dict, thesis: dict, not_before_date: str):
+    """Shared by `open_approved_decision` (a fresh human-initiated `paper open`) and
+    `resume_pending_open` (a later automatic retry of an already-PENDING one) -- the only
+    difference between them is WHERE `not_before_date` comes from; the fill logic itself, and its
+    guarantee of using only the decision's own persisted `position_size` and the thesis's
+    `planned_stop`/`planned_target`, is identical either way."""
     from desk.journal import store as jstore
     from desk.paper.execution import Fill
 
-    decision = jstore.get_decision(desk_conn, decision_id)
-    if decision is None:
-        raise PaperOpenRefused(f"No decision {decision_id}.")
-
-    now = now or datetime.now(timezone.utc)
-    check_can_open(decision, now)
-
-    thesis = jstore.get_thesis(desk_conn, decision["thesis_id"]) if decision["thesis_id"] else None
-    if thesis is None or decision["position_size"] is None:
-        raise PaperOpenRefused("Decision has no persisted thesis or position size -- cannot open.")
-
-    not_before_date = now.date().isoformat()
     fill_date = first_session_strictly_after(praman_conn, decision["symbol"], not_before_date)
     if fill_date is None:
-        return PendingOpen(decision_id=decision_id, not_before_date=not_before_date)
+        return PendingOpen(decision_id=decision["decision_id"], not_before_date=not_before_date)
 
     hist = build_symbol_history(praman_conn, decision["symbol"])
     row = hist.price_row_as_of(fill_date, fill_date)
     if row is None:
-        return PendingOpen(decision_id=decision_id, not_before_date=not_before_date)
+        return PendingOpen(decision_id=decision["decision_id"], not_before_date=not_before_date)
     fill_price = row["open_price"] * hist.cum_factor_up_to(fill_date)
 
     trade_id = f"{decision['symbol']}:{decision['thesis_id']}"
     jstore.open_paper_trade(
-        desk_conn, trade_id=trade_id, decision_id=decision_id, event_date=fill_date, price=fill_price,
-        quantity=decision["position_size"], stop=thesis["planned_stop"], target=thesis["planned_target"],
+        desk_conn, trade_id=trade_id, decision_id=decision["decision_id"], event_date=fill_date,
+        price=fill_price, quantity=decision["position_size"], stop=thesis["planned_stop"],
+        target=thesis["planned_target"],
     )
     return Fill(event_date=fill_date, price=fill_price, kind="entry")
+
+
+def _get_decision_and_thesis(desk_conn, decision_id: int) -> tuple[dict, dict]:
+    from desk.journal import store as jstore
+
+    decision = jstore.get_decision(desk_conn, decision_id)
+    if decision is None:
+        raise PaperOpenRefused(f"No decision {decision_id}.")
+    thesis = jstore.get_thesis(desk_conn, decision["thesis_id"]) if decision["thesis_id"] else None
+    if thesis is None or decision["position_size"] is None:
+        raise PaperOpenRefused("Decision has no persisted thesis or position size -- cannot open.")
+    return decision, thesis
+
+
+def open_approved_decision(praman_conn, desk_conn, decision_id: int, *, now: datetime | None = None):
+    """Returns a `Fill` (desk.paper.execution.Fill) on success, or a `PendingOpen` if the next
+    eligible session's data does not exist in the store yet. Raises PaperOpenRefused on any of the
+    guards above. Uses ONLY the decision's own persisted `position_size` and the linked thesis's
+    `planned_stop`/`planned_target` -- it never calls run_assessment.
+
+    A `PendingOpen` here freezes `not_before_date` at THIS call's own `now` -- the caller (desk/
+    cli.py's `cmd_paper_open`) records it in a PAPER_OPEN_PENDING journal event so `desk monitor`
+    can complete the fill later via `resume_pending_open`, using that SAME frozen date rather than a
+    fresh `now` (see that function's docstring for why: recomputing `now` on every retry would keep
+    pushing the target fill session forward for as long as ingestion stays behind)."""
+    decision, thesis = _get_decision_and_thesis(desk_conn, decision_id)
+
+    now = now or datetime.now(timezone.utc)
+    check_can_open(decision, now)
+
+    not_before_date = now.date().isoformat()
+    return _attempt_fill(praman_conn, desk_conn, decision, thesis, not_before_date)
+
+
+def resume_pending_open(praman_conn, desk_conn, decision_id: int, not_before_date: str):
+    """Retries a PENDING open using the ORIGINAL `not_before_date` frozen at the first `paper open`
+    attempt -- never a fresh `now`. Waiting for Praman's store to catch up must not silently push
+    the target fill session forward: the human already approved opening this exact decision (that's
+    what the earlier `paper open` call WAS); this call exists purely because the fill session's data
+    was not in the store yet, not because there is a new decision to approve. Consequently it does
+    NOT re-run `check_can_open`'s state/staleness checks -- those were already satisfied by the
+    original attempt, and re-applying a wall-clock staleness check on every automatic retry would
+    eventually refuse a still-legitimately-pending trade for no reason but Praman's own ingestion
+    lag. Called by `desk monitor` (`desk/monitor.py:complete_pending_paper_opens`), never by a human
+    directly."""
+    decision, thesis = _get_decision_and_thesis(desk_conn, decision_id)
+    return _attempt_fill(praman_conn, desk_conn, decision, thesis, not_before_date)

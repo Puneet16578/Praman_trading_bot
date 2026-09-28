@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -104,25 +105,32 @@ def cmd_status(args):
 
 def cmd_paper_open(args):
     """Executes the ALREADY-APPROVED decision exactly as persisted -- never re-assesses (integrity
-    fix b). See desk/paper/open.py for the two hindsight guards (integrity fix a)."""
+    fix b). See desk/paper/open.py for the two hindsight guards (integrity fix a). A PENDING result
+    is logged as a PAPER_OPEN_PENDING journal event (decision_id, the frozen not_before_date) so
+    `desk monitor` can complete the fill automatically later (Fix 2c, post-STOP-3 review) without
+    requiring the human to remember to re-run this command."""
     from desk.paper.open import PaperOpenRefused, PendingOpen, open_approved_decision
 
     praman_conn = get_live_connection()
     desk_conn = get_desk_connection()
     try:
         result = open_approved_decision(praman_conn, desk_conn, args.decision_id)
+        if isinstance(result, PendingOpen):
+            jstore.record_journal_event(
+                desk_conn, event_type="PAPER_OPEN_PENDING", decision_id=args.decision_id,
+                detail={"not_before_date": result.not_before_date},
+            )
+            print(f"PENDING: no session with data yet after {result.not_before_date} -- "
+                  f"`desk monitor` will complete this automatically once it is ingested "
+                  f"(or re-run `desk paper open {args.decision_id}` manually).")
+        else:
+            print(f"opened at {result.price} on {result.event_date}")
     except PaperOpenRefused as exc:
         print(f"REFUSED: {exc}", file=sys.stderr)
         raise SystemExit(1)
     finally:
         praman_conn.close()
         desk_conn.close()
-
-    if isinstance(result, PendingOpen):
-        print(f"PENDING: no session with data yet after {result.not_before_date} -- "
-              f"re-run `desk paper open {args.decision_id}` once the next session is ingested.")
-    else:
-        print(f"opened at {result.price} on {result.event_date}")
 
 
 def cmd_paper_close(args):
@@ -150,6 +158,55 @@ def cmd_journal_show(args):
     for e in events:
         print(dict(e))
     desk_conn.close()
+
+
+def cmd_evening(args):
+    """Fix 2d (post-STOP-3 review): the one daily command for the evening routine. Refuses outright
+    if today's data isn't in the store yet (no partial/best-effort run against yesterday's data
+    silently passed off as today's) -- run ingestion first, or wait for the scheduled daily ingest,
+    then re-run this. On a genuine weekend/holiday this will also refuse, correctly: there is no
+    today's data to check for a day the market never traded, and this command does not maintain its
+    own holiday calendar to distinguish that from a late ingestion (see scripts/weekly_ingest.py's
+    step_bhavcopy_today for the same honestly-stated ambiguity). New assessments (`desk assess`)
+    stay a separate, manual step -- this command only monitors and completes what was already
+    approved."""
+    from desk.monitor import run_monitor
+
+    praman_conn = get_live_connection()
+    desk_conn = get_desk_connection()
+    try:
+        today = date.today().isoformat()
+        latest = _latest_bhavcopy_date(praman_conn)
+        if latest != today:
+            print(f"REFUSED: today's data ({today}) is not yet in the store (latest ingested: "
+                  f"{latest}). Run ingestion first (scripts/weekly_ingest.py, or wait for the "
+                  f"scheduled daily run), then re-run `desk evening`.", file=sys.stderr)
+            raise SystemExit(1)
+
+        report = run_monitor(praman_conn, desk_conn, today)
+
+        print(f"=== desk evening: {today} ===")
+        print(f"What changed: {report.get('what_changed')}")
+
+        pending = report.get("pending_opens_completed", [])
+        filled = [p for p in pending if p["status"] == "FILLED"]
+        refused = [p for p in pending if p["status"] == "REFUSED"]
+        still_pending = len(pending) - len(filled) - len(refused)
+        print(f"Pending opens: {len(filled)} filled, {len(refused)} refused, {still_pending} still pending")
+        for f in filled:
+            print(f"  FILLED decision {f['decision_id']}: {f['event_date']} @ {f['price']:.2f}")
+        for r in refused:
+            print(f"  REFUSED decision {r['decision_id']}: {r['detail']}")
+
+        exits = report.get("exits_triggered", [])
+        print(f"Exits triggered: {len(exits)}")
+        for e in exits:
+            print(f"  EXIT {e['trade_id']}: {e['reason']} @ {e['price']}")
+
+        print(f"Open positions: {list(report.get('positions', {}).keys())}")
+    finally:
+        praman_conn.close()
+        desk_conn.close()
 
 
 def cmd_replay(args):
@@ -194,6 +251,9 @@ def main(argv=None):
     p = sub.add_parser("monitor")
     p.add_argument("--date")
     p.set_defaults(func=cmd_monitor)
+
+    p = sub.add_parser("evening")
+    p.set_defaults(func=cmd_evening)
 
     j = sub.add_parser("journal")
     j_sub = j.add_subparsers(dest="journal_command", required=True)
