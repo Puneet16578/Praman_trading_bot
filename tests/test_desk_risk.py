@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from desk.lib.store import ProductionStoreMissingError, get_live_connection
 from desk.paper.execution import adjust_for_corporate_actions, check_stop_on_session
-from desk.risk.officer import compute_stress_loss, planned_loss_inr
+from desk.risk.officer import compute_position_size, compute_stress_loss, planned_loss_inr
 
 from tests.desk_fixtures import make_test_costs, make_test_rulebook
 
@@ -74,6 +74,28 @@ class BajfinanceSplitAdjustmentTest(unittest.TestCase):
             self.assertIsNone(fill, "Adjusted stop was falsely triggered by real post-split trading.")
         finally:
             conn.close()
+
+
+class WholeShareSizingTest(unittest.TestCase):
+    """Fix 1 (post-STOP-3 review): NSE trades in whole shares -- compute_position_size is a pure
+    function (no store access), so this exercises the flooring directly rather than through a full
+    real-data assessment (test_desk_states_real_data.py covers the end-to-end VETO case)."""
+
+    def test_fractional_raw_size_floors_down_not_rounds(self):
+        rulebook = make_test_rulebook()
+        # entry=750, stop=700 -> per_share_risk=50; stock cap (10% of Rs 500,000 / 750) = 66.6667,
+        # the binding cap here -- must floor to 66, never round to 67.
+        size = compute_position_size(750.0, 700.0, rulebook, open_risk_used_inr=0.0,
+                                      capital_at_stock_inr=0.0, capital_at_sector_inr=0.0)
+        self.assertEqual(size, 66.0)
+
+    def test_a_single_share_exceeding_the_tightest_cap_floors_to_zero_not_negative(self):
+        rulebook = make_test_rulebook()
+        # entry=60000, stop=59000 -> one share (Rs 60,000) alone exceeds the per-stock cap
+        # (10% of Rs 500,000 = Rs 50,000) -- must floor to 0, never negative, never round up.
+        size = compute_position_size(60000.0, 59000.0, rulebook, open_risk_used_inr=0.0,
+                                      capital_at_stock_inr=0.0, capital_at_sector_inr=0.0)
+        self.assertEqual(size, 0.0)
 
 
 if __name__ == "__main__":

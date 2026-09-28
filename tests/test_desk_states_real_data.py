@@ -79,9 +79,31 @@ class DecisionStateRealDataTest(unittest.TestCase):
         self.assertEqual(result.state, "ELIGIBLE")
         for gate, r in result.gate_results.items():
             self.assertEqual(r.result, "PASS", f"{gate} unexpectedly {r.result}: {r.reasons}")
-        self.assertIsNotNone(result.position_size)
-        self.assertGreater(result.position_size, 0)
+        # Fix 1 (post-STOP-3 review): NSE trades in whole shares. Raw sizing (risk budget / per-share
+        # risk, capped by open-risk/per-stock/per-sector room) works out to 66.6667 shares here -- the
+        # binding cap is max_per_stock_pct (10% of Rs 500,000 / entry 750 = 66.6667) -- floored to 66.
+        self.assertEqual(result.position_size, 66)
         self.assertIsNotNone(result.stress_loss)
+
+    def test_single_share_exceeding_the_per_stock_cap_is_vetoed(self):
+        """Fix 1: a high-priced thesis where even ONE share would exceed the per-stock cap floors to
+        0 shares -- G6 must FAIL with a stated reason (-> VETO), never silently PASS at size 0.
+        Uses AXISBANK's own real 2021-10-27 evidence (G1-G4/G7 all real-verified PASS already, see
+        the ELIGIBLE case above) with a thesis whose planned_entry (Rs 60,000) is high enough that
+        even one share (Rs 60,000) exceeds 10% of Rs 500,000 capital (Rs 50,000) -- nothing here
+        depends on Praman's own real market price for AXISBANK, since no gate cross-checks a
+        thesis's planned_entry against real market price in Phase 1."""
+        thesis = dict(COMPLETE_AXISBANK_THESIS)
+        thesis["planned_entry"], thesis["planned_stop"] = 60000.0, 59000.0
+        result = run_assessment(self.praman_conn, self.desk_conn, symbol="AXISBANK", as_of_date="2021-10-27",
+                                 sector="Financials", thesis=thesis, rulebook=self.rulebook, costs=self.costs)
+        self.assertEqual(result.state, "VETO")
+        self.assertEqual(result.position_size, 0)
+        self.assertIsNone(result.stress_loss)
+        self.assertEqual(result.gate_results["G6"].result, "FAIL")
+        self.assertIn("0 whole shares", result.gate_results["G6"].reasons[0])
+        for gate in ("G1", "G2", "G3", "G4", "G7"):
+            self.assertEqual(result.gate_results[gate].result, "PASS", f"{gate}: {result.gate_results[gate].reasons}")
 
     def test_same_event_with_incomplete_thesis_is_watch(self):
         incomplete = dict(COMPLETE_AXISBANK_THESIS)

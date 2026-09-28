@@ -143,18 +143,33 @@ def run_assessment(conn, desk_conn, *, symbol: str, as_of_date: str, sector: str
         capital_at_stock, capital_at_sector = _capital_at_stock_and_sector(desk_conn, symbol, sector, symbol_to_sector)
 
         position_size = compute_position_size(entry, stop, rulebook, open_risk_used, capital_at_stock, capital_at_sector)
-        stress_loss = compute_stress_loss(conn, symbol, as_of_date, entry, stop, position_size, costs, rulebook)
-        planned = planned_loss_inr(entry, stop, position_size, costs)
 
-        _adv_shares, adv_turnover = _average_daily_volume_and_turnover(conn, symbol, as_of_date, ADV_LOOKBACK_SESSIONS)
-        gate_results["G5"] = g5_liquidity(
-            order_value_inr=position_size * entry, avg_daily_turnover_inr=adv_turnover, rulebook=rulebook,
-        )
-        gate_results["G6"] = g6_risk(
-            planned_loss_inr=planned, stress_loss_inr=stress_loss.stress_loss_inr,
-            open_risk_used_inr=open_risk_used, capital_at_stock_inr=capital_at_stock + position_size * entry,
-            capital_at_sector_inr=capital_at_sector + position_size * entry, rulebook=rulebook,
-        )
+        if position_size == 0:
+            # Fix 1 (post-STOP-3 review): NSE trades in whole shares. compute_position_size already
+            # floors to a whole share after every cap; if that floors to 0, a single share already
+            # exceeds the tightest cap (the per-trade risk budget itself, or whatever open-risk/
+            # per-stock/per-sector room is left) -- there is no valid order to size stress loss or
+            # liquidity against, so this is a stated G6 FAIL (-> VETO via the priority mapping),
+            # never a silent size-zero PASS.
+            stress_loss = None
+            gate_results["G5"] = GateResult("G5", UNKNOWN, ("Position size is 0 whole shares -- no order to check liquidity for.",))
+            gate_results["G6"] = GateResult("G6", FAIL, (
+                "Position size floors to 0 whole shares after risk/budget caps -- a single share "
+                "already exceeds the allowed risk-per-trade, open-risk, per-stock, or per-sector budget.",
+            ))
+        else:
+            stress_loss = compute_stress_loss(conn, symbol, as_of_date, entry, stop, position_size, costs, rulebook)
+            planned = planned_loss_inr(entry, stop, position_size, costs)
+
+            _adv_shares, adv_turnover = _average_daily_volume_and_turnover(conn, symbol, as_of_date, ADV_LOOKBACK_SESSIONS)
+            gate_results["G5"] = g5_liquidity(
+                order_value_inr=position_size * entry, avg_daily_turnover_inr=adv_turnover, rulebook=rulebook,
+            )
+            gate_results["G6"] = g6_risk(
+                planned_loss_inr=planned, stress_loss_inr=stress_loss.stress_loss_inr,
+                open_risk_used_inr=open_risk_used, capital_at_stock_inr=capital_at_stock + position_size * entry,
+                capital_at_sector_inr=capital_at_sector + position_size * entry, rulebook=rulebook,
+            )
     else:
         gate_results["G5"] = GateResult("G5", UNKNOWN, ("No thesis supplied.",))
         gate_results["G6"] = GateResult("G6", UNKNOWN, ("No thesis supplied.",))
