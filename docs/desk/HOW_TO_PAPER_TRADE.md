@@ -1,7 +1,9 @@
 # Your first paper trade
 
-Run these PowerShell commands from the `praman` folder. `python -m desk.cli`
-is the runnable form of `desk`. Prices, dates and IDs below are examples to replace.
+Run these PowerShell commands from the `praman` folder. `.\desk <command>` is the short form
+(`desk.bat`, in this same folder); `python -m desk.cli <command>` is the long form and always
+works as a fallback if the short form doesn't resolve for some reason (e.g. PowerShell's execution
+policy blocking local scripts). Prices, dates and IDs below are examples to replace.
 
 ## Each trading evening, in order
 
@@ -21,7 +23,7 @@ is the runnable form of `desk`. Prices, dates and IDs below are examples to repl
    checks stops, and reports changes and exits:
 
    ```powershell
-   python -m desk.cli evening
+   .\desk evening
    ```
 
 3. For a **new idea**, copy the template to a new filename, edit every example
@@ -30,14 +32,14 @@ is the runnable form of `desk`. Prices, dates and IDs below are examples to repl
    ```powershell
    Copy-Item theses/_template.yaml theses/AXISBANK-2026-09-28.yaml
    notepad theses/AXISBANK-2026-09-28.yaml
-   python -m desk.cli assess AXISBANK --thesis theses/AXISBANK-2026-09-28.yaml
+   .\desk assess AXISBANK --thesis theses/AXISBANK-2026-09-28.yaml
    ```
 
    Read every gate result. Only if the result is **ELIGIBLE**, use the printed
    `decision_id` (here, `12`) to open **the SAME evening**:
 
    ```powershell
-   python -m desk.cli paper open 12
+   .\desk paper open 12
    ```
 
    `PENDING` is normal: the next session's data has not arrived. The next evening's
@@ -45,6 +47,7 @@ is the runnable form of `desk`. Prices, dates and IDs below are examples to repl
    the original request date (UTC). Let the monitor resume it; a fresh manual open
    request resets the date boundary. Waiting until tomorrow to first request an
    open moves the earliest fill forward. Use current assessments without `--as-of`.
+   Closing a position later works the same way — see "Exits and review" below.
 
 ## Decision states
 
@@ -64,20 +67,30 @@ The five thesis triggers are **price** (stop/target), **time** (horizon), **evid
 **Current limitation:** `desk monitor`, also called by `desk evening`, automatically
 fills **stop exits only**: at the session open if it gaps below the stop, otherwise
 at the stop if touched. It does not automatically execute targets or the other four
-triggers. Review those yourself; for non-price exits use the next session's actual
-open once available. Manual close records the date and price you supply; it does
-not calculate or validate a fill for you.
+triggers — you judge those yourself, from `desk evening`'s "what changed" line (new
+disclosures/surveillance for `evidence`), your thesis's own horizon date (`time`),
+`desk status`'s open-risk line (`risk`), or your own judgment (`portfolio`).
+
+When one of those four applies, close the position **manually — but there is no
+`--price` or `--event-date` flag, on purpose**: exactly like `paper open`, a manual
+close cannot record any exit price on any past date you choose. It fills at the
+store's own real price for the first session strictly after the moment you run the
+command, net of the real round-trip sell-side cost — you only ever supply the
+`trade_id` and a mandatory `--reason`:
 
 ```powershell
-python -m desk.cli monitor
-python -m desk.cli status
-python -m desk.cli journal show "AXISBANK:7"
-python -m desk.cli paper close "AXISBANK:7" --event-date 2026-10-02 --price 1010 --reason "evidence: margin hypothesis invalidated; next-session open"
+.\desk monitor
+.\desk status
+.\desk journal show "AXISBANK:7"
+.\desk paper close "AXISBANK:7" --reason "evidence: margin hypothesis invalidated"
 ```
 
 `status` shows open risk, open trade IDs and ingestion health. Use its exact trade
 ID (`symbol:thesis_id`, not the decision ID) for `journal show` and `paper close`.
 The journal shows that trade's events. Check it before and after a manual close.
+Just like a pending entry, if the next session's data isn't in the store yet this
+prints `PENDING` and `desk monitor`/`desk evening` completes it automatically —
+no need to re-run the close command yourself.
 
 ## Three common refusal cases
 
