@@ -254,6 +254,8 @@ def _run_capturing(label: str, fn) -> dict:
             fn()
     except Exception:
         status, error_text = "ERROR", traceback.format_exc()
+    if status == "OK" and any(line.lstrip().startswith("WARN ") for line in buf.getvalue().splitlines()):
+        status = "WARN"
     return {"label": label, "status": status, "output": buf.getvalue(), "error": error_text}
 
 
@@ -296,7 +298,8 @@ def main() -> int:
         all_gaps.extend(f"[{r['label']}] {g}" for g in gaps)
         all_mismatches.extend(f"[{r['label']}] {m}" for m in mismatches)
 
-    overall_status = "OK" if all(r["status"] == "OK" for r in results) else "ERROR"
+    overall_status = max((r["status"] for r in results),
+                         key={"OK": 0, "WARN": 1, "ERROR": 2}.__getitem__, default="OK")
     step_summary = ", ".join(f"{r['label']}={r['status']}" for r in results)
     finished = datetime.now().isoformat(timespec="seconds")
 
@@ -307,6 +310,8 @@ def main() -> int:
         lines.append(f"  P2-003-SHAPED DATE MISMATCHES: {len(all_mismatches)} --")
         lines.extend(f"    {m}" for m in all_mismatches)
     for r in results:
+        lines.extend(f"  [{r['label']}] {line.strip()}" for line in r["output"].splitlines()
+                     if line.lstrip().startswith("WARN "))
         if r["status"] == "ERROR":
             lines.append(f"  [{r['label']}] EXCEPTION:")
             lines.extend(f"    {ln}" for ln in r["error"].splitlines())
@@ -316,7 +321,7 @@ def main() -> int:
         f.write(block)
 
     print(block)
-    return 0 if overall_status == "OK" else 1
+    return 1 if overall_status == "ERROR" else 0
 
 
 if __name__ == "__main__":

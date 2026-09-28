@@ -85,6 +85,7 @@ class PaperOpenHindsightTest(unittest.TestCase):
         from desk.lib.store import max_recorded_at
         return jstore.record_decision(
             self.desk_conn, symbol="AXISBANK", as_of_date=as_of_date, thesis_id=thesis_id,
+            isin_map_built_at=result.isin_map_built_at,
             evidence_bundle_hash=result.evidence_bundle.content_hash(), gate_results=result.gate_results_json(),
             state=result.state, rulebook_version="test", rulebook_hash="rb", cost_config_version="test",
             cost_config_hash="cc", code_commit="deadbeef", praman_watermark=max_recorded_at(self.scratch_praman),

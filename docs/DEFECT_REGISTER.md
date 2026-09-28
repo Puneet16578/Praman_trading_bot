@@ -1233,3 +1233,41 @@ No server is launched by the test. The initial test failed with `PSSecurityExcep
 because this machine disables scripts. The test and documented command now use a
 process-only execution-policy override, leaving machine policy unchanged.
 Full suite: `Ran 513 tests in 240.705s`, `OK` (Python exit code 0).
+
+## P8-017 — unavailable current ISIN snapshot aborted refresh; freshness was unrecorded
+
+**Root cause.** Today's snapshot fetch was outside the historical-snapshot error
+handling. A normal HTTP 404 aborted the step. The map had no build provenance,
+so neither Desk status nor G1 could distinguish an old retained map from a refresh.
+The script's docstring also incorrectly claimed it was not called by weekly ingest.
+
+**Fix.** Today's 404 retains the existing map and companion with WARN; missing-map
+and other HTTP failures remain ERROR. Ingestion reports OK/WARN/ERROR. Successful
+builds write an offset-bearing build timestamp, SHA-256, and used snapshot dates.
+The existing map has a one-time companion labelled as inferred from file mtime,
+with unknown historical dates explicitly marked. Status shows trading-day age;
+G1 fails above five days using the timestamp stored on the decision. Replay uses
+only that stored value. Explicit ALTER migration checks row counts before/after;
+the real database remained at 0 rows. See docs/OPERATIONS.md's operational note.
+
+**Re-verification.** 12 operational tests passed, including 404 retention, other
+HTTP failures, checksum integrity, used dates, health levels, five/six-day boundary,
+duplicate-session handling, and a populated-table migration with unchanged rows.
+The existing replay test now forbids current metadata reads during replay.
+During implementation, the new keyword was initially placed before the positional
+connection in four test calls, causing Python import errors. This agent-introduced
+argument-order error was corrected before committing; it was not a sandbox failure.
+
+**Handoff review (Claude Code, resuming the interrupted Codex session).** The uncommitted diff was
+read in full against the approved plan rather than trusted. All changed files compiled; the four
+calls were already valid keyword arguments when the session resumed. Verified directly: bhavcopy
+`knowledge_date` is a plain date, so the age query's `knowledge_date <= as_of` comparison is
+correct; the real Desk `decisions` table carries the column with 0 rows; the existing companion's
+SHA-256 matches the map's bytes; jugaad requests the current UDiFF report first and falls back to
+the legacy report only on failure, so today's 404 is "not yet published", not a permanently dead
+endpoint. One change made: the five-day limit was duplicated in G1 and the status line; both now
+read `shared.isin_map_metadata.MAX_AGE_TRADING_DAYS`. Known, accepted: an ISIN-age failure
+returns before G1's other checks, so it can mask a coexisting data-gap reason.
+
+Targeted tests: `Ran 30 tests`, `OK`. Full suite: `Ran 525 tests in 111.076s`, `OK` (Python
+exit code 0).

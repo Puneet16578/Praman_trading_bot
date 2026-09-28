@@ -29,6 +29,7 @@ INSUFFICIENT, RESEARCH_REQUIRED, WATCH, ELIGIBLE, VETO, EXPIRED = (
 )
 
 ADV_LOOKBACK_SESSIONS = 60
+_CURRENT_MAP = object()
 
 
 @dataclass
@@ -39,6 +40,7 @@ class AssessmentResult:
     position_size: float | None = None
     stress_loss: StressLossResult | None = None
     as_of_is_live: bool = True
+    isin_map_built_at: str | None = None
 
     def gate_results_json(self) -> dict:
         return {g: {"result": r.result, "reasons": list(r.reasons)} for g, r in self.gate_results.items()}
@@ -113,14 +115,19 @@ def _derive_state(gate_results: dict[str, GateResult], g7_override_reason: str |
 def run_assessment(conn, desk_conn, *, symbol: str, as_of_date: str, sector: str | None,
                     thesis: dict | None, rulebook: DeskRulebook, costs: CostConfig,
                     g7_override_reason: str | None = None,
-                    symbol_to_sector: dict[str, str] | None = None) -> AssessmentResult:
+                    symbol_to_sector: dict[str, str] | None = None,
+                    isin_map_built_at=_CURRENT_MAP) -> AssessmentResult:
     from desk.paper.open import is_as_of_live
+    if isin_map_built_at is _CURRENT_MAP:
+        from shared.isin_map_metadata import verified_built_at
+        isin_map_built_at = verified_built_at()
 
     as_of_live = is_as_of_live(conn, as_of_date)
 
     has_trade_history = thesis is not None and _thesis_has_any_trade(desk_conn, thesis)
     if thesis is not None and is_expired(thesis, as_of_date, has_trade_history):
-        return AssessmentResult(state=EXPIRED, gate_results={}, evidence_bundle=None, as_of_is_live=as_of_live)
+        return AssessmentResult(state=EXPIRED, gate_results={}, evidence_bundle=None, as_of_is_live=as_of_live,
+                                isin_map_built_at=isin_map_built_at)
 
     bundle = assemble_evidence_bundle(conn, symbol, as_of_date, sector)
     gate_results: dict[str, GateResult] = {}
@@ -130,7 +137,7 @@ def run_assessment(conn, desk_conn, *, symbol: str, as_of_date: str, sector: str
     # whether a THESIS was supplied, not on G1-G4's outcome; G7/G8 depend on the journal/thesis
     # only). Deriving the state from the complete set afterward, via _derive_state(), is what makes
     # "record every gate's result every time" possible.
-    gate_results["G1"] = g1_data_quality(conn, symbol, as_of_date)
+    gate_results["G1"] = g1_data_quality(conn, symbol, as_of_date, isin_map_built_at=isin_map_built_at)
     gate_results["G2"] = g2_evidence_sufficiency(bundle, rulebook)
     gate_results["G3"] = g3_structural_integrity(bundle)
     gate_results["G4"] = g4_surveillance(conn, symbol, as_of_date, bundle, rulebook)
@@ -184,7 +191,8 @@ def run_assessment(conn, desk_conn, *, symbol: str, as_of_date: str, sector: str
 
     state = _derive_state(gate_results, g7_override_reason)
     return AssessmentResult(state=state, gate_results=gate_results, evidence_bundle=bundle,
-                             position_size=position_size, stress_loss=stress_loss, as_of_is_live=as_of_live)
+                             position_size=position_size, stress_loss=stress_loss, as_of_is_live=as_of_live,
+                             isin_map_built_at=isin_map_built_at)
 
 
 def _thesis_has_any_trade(desk_conn, thesis: dict) -> bool:

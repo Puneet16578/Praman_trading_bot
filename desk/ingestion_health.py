@@ -21,6 +21,21 @@ _GAPS_RE = re.compile(r"^\s*GAPs: (?P<n>\d+)")
 STALE_AFTER_DAYS = 7  # PROPOSED, matching the roughly-weekly cadence weekly_ingest.py's own name implies
 
 
+def isin_map_health_line(conn, as_of_date: str | None) -> str:
+    from shared.isin_map_metadata import MAX_AGE_TRADING_DAYS, read_metadata, trading_days_since_build
+    try:
+        metadata = read_metadata()
+        if as_of_date is None:
+            return "ISIN map: UNKNOWN (no trading dates in store)."
+        age = trading_days_since_build(conn, metadata["built_at"], as_of_date)
+        status = "ERROR" if age > MAX_AGE_TRADING_DAYS else "OK"
+        provenance = " (inferred from file timestamp)" if metadata["build_time_source"] == "file_mtime" else ""
+        return (f"ISIN map: {status}, built {metadata['built_at']}{provenance}, "
+                f"age={age} trading days (limit {MAX_AGE_TRADING_DAYS}).")
+    except (OSError, ValueError, KeyError, TypeError):
+        return "ISIN map: ERROR (build metadata unavailable or checksum invalid)."
+
+
 def ingestion_health_line() -> str:
     if not LOG_PATH.exists():
         return "Ingestion health: UNKNOWN (logs/weekly_ingest.log not found)."

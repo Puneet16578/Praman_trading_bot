@@ -8,7 +8,8 @@ latest ingestion log"): logs/weekly_ingest.log is a mutable, git-ignored, append
 outside the bitemporal store. Reading it would make `desk replay` non-reproducible in exactly the
 way the whole point of Desk invariant D6 forbids -- the log can differ, or not exist, between when
 a decision was made and when it's replayed, for reasons that have nothing to do with the store
-itself. G1 here checks ONLY what the store itself can prove: the requested date is a real,
+itself. G1 checks the recorded ISIN map build timestamp against the store's trading calendar,
+and checks what the store itself can prove: the requested date is a real,
 populated trading day, and the target symbol has no gap on a date the wider market actually traded.
 Reinstating a mutable-log-derived check would need Praman itself to persist ingestion-quality
 signals as bitemporal rows (a Praman schema change, out of scope for the Desk) -- named here as a
@@ -35,7 +36,18 @@ class GateResult:
     reasons: tuple[str, ...] = field(default_factory=tuple)
 
 
-def g1_data_quality(conn, symbol: str, as_of_date: str, gap_check_calendar_days: int = 10) -> GateResult:
+def g1_data_quality(conn, symbol: str, as_of_date: str, gap_check_calendar_days: int = 10,
+                    *, isin_map_built_at: str | None = None) -> GateResult:
+    # NULL belongs to legacy decisions. New decisions record a timestamp or an empty
+    # string (unavailable metadata), so a missing companion fails closed.
+    if isin_map_built_at is not None:
+        from shared.isin_map_metadata import MAX_AGE_TRADING_DAYS, trading_days_since_build
+        try:
+            age = trading_days_since_build(conn, isin_map_built_at, as_of_date)
+        except (ValueError, TypeError):
+            return GateResult("G1", FAIL, ("ISIN map build time is unavailable or unverified.",))
+        if age > MAX_AGE_TRADING_DAYS:
+            return GateResult("G1", FAIL, (f"ISIN map is {age} trading days old (limit {MAX_AGE_TRADING_DAYS}).",))
     market_rows = conn.execute(
         "SELECT COUNT(*) AS n FROM bhavcopy WHERE event_date = ?", (as_of_date,)
     ).fetchone()["n"]

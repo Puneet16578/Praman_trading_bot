@@ -12,6 +12,7 @@ approach (desk/lib/store.py) applied to this scratch copy, exactly as it would b
 from __future__ import annotations
 import sys
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -71,6 +72,7 @@ class ReplayMatchesOriginalDecisionTest(unittest.TestCase):
         })
         decision_id = jstore.record_decision(
             self.desk_conn, symbol="AXISBANK", as_of_date="2021-10-27", thesis_id=thesis_id,
+            isin_map_built_at=result.isin_map_built_at,
             evidence_bundle_hash=result.evidence_bundle.content_hash(), gate_results=result.gate_results_json(),
             state=result.state, rulebook_version="test", rulebook_hash="test-rb-hash",
             cost_config_version="test", cost_config_hash="test-cost-hash",
@@ -92,8 +94,12 @@ class ReplayMatchesOriginalDecisionTest(unittest.TestCase):
         })
 
         from desk.replay import replay_decision
-        replayed = replay_decision(decision_id, desk_db_path=SCRATCH_DESK_DB,
-                                    rulebook_override=rulebook, costs_override=costs)
+        self.assertEqual(jstore.get_decision(self.desk_conn, decision_id)["isin_map_built_at"],
+                         result.isin_map_built_at)
+        with patch("shared.isin_map_metadata.read_metadata",
+                   side_effect=AssertionError("Replay must never read the current companion")):
+            replayed = replay_decision(decision_id, desk_db_path=SCRATCH_DESK_DB,
+                                        rulebook_override=rulebook, costs_override=costs)
 
         self.assertTrue(replayed.matched, f"Replay diverged: {replayed.diff}")
         self.assertEqual(replayed.replayed_state, "ELIGIBLE")

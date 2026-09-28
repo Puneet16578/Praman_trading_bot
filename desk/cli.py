@@ -71,6 +71,7 @@ def cmd_assess(args):
         code_commit=current_git_head(), praman_watermark=max_recorded_at(praman_conn),
         desk_watermark_value=jstore.desk_watermark(desk_conn),
         as_of_is_live=result.as_of_is_live, position_size=result.position_size,
+        isin_map_built_at=result.isin_map_built_at,
         stress_loss_inr=result.stress_loss.stress_loss_inr if result.stress_loss else None,
     )
 
@@ -93,13 +94,18 @@ def cmd_status(args):
     desk_conn = get_desk_connection()
     rulebook = load_active_rulebook()
     from desk.gates.engine import _open_risk_used_inr
-    from desk.ingestion_health import ingestion_health_line
+    from desk.ingestion_health import ingestion_health_line, isin_map_health_line
 
     open_risk = _open_risk_used_inr(desk_conn)
     budget = rulebook.rulebook.risk.capital_allocated_inr * rulebook.rulebook.risk.max_open_risk_pct / 100.0
     print(f"Open risk used: {open_risk:.2f} / {budget:.2f}")
     print(f"Open positions: {jstore.open_trade_ids(desk_conn)}")
     print(ingestion_health_line())
+    praman_conn = get_live_connection()
+    try:
+        print(isin_map_health_line(praman_conn, _latest_bhavcopy_date(praman_conn)))
+    finally:
+        praman_conn.close()
     desk_conn.close()
 
 

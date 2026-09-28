@@ -37,7 +37,7 @@ def record_decision(conn: sqlite3.Connection, *, symbol: str, as_of_date: str, t
                      rulebook_version: str, rulebook_hash: str,
                      cost_config_version: str, cost_config_hash: str,
                      code_commit: str, praman_watermark: str, desk_watermark_value: str,
-                     as_of_is_live: bool,
+                     as_of_is_live: bool, isin_map_built_at: str,
                      position_size: float | None = None, stress_loss_inr: float | None = None,
                      model_version: str | None = None, prompt_version: str | None = None,
                      override_reason: str | None = None) -> int:
@@ -46,12 +46,12 @@ def record_decision(conn: sqlite3.Connection, *, symbol: str, as_of_date: str, t
            (symbol, as_of_date, thesis_id, evidence_bundle_hash, gate_results, state,
             rulebook_version, rulebook_hash, cost_config_version, cost_config_hash, code_commit,
             praman_watermark, desk_watermark, model_version, prompt_version, override_reason,
-            position_size, stress_loss_inr, as_of_is_live, recorded_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            position_size, stress_loss_inr, as_of_is_live, recorded_at, isin_map_built_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (symbol, as_of_date, thesis_id, evidence_bundle_hash, json.dumps(gate_results), state,
          rulebook_version, rulebook_hash, cost_config_version, cost_config_hash, code_commit,
          praman_watermark, desk_watermark_value, model_version, prompt_version, override_reason,
-         position_size, stress_loss_inr, int(bool(as_of_is_live)), _now()),
+         position_size, stress_loss_inr, int(bool(as_of_is_live)), _now(), isin_map_built_at),
     )
     conn.commit()
     return cur.lastrowid

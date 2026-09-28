@@ -44,6 +44,7 @@ DECISIONS = DeskTable(
             model_version TEXT,                -- NULL in Phase 1 (no LLM)
             prompt_version TEXT,               -- NULL in Phase 1
             override_reason TEXT,              -- non-NULL only for a logged G7 override
+            isin_map_built_at TEXT,             -- NULL on decisions predating the freshness gate
             position_size REAL,                -- PERSISTED at assessment time -- `paper open` reads
             stress_loss_inr REAL,              -- this, and stop/target on the linked thesis, and
                                                 -- NEVER re-runs the assessment (integrity fix b)
@@ -242,6 +243,25 @@ def _paper_trade_events_insert_validation_triggers() -> tuple:
     return require_open_costs, require_close_costs, require_integer_quantity
 
 
+def migrate_decisions_isin_map(conn: sqlite3.Connection) -> tuple[int, int]:
+    """Explicit additive migration, checked against the existing decision row count."""
+    conn.execute("SAVEPOINT decisions_isin_map_migration")
+    try:
+        before = conn.execute("SELECT COUNT(*) FROM decisions").fetchone()[0]
+        columns = {r["name"] for r in conn.execute("PRAGMA table_info(decisions)")}
+        if "isin_map_built_at" not in columns:
+            conn.execute("ALTER TABLE decisions ADD COLUMN isin_map_built_at TEXT")
+        after = conn.execute("SELECT COUNT(*) FROM decisions").fetchone()[0]
+        if before != after:
+            raise RuntimeError("Decision row count changed during ISIN metadata migration")
+    except Exception:
+        conn.execute("ROLLBACK TO decisions_isin_map_migration")
+        raise
+    finally:
+        conn.execute("RELEASE decisions_isin_map_migration")
+    return before, after
+
+
 def init_desk_db(conn: sqlite3.Connection) -> None:
     """Idempotent, like Praman's own init_db(): creates each table and its append-only triggers if
     not already present, adds indices unconditionally (IF NOT EXISTS), migrates any column added to
@@ -256,6 +276,7 @@ def init_desk_db(conn: sqlite3.Connection) -> None:
         for trigger_sql in _append_only_trigger_sql(table.name):
             conn.execute(trigger_sql)
     _add_missing_columns(conn, "paper_trade_events", _PAPER_TRADE_EVENTS_ADDED_COLUMNS)
+    migrate_decisions_isin_map(conn)
     for trigger_sql in _paper_trade_events_insert_validation_triggers():
         conn.execute(trigger_sql)
     conn.commit()

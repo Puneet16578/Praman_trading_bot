@@ -104,6 +104,7 @@ def replay_decision(decision_id: int, desk_db_path: Path = DESK_DB_PATH,
     result = run_assessment(
         praman_conn, desk_conn, symbol=decision["symbol"], as_of_date=decision["as_of_date"],
         sector=(thesis or {}).get("sector"), thesis=thesis, rulebook=rulebook, costs=costs,
+        isin_map_built_at=decision.get("isin_map_built_at"),
     )
 
     original_gate_results = decision["gate_results"]

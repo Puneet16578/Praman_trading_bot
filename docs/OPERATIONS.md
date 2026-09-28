@@ -175,3 +175,38 @@ docstring reference to it stay accurate.
 
 - **SHA-256:** `550a00ea30f5a9722b33f69990b015c3c678b658eba1d9b02142fb804343d9d1`
 - **Size:** 1,435,029,504 bytes
+
+## ISIN refresh resilience — operational note, 2026-09-28
+
+This is an operational change, not a pre-registration amendment. A 404 for today's
+CM/UDiFF snapshot now produces WARN and retains the existing map and companion
+unchanged. Other failures remain ERROR; a 404 with no existing map is ERROR too.
+The existing snapshot merge and identity-resolution calculations are unchanged.
+No pinned research code or frozen pre-registration document was modified.
+
+`weekly_ingest.py` reports OK / WARN / ERROR, in descending severity ERROR > WARN >
+OK. WARN is a completed run with degraded freshness (exit 0); ERROR exits 1.
+Warnings are retained in the summary log and shown by `desk status`.
+
+Every successful map build writes `data/raw/nse_symbol_isin_current.meta.json`:
+`built_at` with its timezone offset, `map_sha256`, and `snapshot_dates` actually
+used. Desk validates the checksum before using its build time. The existing map's
+one-time companion uses its file timestamp, `2026-09-23T17:35:56.578734+05:30`,
+explicitly labelled `build_time_source=file_mtime`. Its historical snapshot dates
+were not recorded: `snapshot_dates=[]`, `snapshot_dates_source=not_recorded`.
+The existing map's bytes were unchanged; SHA-256:
+`e97da4b5b5450d06c496ba42be1e3db8a5ef85b9a4e02f659a6b0b92a19bcda1`.
+
+Desk age is the count of distinct bhavcopy event dates after the build date in IST,
+through the assessment/status date, visible by that knowledge date. G1 fails above
+5 trading days and when new-assessment metadata is missing or invalid. Every new
+decision records `isin_map_built_at`; replay passes that recorded value directly,
+never re-reading the current map or companion. NULL is reserved for legacy
+decisions that predate this check; their old G1 behavior remains intact. Replay's
+existing exact-code-commit check still applies.
+
+`migrate_decisions_isin_map()` explicitly counts rows, runs `ALTER TABLE decisions
+ADD COLUMN isin_map_built_at TEXT` when needed, and checks the unchanged count
+inside a savepoint. Real desk migration: **0 rows before, 0 after**. Existing rows
+are never backfilled with a guessed build timestamp. The migration also runs
+idempotently when opening a Desk database. Tests cover a populated legacy table.
