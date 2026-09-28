@@ -114,7 +114,9 @@ def cmd_paper_open(args):
     praman_conn = get_live_connection()
     desk_conn = get_desk_connection()
     try:
-        result = open_approved_decision(praman_conn, desk_conn, args.decision_id)
+        loaded_costs = load_active_cost_config()
+        result = open_approved_decision(praman_conn, desk_conn, args.decision_id,
+                                         costs=loaded_costs.costs, cost_config_hash=loaded_costs.sha256)
         if isinstance(result, PendingOpen):
             jstore.record_journal_event(
                 desk_conn, event_type="PAPER_OPEN_PENDING", decision_id=args.decision_id,
@@ -136,17 +138,19 @@ def cmd_paper_open(args):
 def cmd_paper_close(args):
     """Mirrors desk/paper/open.py's anti-hindsight design: no --price or --event-date -- both were
     the exact same hindsight loophole already closed for entries (they let any exit price be
-    recorded on any past date). The exit fills at the store's own real price for the first session
-    strictly after this command's own recorded_at, net of the real round-trip sell-side cost from
-    the active cost config -- see desk/paper/close.py. A PENDING result logs a PAPER_CLOSE_PENDING
-    journal event so `desk monitor` completes it automatically, exactly like a pending open."""
+    recorded on any past date). The exit fills at the store's own real (raw, never cost-adjusted)
+    price for the first session strictly after this command's own recorded_at; the real round-trip
+    sell-side cost from the active cost config is recorded in its own field -- see
+    desk/paper/close.py. A PENDING result logs a PAPER_CLOSE_PENDING journal event so `desk monitor`
+    completes it automatically, exactly like a pending open."""
     from desk.paper.close import PaperCloseRefused, PendingClose, close_approved_trade
 
     praman_conn = get_live_connection()
     desk_conn = get_desk_connection()
     try:
-        costs = load_active_cost_config().costs
-        result = close_approved_trade(praman_conn, desk_conn, args.trade_id, reason=args.reason, costs=costs)
+        loaded_costs = load_active_cost_config()
+        result = close_approved_trade(praman_conn, desk_conn, args.trade_id, reason=args.reason,
+                                       costs=loaded_costs.costs, cost_config_hash=loaded_costs.sha256)
         if isinstance(result, PendingClose):
             jstore.record_journal_event(
                 desk_conn, event_type="PAPER_CLOSE_PENDING", trade_id=args.trade_id,

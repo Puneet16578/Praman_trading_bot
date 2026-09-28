@@ -40,6 +40,17 @@ def planned_loss_inr(entry: float, stop: float, quantity: float, costs: CostConf
     return gross + round_trip_cost_inr(entry, quantity, costs, "buy") + round_trip_cost_inr(stop, quantity, costs, "sell")
 
 
+def realized_pnl_inr(entry: float, exit_price: float, quantity: float,
+                      buy_cost_inr: float, sell_cost_inr: float) -> float:
+    """The ONE function that computes realized P&L for a closed paper trade -- used for every exit
+    type, manual or automatic (stop, target, time, evidence, risk, portfolio), so two identical
+    trades always show identical P&L regardless of which trigger closed them (post-STOP-3-plus
+    consistency fix). Both `entry` and `exit_price` are ALWAYS the store's raw prices -- costs are
+    subtracted here explicitly, never folded into either price beforehand."""
+    gross = (exit_price - entry) * quantity
+    return gross - buy_cost_inr - sell_cost_inr
+
+
 def worst_overnight_gap_loss_inr(conn, symbol: str, as_of_date: str, quantity: float, lookback_sessions: int) -> float | None:
     """The largest adverse (downward) overnight gap -- close(t) to adjusted open(t+1) -- over the
     trailing `lookback_sessions`, expressed as an INR loss on `quantity` shares at TODAY's price

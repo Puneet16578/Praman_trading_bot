@@ -99,51 +99,54 @@ class PaperCloseHindsightTest(unittest.TestCase):
             if p.exists():
                 p.unlink()
 
+    def _close(self, trade_id, reason, now):
+        return close_approved_trade(self.scratch_praman, self.desk_conn, trade_id, reason=reason,
+                                     costs=self.costs, cost_config_hash="test-cost-hash", now=now)
+
     def test_close_issued_same_day_fills_at_d_plus_1_no_skip(self):
-        result = close_approved_trade(self.scratch_praman, self.desk_conn, self.trade_id,
-                                       reason="test exit", costs=self.costs, now=_utc(self.d))
+        result = self._close(self.trade_id, "test exit", now=_utc(self.d))
         self.assertFalse(isinstance(result, PendingClose), f"Expected a fill, got PENDING: {result}")
         self.assertEqual(result.event_date, self.d_plus_1)
 
     def test_close_issued_after_d_plus_1_open_fills_at_d_plus_2_open(self):
         """`now` falls on D+1's own calendar date -- D+1's own session has already "happened" by
         wall-clock time -- the fill must skip to D+2, never D+1, exactly like the entry-side fix."""
-        result = close_approved_trade(self.scratch_praman, self.desk_conn, self.trade_id,
-                                       reason="test exit", costs=self.costs, now=_utc(self.d_plus_1))
+        result = self._close(self.trade_id, "test exit", now=_utc(self.d_plus_1))
         self.assertFalse(isinstance(result, PendingClose), f"Expected a fill, got PENDING: {result}")
         self.assertEqual(result.event_date, self.d_plus_2)
         self.assertNotEqual(result.event_date, self.d_plus_1)
 
-    def test_fill_price_is_net_of_real_round_trip_sell_cost(self):
-        """The recorded price is NOT the raw quoted open -- it's net of the real round-trip
-        sell-side cost from the active cost config, computed on the position's own quantity."""
-        result = close_approved_trade(self.scratch_praman, self.desk_conn, self.trade_id,
-                                       reason="test exit", costs=self.costs, now=_utc(self.d))
+    def test_close_records_raw_price_and_a_separate_sell_side_cost(self):
+        """Post-STOP-3-plus consistency fix: the recorded price is the store's raw price, NOT net
+        of cost -- the round-trip SELL-side cost (including the DP charge) lives in its own field,
+        computed from the SAME active cost config whose hash is recorded alongside it."""
+        result = self._close(self.trade_id, "test exit", now=_utc(self.d))
         from src.signals.event_catalogue import build_symbol_history
         hist = build_symbol_history(self.scratch_praman, "AXISBANK")
         row = hist.price_row_as_of(self.d_plus_1, self.d_plus_1)
         gross_price = row["open_price"] * hist.cum_factor_up_to(self.d_plus_1)
         expected_cost = round_trip_cost_inr(gross_price, self.quantity, self.costs, "sell")
-        expected_net = gross_price - expected_cost / self.quantity
-        self.assertAlmostEqual(result.price, expected_net, places=6)
-        self.assertLess(result.price, gross_price)
+
+        self.assertAlmostEqual(result.price, gross_price, places=6)  # raw -- NOT net of cost anymore
+
+        latest = jstore.latest_trade_event(self.desk_conn, self.trade_id)
+        self.assertEqual(latest["price"], result.price)
+        self.assertAlmostEqual(latest["sell_cost_inr"], expected_cost, places=6)
+        self.assertEqual(latest["cost_config_hash"], "test-cost-hash")
+        self.assertIsNone(latest["buy_cost_inr"])
 
     def test_reason_is_mandatory(self):
         with self.assertRaises(PaperCloseRefused):
-            close_approved_trade(self.scratch_praman, self.desk_conn, self.trade_id,
-                                  reason="", costs=self.costs, now=_utc(self.d))
+            self._close(self.trade_id, "", now=_utc(self.d))
 
     def test_closing_an_already_closed_trade_is_refused(self):
-        close_approved_trade(self.scratch_praman, self.desk_conn, self.trade_id,
-                              reason="first close", costs=self.costs, now=_utc(self.d))
+        self._close(self.trade_id, "first close", now=_utc(self.d))
         with self.assertRaises(PaperCloseRefused):
-            close_approved_trade(self.scratch_praman, self.desk_conn, self.trade_id,
-                                  reason="second close attempt", costs=self.costs, now=_utc(self.d))
+            self._close(self.trade_id, "second close attempt", now=_utc(self.d))
 
     def test_closing_an_unknown_trade_id_is_refused(self):
         with self.assertRaises(PaperCloseRefused):
-            close_approved_trade(self.scratch_praman, self.desk_conn, "NOSUCHTRADE:999",
-                                  reason="test", costs=self.costs, now=_utc(self.d))
+            self._close("NOSUCHTRADE:999", "test", now=_utc(self.d))
 
 
 @unittest.skipUnless(_PRODUCTION_STORE_EXISTS, "Real Praman production store not found.")
@@ -189,7 +192,8 @@ class MonitorCompletesPendingCloseTest(unittest.TestCase):
     def test_pending_close_is_completed_by_the_monitor_once_ingested(self):
         # Issued on D+1 -- the target session (first strictly after D+1) isn't in the store yet.
         result = close_approved_trade(self.scratch_praman, self.desk_conn, self.trade_id,
-                                       reason="evidence invalidated", costs=self.costs, now=_utc(self.d_plus_1))
+                                       reason="evidence invalidated", costs=self.costs,
+                                       cost_config_hash="test-cost-hash", now=_utc(self.d_plus_1))
         self.assertIsInstance(result, PendingClose)
         self.assertEqual(result.not_before_date, self.d_plus_1)
 

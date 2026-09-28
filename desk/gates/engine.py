@@ -208,6 +208,26 @@ def _g7_overrides_this_month(desk_conn, as_of_date: str) -> int:
     return row["n"]
 
 
+def _closed_trade_pnl_inr(desk_conn, close_row) -> float | None:
+    """The ONE realized-P&L computation (desk/risk/officer.py:realized_pnl_inr), applied to one
+    CLOSE row and its matching OPEN row -- used by both functions below, so a trade's classification
+    as a loss (or its contribution to drawdown) never depends on a raw price comparison that ignores
+    quantity or cost (post-STOP-3-plus consistency fix). Returns None if the OPEN row is missing
+    (should not happen for a real CLOSE, but never silently treated as a zero-P&L trade)."""
+    from desk.risk.officer import realized_pnl_inr
+
+    opened = desk_conn.execute(
+        "SELECT price, quantity, buy_cost_inr FROM paper_trade_events WHERE trade_id = ? AND event_type = 'OPEN'",
+        (close_row["trade_id"],),
+    ).fetchone()
+    if opened is None:
+        return None
+    return realized_pnl_inr(
+        entry=opened["price"], exit_price=close_row["price"], quantity=opened["quantity"],
+        buy_cost_inr=opened["buy_cost_inr"] or 0.0, sell_cost_inr=close_row["sell_cost_inr"] or 0.0,
+    )
+
+
 def _consecutive_losses(desk_conn) -> int:
     rows = desk_conn.execute(
         """SELECT pte.* FROM paper_trade_events pte
@@ -215,12 +235,10 @@ def _consecutive_losses(desk_conn) -> int:
     ).fetchall()
     count = 0
     for row in rows:
-        opened = desk_conn.execute(
-            "SELECT price FROM paper_trade_events WHERE trade_id = ? AND event_type = 'OPEN'", (row["trade_id"],)
-        ).fetchone()
-        if opened is None:
+        pnl = _closed_trade_pnl_inr(desk_conn, row)
+        if pnl is None:
             continue
-        if row["price"] < opened["price"]:
+        if pnl < 0:
             count += 1
         else:
             break
@@ -230,17 +248,15 @@ def _consecutive_losses(desk_conn) -> int:
 def _monthly_drawdown_pct(desk_conn, rulebook: DeskRulebook, as_of_date: str) -> float:
     month_prefix = as_of_date[:7]
     rows = desk_conn.execute(
-        """SELECT pte.trade_id, pte.price AS close_price FROM paper_trade_events pte
+        """SELECT pte.* FROM paper_trade_events pte
            WHERE event_type = 'CLOSE' AND event_date LIKE ?""",
         (f"{month_prefix}%",),
     ).fetchall()
     realized = 0.0
     for row in rows:
-        opened = desk_conn.execute(
-            "SELECT price, quantity FROM paper_trade_events WHERE trade_id = ? AND event_type = 'OPEN'", (row["trade_id"],)
-        ).fetchone()
-        if opened is None:
+        pnl = _closed_trade_pnl_inr(desk_conn, row)
+        if pnl is None:
             continue
-        realized += (row["close_price"] - opened["price"]) * opened["quantity"]
+        realized += pnl
     capital = rulebook.risk.capital_allocated_inr
     return max(0.0, -100.0 * realized / capital) if capital > 0 else 0.0

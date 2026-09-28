@@ -98,7 +98,8 @@ class MonitorCompletesPendingOpenTest(unittest.TestCase):
         )
 
         # Step 1: "open on D" -- self.d_plus_1 isn't in the store yet, so this must come back PENDING.
-        open_result = open_approved_decision(self.scratch_praman, self.desk_conn, decision_id, now=_utc(self.d))
+        open_result = open_approved_decision(self.scratch_praman, self.desk_conn, decision_id,
+                                              costs=self.costs, cost_config_hash="test-cost-hash", now=_utc(self.d))
         self.assertIsInstance(open_result, PendingOpen)
         self.assertEqual(open_result.not_before_date, self.d)
 

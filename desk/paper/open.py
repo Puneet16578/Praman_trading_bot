@@ -1,5 +1,11 @@
 """desk paper open -- executes an ALREADY-APPROVED decision exactly as persisted; it never
-re-assesses (integrity fix b). Two guards against hindsight (integrity fix a):
+re-assesses (integrity fix b). The recorded fill price is ALWAYS the store's raw price -- never
+cost-adjusted (post-STOP-3-plus consistency fix); the round-trip BUY-side cost is computed
+separately, from the caller-supplied active cost config, and recorded in its own field alongside
+the cost config's own hash, so every fill (open or close, manual or automatic) carries the same two
+explicit cost fields rather than folding cost into price for some fills and not others.
+
+Two guards against hindsight (integrity fix a):
 
 1. A decision can only be paper-opened if it was a LIVE assessment (`as_of_date` was the latest
    available trading day AT ASSESSMENT TIME -- `decisions.as_of_is_live`). A decision made with an
@@ -78,7 +84,8 @@ def check_can_open(decision: dict, now: datetime) -> None:
         )
 
 
-def _attempt_fill(praman_conn, desk_conn, decision: dict, thesis: dict, not_before_date: str):
+def _attempt_fill(praman_conn, desk_conn, decision: dict, thesis: dict, not_before_date: str,
+                   costs, cost_config_hash: str):
     """Shared by `open_approved_decision` (a fresh human-initiated `paper open`) and
     `resume_pending_open` (a later automatic retry of an already-PENDING one) -- the only
     difference between them is WHERE `not_before_date` comes from; the fill logic itself, and its
@@ -86,6 +93,7 @@ def _attempt_fill(praman_conn, desk_conn, decision: dict, thesis: dict, not_befo
     `planned_stop`/`planned_target`, is identical either way."""
     from desk.journal import store as jstore
     from desk.paper.execution import Fill
+    from desk.risk.officer import round_trip_cost_inr
 
     fill_date = first_session_strictly_after(praman_conn, decision["symbol"], not_before_date)
     if fill_date is None:
@@ -95,13 +103,15 @@ def _attempt_fill(praman_conn, desk_conn, decision: dict, thesis: dict, not_befo
     row = hist.price_row_as_of(fill_date, fill_date)
     if row is None:
         return PendingOpen(decision_id=decision["decision_id"], not_before_date=not_before_date)
-    fill_price = row["open_price"] * hist.cum_factor_up_to(fill_date)
+    fill_price = row["open_price"] * hist.cum_factor_up_to(fill_date)  # raw -- never cost-adjusted
+    quantity = decision["position_size"]
+    buy_cost_inr = round_trip_cost_inr(fill_price, quantity, costs, "buy")
 
     trade_id = f"{decision['symbol']}:{decision['thesis_id']}"
     jstore.open_paper_trade(
         desk_conn, trade_id=trade_id, decision_id=decision["decision_id"], event_date=fill_date,
-        price=fill_price, quantity=decision["position_size"], stop=thesis["planned_stop"],
-        target=thesis["planned_target"],
+        price=fill_price, quantity=quantity, stop=thesis["planned_stop"],
+        target=thesis["planned_target"], buy_cost_inr=buy_cost_inr, cost_config_hash=cost_config_hash,
     )
     return Fill(event_date=fill_date, price=fill_price, kind="entry")
 
@@ -118,11 +128,14 @@ def _get_decision_and_thesis(desk_conn, decision_id: int) -> tuple[dict, dict]:
     return decision, thesis
 
 
-def open_approved_decision(praman_conn, desk_conn, decision_id: int, *, now: datetime | None = None):
+def open_approved_decision(praman_conn, desk_conn, decision_id: int, *, costs, cost_config_hash: str,
+                            now: datetime | None = None):
     """Returns a `Fill` (desk.paper.execution.Fill) on success, or a `PendingOpen` if the next
     eligible session's data does not exist in the store yet. Raises PaperOpenRefused on any of the
     guards above. Uses ONLY the decision's own persisted `position_size` and the linked thesis's
-    `planned_stop`/`planned_target` -- it never calls run_assessment.
+    `planned_stop`/`planned_target` -- it never calls run_assessment. `costs`/`cost_config_hash` are
+    the ACTIVE cost config at fill time (loaded by the caller) -- required, not defaulted, so a
+    caller can never forget to load one and silently record a fill with no cost fields.
 
     A `PendingOpen` here freezes `not_before_date` at THIS call's own `now` -- the caller (desk/
     cli.py's `cmd_paper_open`) records it in a PAPER_OPEN_PENDING journal event so `desk monitor`
@@ -135,10 +148,11 @@ def open_approved_decision(praman_conn, desk_conn, decision_id: int, *, now: dat
     check_can_open(decision, now)
 
     not_before_date = now.date().isoformat()
-    return _attempt_fill(praman_conn, desk_conn, decision, thesis, not_before_date)
+    return _attempt_fill(praman_conn, desk_conn, decision, thesis, not_before_date, costs, cost_config_hash)
 
 
-def resume_pending_open(praman_conn, desk_conn, decision_id: int, not_before_date: str):
+def resume_pending_open(praman_conn, desk_conn, decision_id: int, not_before_date: str, *,
+                         costs, cost_config_hash: str):
     """Retries a PENDING open using the ORIGINAL `not_before_date` frozen at the first `paper open`
     attempt -- never a fresh `now`. Waiting for Praman's store to catch up must not silently push
     the target fill session forward: the human already approved opening this exact decision (that's
@@ -147,7 +161,9 @@ def resume_pending_open(praman_conn, desk_conn, decision_id: int, not_before_dat
     NOT re-run `check_can_open`'s state/staleness checks -- those were already satisfied by the
     original attempt, and re-applying a wall-clock staleness check on every automatic retry would
     eventually refuse a still-legitimately-pending trade for no reason but Praman's own ingestion
-    lag. Called by `desk monitor` (`desk/monitor.py:complete_pending_paper_opens`), never by a human
-    directly."""
+    lag. `costs`/`cost_config_hash` are the ACTIVE cost config AT RESUME TIME -- economically
+    correct, since transaction costs are a real fact about broker rates in effect now, not something
+    hindsight could game. Called by `desk monitor`
+    (`desk/monitor.py:complete_pending_paper_opens`), never by a human directly."""
     decision, thesis = _get_decision_and_thesis(desk_conn, decision_id)
-    return _attempt_fill(praman_conn, desk_conn, decision, thesis, not_before_date)
+    return _attempt_fill(praman_conn, desk_conn, decision, thesis, not_before_date, costs, cost_config_hash)

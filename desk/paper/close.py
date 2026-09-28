@@ -6,13 +6,15 @@ price for the first session strictly AFTER the close command's own recorded_at (
 that has already happened by the time you run this), exactly like `open_approved_decision`'s entry
 fill.
 
-One deliberate difference from the entry side, stated rather than hidden: the recorded price here
-is NET of the real round-trip SELL-side transaction cost (STT, exchange/SEBI charges, brokerage,
-GST, and the depository charge) computed from the ACTIVE cost config at fill time -- economically
-the price you actually realize, not the raw quoted open. `open_approved_decision`'s entry fill is
-NOT cost-adjusted (a named Phase 1 asymmetry: entry costs are already folded into the pre-trade
-planned-loss/stress-loss estimate the risk officer computes before you ever open a position; nothing
-until now recorded a REALIZED, cost-adjusted price on an actual paper_trade_events row at all).
+Recorded price is ALWAYS the store's raw price -- never cost-adjusted (post-STOP-3-plus consistency
+fix, reversing this module's own earlier "net of cost" design: netting cost into price ONLY for
+manual closes meant two identical trades could show different P&L depending on how they closed, and
+made a stop-out look artificially cheaper than a manual close of the same trade at the same price).
+The real round-trip SELL-side cost (STT, exchange/SEBI charges, brokerage, GST, and the depository
+charge) is computed from the ACTIVE cost config at fill time and recorded in its OWN field, alongside
+that config's hash -- exactly the same treatment `open_approved_decision`'s entry fill now gives the
+BUY-side cost. Realized P&L for ANY exit (this module's or `desk monitor`'s automatic stop-fill) is
+computed by the one shared `desk/risk/officer.py:realized_pnl_inr`, never by comparing raw prices.
 """
 from __future__ import annotations
 from dataclasses import dataclass
@@ -42,7 +44,7 @@ def check_can_close(latest_event: dict | None, trade_id: str) -> None:
 
 
 def _attempt_close_fill(praman_conn, desk_conn, trade_id: str, quantity: float, reason: str,
-                         costs, not_before_date: str):
+                         costs, cost_config_hash: str, not_before_date: str):
     """Shared by `close_approved_trade` (a fresh human-initiated `paper close`) and
     `resume_pending_close` (a later automatic retry of an already-PENDING one) -- identical fill
     logic either way; only WHERE `not_before_date` comes from differs."""
@@ -59,21 +61,21 @@ def _attempt_close_fill(praman_conn, desk_conn, trade_id: str, quantity: float, 
     row = hist.price_row_as_of(fill_date, fill_date)
     if row is None:
         return PendingClose(trade_id=trade_id, not_before_date=not_before_date, reason=reason)
-    gross_price = row["open_price"] * hist.cum_factor_up_to(fill_date)
+    fill_price = row["open_price"] * hist.cum_factor_up_to(fill_date)  # raw -- never cost-adjusted
+    sell_cost_inr = round_trip_cost_inr(fill_price, quantity, costs, "sell")
 
-    sell_cost_inr = round_trip_cost_inr(gross_price, quantity, costs, "sell")
-    net_price = gross_price - (sell_cost_inr / quantity if quantity > 0 else 0.0)
-
-    jstore.close_paper_trade(desk_conn, trade_id=trade_id, event_date=fill_date, price=net_price, reason=reason)
-    return Fill(event_date=fill_date, price=net_price, kind="exit_open")
+    jstore.close_paper_trade(desk_conn, trade_id=trade_id, event_date=fill_date, price=fill_price,
+                              reason=reason, sell_cost_inr=sell_cost_inr, cost_config_hash=cost_config_hash)
+    return Fill(event_date=fill_date, price=fill_price, kind="exit_open")
 
 
 def close_approved_trade(praman_conn, desk_conn, trade_id: str, *, reason: str, costs,
-                          now: datetime | None = None):
+                          cost_config_hash: str, now: datetime | None = None):
     """The one entry point for a human-initiated `desk paper close`. `reason` is mandatory --
     there is no default and no way to omit it. Returns a `Fill` on success, or a `PendingClose` if
     the next eligible session's data does not exist in the store yet. Raises `PaperCloseRefused` if
-    there is no open position for `trade_id`, or no reason was given."""
+    there is no open position for `trade_id`, or no reason was given. `costs`/`cost_config_hash` are
+    the ACTIVE cost config at fill time (loaded by the caller) -- required, not defaulted."""
     from desk.journal import store as jstore
 
     if not reason:
@@ -84,20 +86,24 @@ def close_approved_trade(praman_conn, desk_conn, trade_id: str, *, reason: str, 
 
     now = now or datetime.now(timezone.utc)
     not_before_date = now.date().isoformat()
-    return _attempt_close_fill(praman_conn, desk_conn, trade_id, latest["quantity"], reason, costs, not_before_date)
+    return _attempt_close_fill(praman_conn, desk_conn, trade_id, latest["quantity"], reason,
+                                costs, cost_config_hash, not_before_date)
 
 
-def resume_pending_close(praman_conn, desk_conn, trade_id: str, not_before_date: str, reason: str, costs):
+def resume_pending_close(praman_conn, desk_conn, trade_id: str, not_before_date: str, reason: str,
+                          costs, cost_config_hash: str):
     """Retries a PENDING close using the ORIGINAL `not_before_date` frozen at the first `paper
     close` attempt -- never a fresh `now` -- for exactly the same reason `resume_pending_open`
     (desk/paper/open.py) doesn't either: waiting for Praman's own ingestion to catch up must not
-    silently push the target fill session forward. Called by `desk monitor`
-    (`desk/monitor.py:complete_pending_paper_closes`), never by a human directly. If the position
-    was already closed by something else in the meantime (e.g. a real stop hit in a normal monitor
-    run), `desk/journal/store.py:pending_paper_closes` already filters this trade_id out before this
-    is ever called."""
+    silently push the target fill session forward. `costs`/`cost_config_hash` are the ACTIVE cost
+    config AT RESUME TIME (a real fact about current broker rates, not something hindsight could
+    game). Called by `desk monitor` (`desk/monitor.py:complete_pending_paper_closes`), never by a
+    human directly. If the position was already closed by something else in the meantime (e.g. a
+    real stop hit in a normal monitor run), `desk/journal/store.py:pending_paper_closes` already
+    filters this trade_id out before this is ever called."""
     from desk.journal import store as jstore
 
     latest = jstore.latest_trade_event(desk_conn, trade_id)
     check_can_close(latest, trade_id)
-    return _attempt_close_fill(praman_conn, desk_conn, trade_id, latest["quantity"], reason, costs, not_before_date)
+    return _attempt_close_fill(praman_conn, desk_conn, trade_id, latest["quantity"], reason,
+                                costs, cost_config_hash, not_before_date)

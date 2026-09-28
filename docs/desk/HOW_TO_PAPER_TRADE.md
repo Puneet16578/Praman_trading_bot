@@ -74,8 +74,11 @@ disclosures/surveillance for `evidence`), your thesis's own horizon date (`time`
 When one of those four applies, close the position **manually — but there is no
 `--price` or `--event-date` flag, on purpose**: exactly like `paper open`, a manual
 close cannot record any exit price on any past date you choose. It fills at the
-store's own real price for the first session strictly after the moment you run the
-command, net of the real round-trip sell-side cost — you only ever supply the
+store's own real, raw price for the first session strictly after the moment you run
+the command — the same treatment every fill gets, entry or exit, manual or automatic
+(a stop). The real round-trip sell-side cost is computed separately and recorded in
+its own field, never folded into the price itself, so two identical trades always
+show identical realized P&L regardless of how they closed. You only ever supply the
 `trade_id` and a mandatory `--reason`:
 
 ```powershell

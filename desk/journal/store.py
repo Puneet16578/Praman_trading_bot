@@ -106,24 +106,33 @@ def get_thesis(conn: sqlite3.Connection, thesis_id: int) -> dict | None:
 
 def _record_trade_event(conn: sqlite3.Connection, *, trade_id: str, decision_id: int | None,
                          event_type: str, event_date: str, price: float, quantity: float,
-                         stop: float, target: float, reason: str) -> None:
+                         stop: float, target: float, reason: str,
+                         buy_cost_inr: float | None = None, sell_cost_inr: float | None = None,
+                         cost_config_hash: str | None = None) -> None:
+    """`price` is ALWAYS the store's raw price -- never cost-adjusted (post-STOP-3-plus consistency
+    fix). `buy_cost_inr`/`sell_cost_inr`/`cost_config_hash` are the separate, explicit cost fields:
+    OPEN populates buy_cost_inr, CLOSE populates sell_cost_inr, ADJUST populates neither."""
     conn.execute(
         """INSERT INTO paper_trade_events
-           (trade_id, decision_id, event_type, event_date, price, quantity, stop, target, reason, recorded_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (trade_id, decision_id, event_type, event_date, price, quantity, stop, target, reason, _now()),
+           (trade_id, decision_id, event_type, event_date, price, quantity, stop, target, reason,
+            buy_cost_inr, sell_cost_inr, cost_config_hash, recorded_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (trade_id, decision_id, event_type, event_date, price, quantity, stop, target, reason,
+         buy_cost_inr, sell_cost_inr, cost_config_hash, _now()),
     )
     conn.commit()
 
 
 def open_paper_trade(conn: sqlite3.Connection, *, trade_id: str, decision_id: int, event_date: str,
                       price: float, quantity: float, stop: float, target: float,
-                      reason: str = "entry") -> None:
+                      reason: str = "entry", buy_cost_inr: float | None = None,
+                      cost_config_hash: str | None = None) -> None:
     if latest_trade_event(conn, trade_id) is not None:
         raise ValueError(f"trade_id {trade_id!r} already has events -- OPEN must be the first event.")
     _record_trade_event(conn, trade_id=trade_id, decision_id=decision_id, event_type="OPEN",
                          event_date=event_date, price=price, quantity=quantity, stop=stop,
-                         target=target, reason=reason)
+                         target=target, reason=reason, buy_cost_inr=buy_cost_inr,
+                         cost_config_hash=cost_config_hash)
 
 
 def adjust_paper_trade(conn: sqlite3.Connection, *, trade_id: str, event_date: str, price: float,
@@ -137,13 +146,15 @@ def adjust_paper_trade(conn: sqlite3.Connection, *, trade_id: str, event_date: s
 
 
 def close_paper_trade(conn: sqlite3.Connection, *, trade_id: str, event_date: str, price: float,
-                       reason: str) -> None:
+                       reason: str, sell_cost_inr: float | None = None,
+                       cost_config_hash: str | None = None) -> None:
     prior = latest_trade_event(conn, trade_id)
     if prior is None or prior["event_type"] == "CLOSE":
         raise ValueError(f"trade_id {trade_id!r} has no open position to close.")
     _record_trade_event(conn, trade_id=trade_id, decision_id=None, event_type="CLOSE",
                          event_date=event_date, price=price, quantity=0.0, stop=prior["stop"],
-                         target=prior["target"], reason=reason)
+                         target=prior["target"], reason=reason, sell_cost_inr=sell_cost_inr,
+                         cost_config_hash=cost_config_hash)
 
 
 def latest_trade_event(conn: sqlite3.Connection, trade_id: str) -> dict | None:

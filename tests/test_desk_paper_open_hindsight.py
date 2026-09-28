@@ -93,13 +93,16 @@ class PaperOpenHindsightTest(unittest.TestCase):
             stress_loss_inr=result.stress_loss.stress_loss_inr if result.stress_loss else None,
         )
 
+    def _open(self, decision_id: int, now: datetime):
+        return open_approved_decision(self.scratch_praman, self.desk_conn, decision_id,
+                                       costs=self.costs, cost_config_hash="test-cost-hash", now=now)
+
     def test_decision_opened_during_d_plus_1_fills_at_d_plus_2(self):
         """`now` falls on D+1's own calendar date -- D+1's own session has already "happened" by
         wall-clock time (even though the store, in this test, DOES already have its data, since we
         copied real history) -- the fill must skip to D+2, never D+1."""
         decision_id = self._make_eligible_decision(self.d)
-        result = open_approved_decision(self.scratch_praman, self.desk_conn, decision_id,
-                                         now=_utc(self.d_plus_1))
+        result = self._open(decision_id, now=_utc(self.d_plus_1))
         self.assertFalse(isinstance(result, PendingOpen), f"Expected a fill, got PENDING: {result}")
         self.assertEqual(result.event_date, self.d_plus_2)
         self.assertNotEqual(result.event_date, self.d_plus_1)
@@ -108,9 +111,27 @@ class PaperOpenHindsightTest(unittest.TestCase):
         """Contrast case: opened the SAME calendar day as the decision (normal case) -- fills at
         the very next session, D+1, no skip needed."""
         decision_id = self._make_eligible_decision(self.d)
-        result = open_approved_decision(self.scratch_praman, self.desk_conn, decision_id, now=_utc(self.d))
+        result = self._open(decision_id, now=_utc(self.d))
         self.assertFalse(isinstance(result, PendingOpen))
         self.assertEqual(result.event_date, self.d_plus_1)
+
+    def test_open_records_raw_price_and_a_separate_buy_side_cost(self):
+        """Post-STOP-3-plus consistency fix: the recorded price is the store's raw price, never
+        cost-adjusted -- the round-trip BUY-side cost lives in its own field, computed from the
+        SAME active cost config whose hash is recorded alongside it."""
+        from desk.risk.officer import round_trip_cost_inr
+
+        decision_id = self._make_eligible_decision(self.d)
+        result = self._open(decision_id, now=_utc(self.d))
+        original_decision = jstore.get_decision(self.desk_conn, decision_id)
+        trade_id = f"AXISBANK:{original_decision['thesis_id']}"
+        latest = jstore.latest_trade_event(self.desk_conn, trade_id)
+
+        self.assertEqual(latest["price"], result.price)  # raw -- identical to the Fill's own price
+        expected_buy_cost = round_trip_cost_inr(result.price, latest["quantity"], self.costs, "buy")
+        self.assertAlmostEqual(latest["buy_cost_inr"], expected_buy_cost, places=6)
+        self.assertEqual(latest["cost_config_hash"], "test-cost-hash")
+        self.assertIsNone(latest["sell_cost_inr"])
 
     def test_stale_decision_is_refused(self):
         """More than STALE_AFTER_DAYS calendar days have passed since the decision's as_of_date --
@@ -120,12 +141,12 @@ class PaperOpenHindsightTest(unittest.TestCase):
         decision_id = self._make_eligible_decision(self.d)
         far_later = _utc(self.d) + timedelta(days=5)
         with self.assertRaises(PaperOpenRefused):
-            open_approved_decision(self.scratch_praman, self.desk_conn, decision_id, now=far_later)
+            self._open(decision_id, now=far_later)
 
     def test_explicit_historical_as_of_decision_is_refused(self):
         decision_id = self._make_eligible_decision(self.d, as_of_is_live=False)
         with self.assertRaises(PaperOpenRefused):
-            open_approved_decision(self.scratch_praman, self.desk_conn, decision_id, now=_utc(self.d))
+            self._open(decision_id, now=_utc(self.d))
 
     def test_open_uses_persisted_decision_never_reassesses(self):
         """Integrity fix (b): append rows to the store between assess and open (as if new
@@ -145,7 +166,7 @@ class PaperOpenHindsightTest(unittest.TestCase):
             "series": "EQ", "source_file": "test",
         })
 
-        result = open_approved_decision(self.scratch_praman, self.desk_conn, decision_id, now=_utc(self.d))
+        result = self._open(decision_id, now=_utc(self.d))
         self.assertFalse(isinstance(result, PendingOpen))
         latest = jstore.latest_trade_event(self.desk_conn, f"AXISBANK:{original_decision['thesis_id']}")
         self.assertAlmostEqual(latest["quantity"], original_size)

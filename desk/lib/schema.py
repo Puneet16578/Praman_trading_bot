@@ -102,15 +102,30 @@ PAPER_TRADE_EVENTS = DeskTable(
             decision_id INTEGER,               -- the ELIGIBLE decision that opened this trade (OPEN events)
             event_type TEXT NOT NULL,          -- OPEN / ADJUST / CLOSE
             event_date TEXT NOT NULL,          -- trading-calendar date of the fill
-            price REAL NOT NULL,
+            price REAL NOT NULL,               -- ALWAYS the store's raw price -- NEVER cost-adjusted
+                                                -- (post-STOP-3-plus consistency fix: costs are their
+                                                -- own explicit fields below, never folded into price)
             quantity REAL NOT NULL,            -- absolute post-event quantity (0 after CLOSE)
             stop REAL NOT NULL,
             target REAL NOT NULL,
             reason TEXT NOT NULL,              -- e.g. "entry", "corporate action: SPLIT 2:1", "stop hit", "manual stop widen"
+            buy_cost_inr REAL,                 -- round-trip BUY-side cost, recorded on OPEN only
+            sell_cost_inr REAL,                -- round-trip SELL-side cost (incl. DP charge), CLOSE only
+            cost_config_hash TEXT,             -- which cost config computed the above, OPEN/CLOSE only
             recorded_at TEXT NOT NULL
         )
     """,
     indices=("CREATE INDEX IF NOT EXISTS idx_paper_trade_events_trade_id ON paper_trade_events(trade_id)",),
+)
+
+# Columns added to paper_trade_events after its original release (post-STOP-3-plus consistency fix).
+# CREATE TABLE IF NOT EXISTS does NOT retroactively add columns to an already-existing table, so any
+# desk.sqlite created before this fix needs an explicit, non-destructive ALTER TABLE ADD COLUMN --
+# safe here specifically because every new column is nullable and no existing row is touched.
+_PAPER_TRADE_EVENTS_ADDED_COLUMNS = (
+    ("buy_cost_inr", "REAL"),
+    ("sell_cost_inr", "REAL"),
+    ("cost_config_hash", "TEXT"),
 )
 
 JOURNAL_EVENTS = DeskTable(
@@ -179,9 +194,21 @@ def _append_only_trigger_sql(table_name: str) -> tuple[str, str]:
     return update_trigger, delete_trigger
 
 
+def _add_missing_columns(conn: sqlite3.Connection, table_name: str, added_columns: tuple) -> None:
+    """ALTER TABLE ADD COLUMN for whichever of `added_columns` (name, sql_type) pairs the table
+    doesn't already have -- safe and non-destructive (every added column here is nullable), and
+    necessary because CREATE TABLE IF NOT EXISTS never retroactively adds a column to a table that
+    already existed under an earlier schema version."""
+    existing_cols = {row["name"] for row in conn.execute(f"PRAGMA table_info({table_name})")}
+    for name, sql_type in added_columns:
+        if name not in existing_cols:
+            conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {name} {sql_type}")
+
+
 def init_desk_db(conn: sqlite3.Connection) -> None:
     """Idempotent, like Praman's own init_db(): creates each table and its append-only triggers if
-    not already present, adds indices unconditionally (IF NOT EXISTS)."""
+    not already present, adds indices unconditionally (IF NOT EXISTS), and migrates any column added
+    to a table's shape after that table's original release (see _PAPER_TRADE_EVENTS_ADDED_COLUMNS)."""
     existing = {row["name"] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     for table in DESK_TABLES.values():
         if table.name not in existing:
@@ -190,4 +217,5 @@ def init_desk_db(conn: sqlite3.Connection) -> None:
             conn.execute(index_ddl)
         for trigger_sql in _append_only_trigger_sql(table.name):
             conn.execute(trigger_sql)
+    _add_missing_columns(conn, "paper_trade_events", _PAPER_TRADE_EVENTS_ADDED_COLUMNS)
     conn.commit()
