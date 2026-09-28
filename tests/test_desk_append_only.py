@@ -25,8 +25,8 @@ _SAMPLE_INSERT = {
         "VALUES ('X','2026-01-01','[]','[]','2026-02-01','[]',100,90,120,'Financials','PAPER','2026-01-01T00:00:00+00:00')"
     ),
     "paper_trade_events": (
-        "INSERT INTO paper_trade_events (trade_id, event_type, event_date, price, quantity, stop, target, reason, recorded_at) "
-        "VALUES ('X:1','OPEN','2026-01-01',100,10,90,120,'entry','2026-01-01T00:00:00+00:00')"
+        "INSERT INTO paper_trade_events (trade_id, event_type, event_date, price, quantity, stop, target, reason, recorded_at, buy_cost_inr, cost_config_hash) "
+        "VALUES ('X:1','OPEN','2026-01-01',100,10,90,120,'entry','2026-01-01T00:00:00+00:00',1.0,'test-costs')"
     ),
     "journal_events": (
         "INSERT INTO journal_events (event_type, detail, recorded_at) VALUES ('TEST','{}','2026-01-01T00:00:00+00:00')"

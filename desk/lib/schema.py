@@ -205,10 +205,48 @@ def _add_missing_columns(conn: sqlite3.Connection, table_name: str, added_column
             conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {name} {sql_type}")
 
 
+def _paper_trade_events_insert_validation_triggers() -> tuple:
+    """Insert-time hardening (post-STOP-3-plus review), enforced in the database itself rather than
+    trusted to every caller: an OPEN row with no buy_cost_inr/cost_config_hash, a CLOSE row with no
+    sell_cost_inr/cost_config_hash, or ANY row with a non-integer quantity, is rejected outright. No
+    behaviour change for any currently-exercised code path -- every real insert site
+    (desk/journal/store.py) already always supplies these; this only turns "should never happen" into
+    "cannot happen." Defined here, not in _append_only_trigger_sql, since these are specific to this
+    one table's own columns, not a generic property every desk table shares. Must run AFTER
+    _add_missing_columns -- a trigger referencing NEW.buy_cost_inr etc. cannot be created before
+    those columns exist on the table."""
+    require_open_costs = """
+        CREATE TRIGGER IF NOT EXISTS trg_paper_trade_events_require_open_costs
+        BEFORE INSERT ON paper_trade_events
+        WHEN NEW.event_type = 'OPEN' AND (NEW.buy_cost_inr IS NULL OR NEW.cost_config_hash IS NULL)
+        BEGIN
+            SELECT RAISE(ABORT, 'paper_trade_events: an OPEN row requires buy_cost_inr and cost_config_hash (never NULL)');
+        END
+    """
+    require_close_costs = """
+        CREATE TRIGGER IF NOT EXISTS trg_paper_trade_events_require_close_costs
+        BEFORE INSERT ON paper_trade_events
+        WHEN NEW.event_type = 'CLOSE' AND (NEW.sell_cost_inr IS NULL OR NEW.cost_config_hash IS NULL)
+        BEGIN
+            SELECT RAISE(ABORT, 'paper_trade_events: a CLOSE row requires sell_cost_inr and cost_config_hash (never NULL)');
+        END
+    """
+    require_integer_quantity = """
+        CREATE TRIGGER IF NOT EXISTS trg_paper_trade_events_require_integer_quantity
+        BEFORE INSERT ON paper_trade_events
+        WHEN NEW.quantity != CAST(NEW.quantity AS INTEGER)
+        BEGIN
+            SELECT RAISE(ABORT, 'paper_trade_events: quantity must be a whole number (NSE trades in whole shares)');
+        END
+    """
+    return require_open_costs, require_close_costs, require_integer_quantity
+
+
 def init_desk_db(conn: sqlite3.Connection) -> None:
     """Idempotent, like Praman's own init_db(): creates each table and its append-only triggers if
-    not already present, adds indices unconditionally (IF NOT EXISTS), and migrates any column added
-    to a table's shape after that table's original release (see _PAPER_TRADE_EVENTS_ADDED_COLUMNS)."""
+    not already present, adds indices unconditionally (IF NOT EXISTS), migrates any column added to
+    a table's shape after that table's original release (see _PAPER_TRADE_EVENTS_ADDED_COLUMNS), and
+    (re)creates paper_trade_events' own insert-time validation triggers."""
     existing = {row["name"] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     for table in DESK_TABLES.values():
         if table.name not in existing:
@@ -218,4 +256,6 @@ def init_desk_db(conn: sqlite3.Connection) -> None:
         for trigger_sql in _append_only_trigger_sql(table.name):
             conn.execute(trigger_sql)
     _add_missing_columns(conn, "paper_trade_events", _PAPER_TRADE_EVENTS_ADDED_COLUMNS)
+    for trigger_sql in _paper_trade_events_insert_validation_triggers():
+        conn.execute(trigger_sql)
     conn.commit()

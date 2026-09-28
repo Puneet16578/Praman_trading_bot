@@ -51,10 +51,12 @@ class PaperCloseHindsightTest(unittest.TestCase):
                 p.unlink()
         prod = get_live_connection()
         self.scratch_praman = get_connection(str(SCRATCH_PRAMAN_DB))
+        self.addCleanup(self.scratch_praman.close)
         init_db(self.scratch_praman)
         copy_symbol_rows(prod, self.scratch_praman, "AXISBANK")
         prod.close()
         self.desk_conn = get_desk_connection(SCRATCH_DESK_DB)
+        self.addCleanup(self.desk_conn.close)
         self.costs = make_test_costs()
 
         hist_days = self._trading_days_after("2021-10-27", n=3)
@@ -83,7 +85,9 @@ class PaperCloseHindsightTest(unittest.TestCase):
         self.trade_id = f"AXISBANK:{self.thesis_id}"
         jstore.open_paper_trade(self.desk_conn, trade_id=self.trade_id, decision_id=decision_id,
                                  event_date=self.d_plus_1, price=750.0, quantity=self.quantity,
-                                 stop=700.0, target=820.0)
+                                 stop=700.0, target=820.0,
+                                 buy_cost_inr=round_trip_cost_inr(750.0, self.quantity, self.costs, "buy"),
+                                 cost_config_hash="test-cost-hash")
 
     def _trading_days_after(self, after: str, n: int) -> list[str]:
         rows = self.scratch_praman.execute(
@@ -170,17 +174,21 @@ class MonitorCompletesPendingCloseTest(unittest.TestCase):
         self.d_plus_2_row.pop("recorded_at", None)
 
         self.scratch_praman = get_connection(str(SCRATCH_PRAMAN_DB))
+        self.addCleanup(self.scratch_praman.close)
         init_db(self.scratch_praman)
         # Only through D+1 -- D+2 deliberately does not exist in this store yet.
         copy_symbol_rows(prod, self.scratch_praman, "AXISBANK", through_event_date=self.d_plus_1)
         prod.close()
 
         self.desk_conn = get_desk_connection(SCRATCH_DESK_DB)
+        self.addCleanup(self.desk_conn.close)
         self.costs = make_test_costs()
         self.trade_id = "AXISBANK:1"
         jstore.open_paper_trade(self.desk_conn, trade_id=self.trade_id, decision_id=None,
                                  event_date=self.d_plus_1, price=750.0, quantity=66.0,
-                                 stop=700.0, target=820.0)
+                                 stop=700.0, target=820.0,
+                                 buy_cost_inr=round_trip_cost_inr(750.0, 66.0, self.costs, "buy"),
+                                 cost_config_hash="test-cost-hash")
 
     def tearDown(self):
         self.scratch_praman.close()
