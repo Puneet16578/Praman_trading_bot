@@ -93,11 +93,11 @@ for why no earlier date is usable.
 ## Tests
 
 ```
-pytest tests/
+python -m unittest discover -s tests -p "test_*.py"
 ```
 
-26 test files under `tests/`, covering the bitemporal store, ingestion parsers, the event
-catalogue, classification rules, and the manipulation-language lint.
+53 test files under `tests/`, covering the bitemporal store, ingestion parsers, the event
+catalogue, classification rules, the manipulation-language lint, and the Desk.
 
 ## Architecture, in one paragraph
 
