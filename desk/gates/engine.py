@@ -208,12 +208,17 @@ def _thesis_has_any_trade(desk_conn, thesis: dict) -> bool:
 
 
 def _g7_overrides_this_month(desk_conn, as_of_date: str) -> int:
+    """`recorded_at` is UTC; `as_of_date` is an NSE (IST) date. Compare months in IST, or an
+    override between 00:00 and 05:30 IST on the 1st counts toward the previous month (P8-018)."""
+    from datetime import datetime
+    from shared.market_time import market_date
+
     month_prefix = as_of_date[:7]
-    row = desk_conn.execute(
-        "SELECT COUNT(*) AS n FROM journal_events WHERE event_type = 'G7_OVERRIDE' AND recorded_at LIKE ?",
-        (f"{month_prefix}%",),
-    ).fetchone()
-    return row["n"]
+    rows = desk_conn.execute(
+        "SELECT recorded_at FROM journal_events WHERE event_type = 'G7_OVERRIDE'"
+    ).fetchall()
+    return sum(1 for r in rows
+               if market_date(datetime.fromisoformat(r["recorded_at"])).isoformat()[:7] == month_prefix)
 
 
 def _closed_trade_pnl_inr(desk_conn, close_row) -> float | None:

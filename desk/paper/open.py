@@ -18,7 +18,9 @@ Two guards against hindsight (integrity fix a):
    trading-calendar-aware version needs a reliable "what is today's session, if any" source Phase 1
    does not have (Praman's own ingestion is nightly batch, not live).
 3. The fill itself can only use a session strictly AFTER the CALENDAR DATE this command itself runs
-   on (`now`, defaulting to wall-clock UTC) -- never a session whose own trading day has already
+   on (`now`, defaulting to wall-clock UTC, taken as its NSE/IST calendar date via
+   `shared.market_time.market_date` -- the UTC date lags IST between 00:00 and 05:30 IST, which
+   made the chosen session depend on the hour of an IST day, P8-018) -- never a session whose own trading day has already
    started/happened by the time you click "open". Concretely: if `now` falls on D+1 (one day after
    the decision's `as_of_date`, D), D+1's own session has already begun/happened in the real world
    by the time you're clicking "open" -- so the fill skips to D+2, never D+1, regardless of whether
@@ -34,6 +36,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 
+from shared.market_time import market_date
 from src.signals.event_catalogue import build_symbol_history
 
 STALE_AFTER_DAYS = 1  # PROPOSED: allow opening a decision made "today" or with one calendar day of
@@ -76,7 +79,7 @@ def check_can_open(decision: dict, now: datetime) -> None:
             "backtesting, not paper trading. A paper trade can only be opened from a live assessment."
         )
     as_of = date.fromisoformat(decision["as_of_date"])
-    age_days = (now.date() - as_of).days
+    age_days = (market_date(now) - as_of).days
     if age_days > STALE_AFTER_DAYS:
         raise PaperOpenRefused(
             f"Decision as-of date {decision['as_of_date']!r} is {age_days} calendar day(s) old "
@@ -147,7 +150,7 @@ def open_approved_decision(praman_conn, desk_conn, decision_id: int, *, costs, c
     now = now or datetime.now(timezone.utc)
     check_can_open(decision, now)
 
-    not_before_date = now.date().isoformat()
+    not_before_date = market_date(now).isoformat()
     return _attempt_fill(praman_conn, desk_conn, decision, thesis, not_before_date, costs, cost_config_hash)
 
 

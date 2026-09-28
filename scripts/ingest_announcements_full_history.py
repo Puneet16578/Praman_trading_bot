@@ -13,6 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from shared.market_time import market_today
 from src.bitemporal.connection import get_connection, init_db
 from src.config.settings import get_settings
 from src.ingestion.nse_market_data.announcements import _session_with_cookie, fetch_and_ingest_symbol
@@ -25,7 +26,7 @@ def already_fetched_symbols(conn) -> set[str]:
     return {r[0] for r in rows}
 
 def main(end_date: date | None = None) -> None:
-    end_date = end_date or date.today()
+    end_date = end_date or market_today()
     settings = get_settings()
     conn = get_connection(settings.database_path)
     init_db(conn)

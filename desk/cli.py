@@ -209,7 +209,8 @@ def cmd_evening(args):
     praman_conn = get_live_connection()
     desk_conn = get_desk_connection()
     try:
-        today = date.today().isoformat()
+        from shared.market_time import market_today
+        today = market_today().isoformat()
         latest = _latest_bhavcopy_date(praman_conn)
         if latest != today:
             print(f"REFUSED: today's data ({today}) is not yet in the store (latest ingested: "

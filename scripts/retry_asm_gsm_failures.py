@@ -41,6 +41,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from shared.market_time import market_today
 from src.bitemporal.connection import get_connection, init_db
 from src.bitemporal.store import StoreValidationError
 from src.config.settings import get_settings
@@ -162,8 +163,9 @@ def main() -> None:
     prior_report = json.loads(PRIOR_REPORT_PATH.read_text(encoding="utf-8"))
 
     session = asm_session()
-    circulars = fetch_circular_index(session, INDEX_START, date.today())
-    print(f"Fetched {len(circulars)} live circulars ({INDEX_START.isoformat()} .. {date.today().isoformat()}) for lookup.")
+    today = market_today()
+    circulars = fetch_circular_index(session, INDEX_START, today)
+    print(f"Fetched {len(circulars)} live circulars ({INDEX_START.isoformat()} .. {today.isoformat()}) for lookup.")
     index_by_number = {str(c["circNumber"]): c for c in circulars}
 
     asm_failed_in = prior_report["asm_circulars_failed"]

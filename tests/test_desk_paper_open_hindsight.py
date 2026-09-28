@@ -108,6 +108,29 @@ class PaperOpenHindsightTest(unittest.TestCase):
         self.assertEqual(result.event_date, self.d_plus_2)
         self.assertNotEqual(result.event_date, self.d_plus_1)
 
+    def _ist(self, date_str: str, hour: int) -> datetime:
+        """An IST wall-clock moment expressed in UTC, as production's default `now`
+        (datetime.now(timezone.utc)) would carry it -- an IST-labelled datetime would hide the bug,
+        since .date() on it already returns the IST date."""
+        from shared.market_time import IST
+        y, m, d = (int(x) for x in date_str.split("-"))
+        return datetime(y, m, d, hour, tzinfo=IST).astimezone(timezone.utc)
+
+    def test_open_at_0100_ist_on_d_plus_1_fills_at_d_plus_2(self):
+        """P8-018: 01:00 IST on D+1 is still D in UTC. The fill must follow the IST calendar date
+        and land where an open at 06:00 IST the same day does -- D+2 -- not on D+1."""
+        decision_id = self._make_eligible_decision(self.d)
+        result = self._open(decision_id, now=self._ist(self.d_plus_1, 1))
+        self.assertFalse(isinstance(result, PendingOpen), f"Expected a fill, got PENDING: {result}")
+        self.assertEqual(result.event_date, self.d_plus_2)
+
+    def test_open_at_0600_ist_on_d_plus_1_fills_at_d_plus_2(self):
+        """P8-018 contrast case: 06:00 IST on D+1 is already D+1 in UTC -- same session as 01:00."""
+        decision_id = self._make_eligible_decision(self.d)
+        result = self._open(decision_id, now=self._ist(self.d_plus_1, 6))
+        self.assertFalse(isinstance(result, PendingOpen), f"Expected a fill, got PENDING: {result}")
+        self.assertEqual(result.event_date, self.d_plus_2)
+
     def test_decision_opened_same_day_fills_at_d_plus_1(self):
         """Contrast case: opened the SAME calendar day as the decision (normal case) -- fills at
         the very next session, D+1, no skip needed."""

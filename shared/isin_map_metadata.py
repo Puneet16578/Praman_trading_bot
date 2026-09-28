@@ -2,10 +2,10 @@
 from __future__ import annotations
 import hashlib
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from pathlib import Path
 
-IST = timezone(timedelta(hours=5, minutes=30))
+from shared.market_time import IST
 MAX_AGE_TRADING_DAYS = 5  # G1 fails, and desk status reports ERROR, above this age
 MAP_PATH = Path(__file__).resolve().parents[1] / "data/raw/nse_symbol_isin_current.json"
 

@@ -57,7 +57,8 @@ def ingestion_health_line() -> str:
         if last_summary is None:
             return "Ingestion health: UNKNOWN (no run summary found in the log)."
 
-        start = datetime.fromisoformat(last_summary["start"]).replace(tzinfo=timezone.utc)
+        from shared.market_time import parse_logged_timestamp
+        start = parse_logged_timestamp(last_summary["start"])
         age_days = (datetime.now(timezone.utc) - start).days
         staleness = f"STALE ({age_days}d ago)" if age_days > STALE_AFTER_DAYS else f"{age_days}d ago"
 

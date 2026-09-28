@@ -76,6 +76,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))    # this script's own dir (scripts/ has no __init__.py)
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # project root, for `src.*` imports
 
+from shared.market_time import IST, market_today  # noqa: E402 (needs the project root on sys.path)
+
 ROOT = Path(__file__).resolve().parents[1]
 LOG_PATH = ROOT / "logs" / "weekly_ingest.log"
 ASM_GSM_LOOKBACK_DAYS = 30  # widened from 10 (P8-007 scoping, docs/phase10_p8007_scoping.md): a
@@ -162,7 +164,7 @@ def step_asm_gsm() -> None:
     settings = get_settings()
     conn = get_connection(settings.database_path)
     init_db(conn)
-    to_date = date.today()
+    to_date = market_today()
     from_date = to_date - timedelta(days=ASM_GSM_LOOKBACK_DAYS)
     print(f"[ASM/GSM] sweeping {from_date.isoformat()} .. {to_date.isoformat()} "
           f"({ASM_GSM_LOOKBACK_DAYS}-day lookback)")
@@ -203,7 +205,7 @@ def step_bhavcopy_today() -> None:
     from src.config.settings import get_settings
     from src.ingestion.nse_market_data.bhavcopy import ingest_bhavcopy_date
 
-    today = date.today()
+    today = market_today()
     if today.weekday() >= 5:  # Sat=5, Sun=6
         print(f"[BHAVCOPY_TODAY] {today.isoformat()} is a weekend -- skipped, no request made.")
         return
@@ -287,7 +289,7 @@ def _extract_gaps_and_mismatches(output: str) -> tuple[list[str], list[str]]:
 
 def main() -> int:
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    started = datetime.now().isoformat(timespec="seconds")
+    started = datetime.now(IST).isoformat(timespec="seconds")
 
     results = [_run_capturing(label, fn) for label, fn in STEPS]
 
@@ -301,7 +303,7 @@ def main() -> int:
     overall_status = max((r["status"] for r in results),
                          key={"OK": 0, "WARN": 1, "ERROR": 2}.__getitem__, default="OK")
     step_summary = ", ".join(f"{r['label']}={r['status']}" for r in results)
-    finished = datetime.now().isoformat(timespec="seconds")
+    finished = datetime.now(IST).isoformat(timespec="seconds")
 
     lines = [f"=== {started} weekly_ingest (finished {finished}) overall={overall_status} steps: {step_summary} ==="]
     lines.append(f"  GAPs: {len(all_gaps)}" + ("" if not all_gaps else " --"))

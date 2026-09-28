@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.ingestion.nse_market_data.isin_mapping import fetch_isin_snapshot, merge_isin_snapshots
 from shared.isin_map_metadata import IST, write_metadata
+from shared.market_time import market_today
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_PATH = ROOT / "data" / "raw" / "nse_symbol_isin_current.json"
@@ -39,7 +40,7 @@ SNAPSHOT_DATES = [
 
 def main() -> None:
     snapshots = []
-    today = date.today()
+    today = market_today()
     try:
         snapshots.append(fetch_isin_snapshot(today))
     except HTTPError as exc:

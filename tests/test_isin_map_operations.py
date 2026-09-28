@@ -13,6 +13,7 @@ from unittest.mock import patch
 
 from requests import HTTPError, Response
 from scripts import build_isin_map, weekly_ingest
+from shared.market_time import market_today
 from shared.isin_map_metadata import (
     IST, bootstrap_metadata, companion_path, read_metadata, trading_days_since_build,
 )
@@ -67,7 +68,7 @@ class IsinRefreshTest(unittest.TestCase):
         metadata = read_metadata(self.path)
         self.assertIsNotNone(datetime.fromisoformat(metadata["built_at"]).utcoffset())
         self.assertEqual(metadata["map_sha256"], hashlib.sha256(self.path.read_bytes()).hexdigest())
-        self.assertEqual(metadata["snapshot_dates"], [date.today().isoformat(), old.isoformat()])
+        self.assertEqual(metadata["snapshot_dates"], [market_today().isoformat(), old.isoformat()])
         self.assertEqual(json.loads(self.path.read_text()), {"NEW": "INE000000002", "OLD": "INE000000001"})
 
     def test_bootstrap_uses_mtime_once_and_labels_unknown_snapshot_dates(self):

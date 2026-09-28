@@ -29,6 +29,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from shared.market_time import market_today
 from src.bitemporal.connection import get_connection, init_db
 from src.bitemporal.guard import read_as_of
 from src.config.settings import get_settings
@@ -56,7 +57,7 @@ def main(end_date: date | None = None) -> None:
     conn = get_connection(settings.database_path)
     init_db(conn)
 
-    end = end_date or (date.today() - timedelta(days=1))
+    end = end_date or (market_today() - timedelta(days=1))
     candidates = weekdays_between(START_DATE, end)
     confirmed = already_confirmed_trading_days(conn)
     to_request = [d for d in candidates if d.isoformat() not in confirmed]

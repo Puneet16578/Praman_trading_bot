@@ -24,6 +24,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from shared.market_time import market_today
 from src.bitemporal.connection import get_connection, init_db
 from src.config.settings import get_settings
 from src.ingestion.nse_market_data.asm import fetch_and_ingest_asm_range
@@ -40,7 +41,7 @@ def main() -> None:
     conn = get_connection(settings.database_path)
     init_db(conn)
 
-    today = date.today()
+    today = market_today()
     print(f"[ASM] sweeping {ASM_START.isoformat()} .. {today.isoformat()} (live network fetch, no cache)")
     asm_report = fetch_and_ingest_asm_range(conn, ASM_START, today)
 

@@ -1271,3 +1271,34 @@ returns before G1's other checks, so it can mask a coexisting data-gap reason.
 
 Targeted tests: `Ran 30 tests`, `OK`. Full suite: `Ran 525 tests in 111.076s`, `OK` (Python
 exit code 0).
+
+## P8-018 — mixed clocks: IST log times read as UTC; UTC dates compared with NSE dates
+
+**Found.** `desk status` printed `last run 2026-09-28T13:53:03 (-1d ago)` minutes after a run.
+
+**Root cause.** `scripts/weekly_ingest.py` wrote naive local (IST) timestamps;
+`desk/ingestion_health.py` labelled them UTC, placing a same-day run 5.5 hours in the future.
+The audit of every timestamp created or compared in `desk/` and `scripts/` found three more
+places where a UTC value met an NSE (IST) calendar date:
+
+| Where | Before | Effect |
+|---|---|---|
+| `desk/paper/open.py` (`check_can_open`, `open_approved_decision`) | `now.date()` of a UTC `now` | Between 00:00 and 05:30 IST the UTC date is still the previous day: an open at 01:00 IST on D+1 filled at D+1, one at 06:00 IST filled at D+2. Not a look-ahead leak (D+1's session opens 09:15 IST, after the UTC date rolls over), but the chosen session depended on the hour, contradicting the module's own rule, and staleness read one day low in that window. |
+| `desk/paper/close.py` (`close_approved_trade`) | same | same shape for exits |
+| `desk/gates/engine.py` (`_g7_overrides_this_month`) | UTC `recorded_at LIKE 'YYYY-MM%'` vs IST `as_of_date` month | an override between 00:00 and 05:30 IST on the 1st counted toward the previous month |
+| `desk/cli.py` (`evening`), `date.today()` in `weekly_ingest.py`, `build_isin_map.py`, `ingest_bhavcopy_full_history.py`, `ingest_announcements_full_history.py`, `ingest_asm_gsm_sample.py`, `retry_asm_gsm_failures.py` | machine-local date | correct only because this machine runs in IST |
+
+Left unchanged, verified UTC-vs-UTC: store and journal `recorded_at` (`_now()`), replay
+watermarks, `scripts/snapshot_store.py`; `time.time()` is used only for durations.
+
+**Fix.** `shared/market_time.py`: `IST` (fixed +05:30, no DST), `market_today()`,
+`market_date()` (refuses naive datetimes), `parse_logged_timestamp()` (legacy naive log entries
+read as IST). The log now writes `+05:30`; every NSE-date use above goes through the module.
+
+**Re-verification.** 8 new tests: legacy and offset same-day runs report `(0d ago)`; opens at
+01:00 and 06:00 IST on D+1, passed as UTC instants exactly as production's default `now`, both
+fill at D+2; an override at 00:30 IST on the 1st counts toward the new month; `market_date`
+conversions. Run against the pre-fix code, 4 fail as expected. A first draft of the 01:00 test
+passed an IST-labelled datetime, which hid the bug (`.date()` already returned the IST date); it
+passed against the old code and was corrected to a UTC instant before commit. Full suite:
+`Ran 533 tests in 213.729s`, `OK` (Python exit code 0).

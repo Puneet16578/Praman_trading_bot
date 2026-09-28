@@ -20,6 +20,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from shared.market_time import market_date
 from src.signals.event_catalogue import build_symbol_history
 
 from .open import first_session_strictly_after
@@ -85,7 +86,7 @@ def close_approved_trade(praman_conn, desk_conn, trade_id: str, *, reason: str, 
     check_can_close(latest, trade_id)
 
     now = now or datetime.now(timezone.utc)
-    not_before_date = now.date().isoformat()
+    not_before_date = market_date(now).isoformat()
     return _attempt_close_fill(praman_conn, desk_conn, trade_id, latest["quantity"], reason,
                                 costs, cost_config_hash, not_before_date)
 
