@@ -1213,3 +1213,23 @@ attempt three and exhaustion of all six attempts. Both patch `time.sleep`, check
 the exact fetch and sleep calls, and verify the connection closes without an
 exception. Targeted run: 2 tests passed. Full suite: `Ran 512 tests in 381.032s`,
 `OK`. Pyflakes was not installed; no package was installed for this check.
+
+## P8-016 — demo binding depended on launch directory; netstat false alarm
+
+**Root cause.** The documented command relied on Streamlit discovering the repo's
+`.streamlit/config.toml` from the current directory. The previous session also
+misread Windows netstat's remote-address column (`0.0.0.0` on a listening socket)
+as the local bind address, reporting network reachability despite the local
+address being `127.0.0.1`. This incident description comes from the user's session
+message; the earlier socket was not re-observed in this session.
+
+**Fix.** `demo/run_demo.ps1` supplies `--server.address localhost` explicitly and
+resolves the application path from `$PSScriptRoot`. `demo/DEMO.md` uses it.
+Interpret listening scope from netstat's local-address column.
+
+**Re-verification.** The launcher test executes PowerShell from a temporary folder
+with a fake Python command and asserts the application path and localhost flag.
+No server is launched by the test. The initial test failed with `PSSecurityException`
+because this machine disables scripts. The test and documented command now use a
+process-only execution-policy override, leaving machine policy unchanged.
+Full suite: `Ran 513 tests in 240.705s`, `OK` (Python exit code 0).

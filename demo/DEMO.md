@@ -4,9 +4,15 @@
 ```
 pip install -r requirements-demo.txt
 python demo/build_demo_store.py      # rebuild if production has moved on since your last build
-streamlit run demo/Home.py
+powershell -NoProfile -ExecutionPolicy Bypass -File .\demo\run_demo.ps1
 ```
-This binds to `localhost` only (`.streamlit/config.toml`) and opens only
+The launcher passes `--server.address localhost` explicitly and resolves `Home.py`
+relative to its own location. From another folder, invoke the launcher's full path
+(for example, `powershell -NoProfile -ExecutionPolicy Bypass -File 'D:\Agentic_ai_project\praman\demo\run_demo.ps1'`).
+The execution-policy override applies only to that PowerShell process; it does not
+change the machine policy. Where local scripts are already permitted, use
+`.\demo\run_demo.ps1` directly.
+This binds to `localhost` only and opens only
 `data/demo/praman_demo.sqlite` -- a truncated copy of the real store, never production, never the
 network.
 
