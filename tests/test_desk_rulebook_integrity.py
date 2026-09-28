@@ -167,18 +167,35 @@ class SchemaValidationTest(unittest.TestCase):
             DeskRulebook.model_validate(raw)
 
 
-class RealRulebookAndCostsLoaderRefusalTest(unittest.TestCase):
-    """The REAL rulebook/cost config in this repo are deliberately left uncommitted until STOP 2
-    approval -- so, right now, both loaders must refuse. This test is expected to need updating
-    (or removal) once rulebook v1 is actually committed; it documents the current, real state."""
+class RealRulebookAndCostsLoadTest(unittest.TestCase):
+    """rulebook v1 and the cost config are now committed and clean (STOP 2 approved) -- both
+    loaders must succeed against the REAL files, not a fixture. Superseded the prior
+    "must currently refuse because uncommitted" test, which documented a deliberately temporary
+    state before either file existed."""
 
-    def test_real_rulebook_currently_refuses_because_it_is_not_yet_committed(self):
-        with self.assertRaises(VersionedConfigError):
-            load_active_rulebook()
+    def test_real_rulebook_loads_and_matches_the_approved_capital_figure(self):
+        loaded = load_active_rulebook()
+        self.assertEqual(loaded.version_file, "desk_rulebook_v1.yaml")
+        self.assertRegex(loaded.sha256, r"^[0-9a-f]{64}$")
+        self.assertEqual(loaded.rulebook.risk.capital_allocated_inr, 500000)
+        self.assertIsNone(loaded.rulebook.surveillance_exclusions.max_asm_stage)
 
-    def test_real_cost_config_currently_refuses_because_it_is_not_yet_committed(self):
-        with self.assertRaises(VersionedConfigError):
-            load_active_cost_config()
+    def test_real_cost_config_loads_and_matches_the_confirmed_zerodha_rates(self):
+        loaded = load_active_cost_config()
+        self.assertEqual(loaded.version_file, "costs_india_delivery_v1.yaml")
+        self.assertRegex(loaded.sha256, r"^[0-9a-f]{64}$")
+        costs = loaded.costs
+
+        for confirmed in (costs.brokerage, costs.depository_charges, costs.securities_transaction_tax,
+                          costs.exchange_transaction_charges, costs.sebi_turnover_fee, costs.stamp_duty):
+            self.assertEqual(confirmed.status, "CONFIRMED")
+
+        self.assertEqual(costs.brokerage.rate, 0.0)
+        self.assertEqual(costs.depository_charges.rate, 15.34)
+        self.assertEqual(costs.exchange_transaction_charges.rate, 0.00307)
+        self.assertEqual(costs.gst.status, "TO_VERIFY")
+        for bucket in costs.slippage_by_liquidity_bucket:
+            self.assertEqual(bucket.status, "ASSUMPTION")
 
 
 if __name__ == "__main__":
