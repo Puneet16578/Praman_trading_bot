@@ -1,6 +1,22 @@
-"""One entry point for scheduled, unattended weekly ingestion: bhavcopy -> corporate
-announcements -> ISIN map refresh -> corporate actions -> ASM/GSM circulars, in that order, then a
-dated summary block appended to `logs/weekly_ingest.log`.
+"""One entry point for scheduled, unattended ingestion: bhavcopy -> corporate announcements -> ISIN
+map refresh -> corporate actions -> ASM/GSM circulars -> TODAY's bhavcopy (with retry), in that
+order, then a dated summary block appended to `logs/weekly_ingest.log`.
+
+**Now run daily on trading weekday evenings, not weekly** (Desk Phase 1 post-STOP-3 review,
+docs/OPERATIONS.md's "Daily ingestion" section) -- kept this filename/log path rather than renaming,
+since `scripts/weekly_ingest.py` and `logs/weekly_ingest.log` are cited by name throughout
+docs/DEFECT_REGISTER.md and docs/phase10_*.md's dated, historical accounts of real incidents found
+while building it; renaming the file would make those citations point nowhere, for a rename that
+changes nothing about what the script does. The cadence changed; the identity of "the ingestion
+script that appends to weekly_ingest.log" did not.
+
+The four original steps are UNCHANGED -- `step_bhavcopy` (via `ingest_bhavcopy_full_history.main()`)
+still deliberately requests only THROUGH YESTERDAY (see that module's own `end_date` default), which
+was correct for a Monday-morning weekly cadence but is now, by itself, one day behind for a same-day
+evening run. `step_bhavcopy_today` (new, last in STEPS) closes that gap: it specifically requests
+TODAY's date, retrying if NSE has not published it yet by the time this runs (a normal possibility
+on an evening run started right after market close), and reports plainly if it is still not out
+after the retry budget -- never guessing, never fabricating a placeholder row.
 
 ISIN map (Amendment 4, docs/phase10_preregistration_amendment4.md §1): refreshes
 data/raw/nse_symbol_isin_current.json (scripts/build_isin_map.py) before corporate_actions runs,
@@ -32,6 +48,9 @@ Idempotent and safe to re-run or run late, by design, inherited from each underl
     docs/DEFECT_REGISTER.md) skips an already-stored event rather than erroring or duplicating --
     re-sweeping the same circulars weekly is a deliberate safety margin against a missed run, not
     a bug.
+  - bhavcopy_today calls the same `ingest_bhavcopy_date` used above, so it inherits the exact same
+    duplicate-write safety -- re-running this whole script a second time the same evening (e.g. a
+    manual retry) re-requests today's date harmlessly if it already succeeded.
 
 Deliberately does NOT reuse `scripts/ingest_asm_gsm_sample.py` -- that script hardcodes a path
 into a PAST Claude session's own temp scratchpad directory as its circular-index source, which is
@@ -65,6 +84,14 @@ ASM_GSM_LOOKBACK_DAYS = 30  # widened from 10 (P8-007 scoping, docs/phase10_p800
                             # widened as a second, independent layer of the same defense
 CORPORATE_ACTIONS_LOOKBACK_DAYS = 60  # matches fetch_recent's own default; stated here too so a
                                        # change to one is not silently out of sync with the other
+
+# Daily evening run (Desk Phase 1 post-STOP-3 review): NSE typically publishes the full bhavcopy
+# shortly after market close, but "shortly after" is not guaranteed -- retry rather than report a
+# false GAP for a file that simply is not out yet. 6 attempts * 15 minutes = 90 minutes of retry
+# budget; PROPOSED, not measured against NSE's actual publish-time distribution, stated here so a
+# real late-publish pattern can be used to retune it later rather than silently guessed at again.
+BHAVCOPY_TODAY_MAX_ATTEMPTS = 6
+BHAVCOPY_TODAY_RETRY_DELAY_SECONDS = 15 * 60
 
 
 def step_bhavcopy() -> None:
@@ -156,12 +183,65 @@ def step_asm_gsm() -> None:
     conn.close()
 
 
+def step_bhavcopy_today() -> None:
+    """Requests TODAY's bhavcopy specifically -- `step_bhavcopy` above deliberately stops at
+    yesterday (see `ingest_bhavcopy_full_history.main`'s own `end_date` default), so on a same-day
+    evening run this is the step that actually closes today's gap. Retries if NSE has not published
+    yet: `ingest_bhavcopy_date` classifies "not out yet" the same way it classifies a holiday
+    fallback -- the archive keeps serving the PRIOR trading day's file until the real one exists
+    (P2-003) -- so a request for today whose `actual_event_date` comes back EARLIER than today means
+    "not published yet, or today is not a trading day," not a distinguishable error. This function
+    cannot tell those two apart any more than the underlying fetch can (no invented holiday
+    calendar) -- it retries either way and reports plainly if today's file still is not out after
+    the full retry budget, leaving the ambiguity visible rather than guessing at it.
+
+    Weekends are the one case this DOES resolve locally, cheaply, without a network call at all --
+    skipped outright rather than spending the full retry budget on a request nothing will ever
+    publish."""
+    from src.bitemporal.connection import get_connection, init_db
+    from src.config.settings import get_settings
+    from src.ingestion.nse_market_data.bhavcopy import ingest_bhavcopy_date
+
+    today = date.today()
+    if today.weekday() >= 5:  # Sat=5, Sun=6
+        print(f"[BHAVCOPY_TODAY] {today.isoformat()} is a weekend -- skipped, no request made.")
+        return
+
+    settings = get_settings()
+    conn = get_connection(settings.database_path)
+    init_db(conn)
+    try:
+        for attempt in range(1, BHAVCOPY_TODAY_MAX_ATTEMPTS + 1):
+            outcome = ingest_bhavcopy_date(conn, today)
+            if outcome.status == "ingested" and outcome.actual_event_date == today.isoformat():
+                print(f"[BHAVCOPY_TODAY] {today.isoformat()} ingested on attempt {attempt}/"
+                      f"{BHAVCOPY_TODAY_MAX_ATTEMPTS} ({outcome.rows_inserted} rows).")
+                return
+            if outcome.status == "ingested":
+                detail = (f"archive still serving {outcome.actual_event_date} for a "
+                           f"{today.isoformat()} request -- not published yet, or not a trading day")
+            else:
+                detail = outcome.reason
+            print(f"[BHAVCOPY_TODAY] attempt {attempt}/{BHAVCOPY_TODAY_MAX_ATTEMPTS}: {detail}")
+            if attempt < BHAVCOPY_TODAY_MAX_ATTEMPTS:
+                time.sleep(BHAVCOPY_TODAY_RETRY_DELAY_SECONDS)
+
+        total_minutes = BHAVCOPY_TODAY_MAX_ATTEMPTS * BHAVCOPY_TODAY_RETRY_DELAY_SECONDS // 60
+        print(f"GAP {today.isoformat()}: still not published after {BHAVCOPY_TODAY_MAX_ATTEMPTS} "
+              f"attempts over {total_minutes} minutes -- may be a holiday not reflected in the plain "
+              f"weekday check, or NSE is later than usual today. Re-run this script, or wait for "
+              f"tomorrow's run, which will pick it up via the normal through-yesterday catch-up step.")
+    finally:
+        conn.close()
+
+
 STEPS = [
     ("bhavcopy", step_bhavcopy),
     ("announcements", step_announcements),
     ("isin_map", step_isin_map),
     ("corporate_actions", step_corporate_actions),
     ("asm_gsm", step_asm_gsm),
+    ("bhavcopy_today", step_bhavcopy_today),
 ]
 
 

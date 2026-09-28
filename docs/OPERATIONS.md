@@ -1,4 +1,77 @@
-# Operations — store snapshots
+# Operations
+
+## Daily ingestion (2026-09-28) — operational change, not a pre-registration amendment
+
+**Ingestion now runs every trading weekday evening instead of weekly.** The pre-registration
+(`docs/phase10_preregistration_amendment2.md` §5, "Ingestion schedule — pre-specified") requires
+bhavcopy/announcements/ASM-GSM collection "on a regular weekly schedule ... not as a single backfill
+attempt" through the evaluation window's close, specifically so an ingestion failure surfaces within
+days rather than being discovered four months late. Daily is a strict superset of weekly — it
+satisfies that requirement automatically — and changes no reference query, no scoring rule, no
+evaluation criterion the pre-registration fixed. Recorded here as the operational note that
+provision itself calls for, not as a pre-registration amendment.
+
+**Why now:** the Praman Expert Desk (`docs/desk/DESIGN.md`) needs same-evening data. On a weekly
+cadence, `desk assess`'s G1 gate fails most evenings (no bhavcopy row yet for "today"), and a pending
+paper-trade entry or an open position's stop can go unchecked for up to a week.
+
+**What changed, mechanically:** `scripts/weekly_ingest.py` (filename and `logs/weekly_ingest.log`
+kept as-is — see that script's own module docstring for why a rename would break more than it fixes)
+gained a sixth, final step, `bhavcopy_today`. The five original steps are unchanged, including
+`step_bhavcopy`, which deliberately still only requests THROUGH YESTERDAY (correct for the old
+Monday-morning cadence, one day behind for a same-day run). `bhavcopy_today` requests TODAY
+specifically and retries — up to 6 attempts, 15 minutes apart (90 minutes total) — if NSE has not
+published yet, which is a normal possibility right after market close, not an error. If still not
+out after the full retry budget, it logs a plain `GAP <today>: ...` line (picked up by the existing
+GAP-reporting logic) rather than guessing or fabricating a row. Weekends are skipped locally with no
+network call at all.
+
+**Scheduled task — exact PowerShell**, replacing the (per `docs/phase10_housekeeping.md`, never
+actually registered) weekly Monday-6AM task:
+
+```powershell
+# Remove the old weekly task first, if it was ever actually registered
+if (Get-ScheduledTask -TaskName "PramanWeeklyIngest" -ErrorAction SilentlyContinue) {
+    Unregister-ScheduledTask -TaskName "PramanWeeklyIngest" -Confirm:$false
+}
+
+$Action = New-ScheduledTaskAction `
+    -Execute "C:\Users\VICTUS\AppData\Local\Programs\Python\Python313\python.exe" `
+    -Argument "scripts\weekly_ingest.py" `
+    -WorkingDirectory "D:\Agentic_ai_project\praman"
+
+$Trigger = New-ScheduledTaskTrigger -Weekly `
+    -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday `
+    -At 6:00PM
+
+$Settings = New-ScheduledTaskSettingsSet `
+    -StartWhenAvailable `
+    -ExecutionTimeLimit (New-TimeSpan -Hours 3) `
+    -DontStopOnIdleEnd
+
+Register-ScheduledTask `
+    -TaskName "PramanDailyIngest" `
+    -Action $Action `
+    -Trigger $Trigger `
+    -Settings $Settings `
+    -Description "Daily weekday-evening bhavcopy/announcements/ASM-GSM ingestion, incl. same-day bhavcopy with retry, for the Praman Expert Desk" `
+    -RunLevel Limited
+```
+
+**Confirm registration:**
+
+```powershell
+Get-ScheduledTask -TaskName "PramanDailyIngest" | Get-ScheduledTaskInfo
+```
+
+`-ExecutionTimeLimit` raised from 2 to 3 hours (the old weekly task's own setting) to comfortably
+cover the new step's up-to-90-minute retry budget on top of the other five steps' typical runtime.
+`6:00PM` (local machine time) and the 6-attempt/15-minute retry budget are PROPOSED, not measured
+against NSE's actual publish-time distribution — real evening-run timestamps, once they exist, are
+the right basis to retune either number, not a guess made now.
+
+**Not yet actually registered** — these are the commands to run, not confirmation they were run;
+registering a persistent Windows scheduled task is an action for the user to take.
 
 ## The design point: two different dates answer two different questions
 
