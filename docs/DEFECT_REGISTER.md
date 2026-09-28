@@ -1199,3 +1199,17 @@ rebuilding the label: TRAIN missing rate 6.838% -> **1.310%**; Micro-minus-Mega 
 **0.214pp**; TRAIN/HOLD-OUT gap (the `P8-013` commit-rule check) 0.176pp -> 0.413pp, still
 comfortably within the 2.0pp bar. Full suite: 367/367 pass. Full numbers:
 `docs/phase10_amendment5_prep.md`.
+
+## P8-015 — daily bhavcopy retry crashed before its first wait
+
+**Root cause.** `scripts/weekly_ingest.py` called `time.sleep` when today's bhavcopy
+was unavailable, but never imported `time`. A delayed publication therefore raised
+`NameError` after the first fetch instead of using the configured retry budget.
+
+**Fix.** Import `time`. Keep the existing attempt count and delay unchanged.
+
+**Re-verification.** `tests/test_weekly_ingest_retry.py` exercises publication on
+attempt three and exhaustion of all six attempts. Both patch `time.sleep`, check
+the exact fetch and sleep calls, and verify the connection closes without an
+exception. Targeted run: 2 tests passed. Full suite: `Ran 512 tests in 381.032s`,
+`OK`. Pyflakes was not installed; no package was installed for this check.
