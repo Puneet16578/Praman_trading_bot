@@ -1,0 +1,37 @@
+# Copy for each idea; replace ALL examples before assessment. Illustrative AXISBANK
+# paper thesis only, not a recommendation or a claim about current market prices.
+# Pass the symbol to desk assess; it is not a field in this file.
+# Quote ISO dates: desk assess uses yaml.safe_load and expects date strings.
+evidence_cutoff: "2026-09-28" # Last date of evidence actually reviewed.
+sector: "Financials" # Sector used when assessing this idea.
+
+# State a falsifiable claim, the evidence that tests it, and how to follow it.
+hypotheses:
+  - statement: "Operating improvement can support a higher share price."
+    test: "Next quarterly results show net interest margin above the prior quarter."
+    monitor: "Read each exchange-filed quarterly result and compare margins."
+drivers: # Why the hypothesized change could happen.
+  - "Lower funding costs could improve net interest margin."
+catalyst: "Next quarterly results release" # Optional event that may test the idea.
+horizon: "2026-12-31" # Last date for the idea; refresh for every new thesis.
+invalidation_conditions: # Evidence that would make the hypothesis wrong.
+  - "Next reported net interest margin is flat or lower quarter on quarter."
+  - "An exchange filing contradicts the expected funding-cost improvement."
+
+# Planned rupees per share, using a consistent price basis; example long position.
+# Assessment calculates the approved whole-share size and stress loss itself.
+planned_entry: 1000.0
+planned_stop: 950.0
+planned_target: 1150.0
+
+# All five exit fields are required. These are written instructions, not executable
+# rules. Currently monitor fills ONLY stops; review the rest and close manually.
+exit_price: "Exit at the 950 stop or take profit when the 1150 target is reached."
+exit_time: "Exit at the next session open after the 2026-12-31 horizon."
+exit_evidence: "Exit at the next session open after an invalidation condition is confirmed."
+exit_risk: "Exit at the next session open if fresh review shows a G6 risk-budget breach."
+exit_portfolio: "Exit at the next session open if portfolio review requires reducing Financials exposure."
+
+# Optional SUBJECTIVE probability, 0 to 1: personal belief, not calibrated model
+# output and not permission to bypass any gate. Remove this field if not estimated.
+user_probability: 0.60
