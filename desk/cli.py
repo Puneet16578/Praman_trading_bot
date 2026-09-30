@@ -101,6 +101,8 @@ def cmd_status(args):
     print(f"Open risk used: {open_risk:.2f} / {budget:.2f}")
     print(f"Open positions: {jstore.open_trade_ids(desk_conn)}")
     print(ingestion_health_line())
+    from desk.backups import status_line
+    print(status_line())
     praman_conn = get_live_connection()
     try:
         print(latest_trading_date_line(praman_conn))
@@ -264,9 +266,23 @@ def cmd_replay(args):
         raise SystemExit(1)
 
 
+def cmd_backup_verify(args):
+    from desk.backups import verify_latest
+    try:
+        for report in verify_latest():
+            print(json.dumps(report, sort_keys=True))
+    except Exception as exc:
+        print(f"REFUSED: restore verification failed ({type(exc).__name__})", file=sys.stderr)
+        raise SystemExit(1)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="desk")
     sub = parser.add_subparsers(dest="command", required=True)
+
+    backup = sub.add_parser("backup")
+    backup_sub = backup.add_subparsers(dest="backup_command", required=True)
+    backup_sub.add_parser("verify").set_defaults(func=cmd_backup_verify)
 
     p = sub.add_parser("rulebook")
     rb_sub = p.add_subparsers(dest="rulebook_command", required=True)

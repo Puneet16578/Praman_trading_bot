@@ -15,7 +15,6 @@ current git HEAD printed for pasting into docs/OPERATIONS.md.
 """
 from __future__ import annotations
 import hashlib
-import sqlite3
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -24,6 +23,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.config.settings import get_settings
+from shared.sqlite_backup import online_backup
 
 SNAPSHOT_DIR = Path(__file__).resolve().parents[1] / "data" / "snapshots"
 
@@ -55,14 +55,7 @@ def main() -> None:
     print(f"Source (read-only): {source_path}")
     print(f"Destination: {dest_path}")
 
-    source_uri = f"file:{Path(source_path).as_posix()}?mode=ro"
-    source_conn = sqlite3.connect(source_uri, uri=True)
-    dest_conn = sqlite3.connect(str(dest_path))
-    try:
-        source_conn.backup(dest_conn)
-    finally:
-        dest_conn.close()
-        source_conn.close()
+    online_backup(Path(source_path), dest_path)
 
     digest = sha256_of(dest_path)
     head = git_head()

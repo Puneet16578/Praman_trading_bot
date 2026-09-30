@@ -36,7 +36,7 @@ if (Get-ScheduledTask -TaskName "PramanWeeklyIngest" -ErrorAction SilentlyContin
 }
 
 $Action = New-ScheduledTaskAction `
-    -Execute "C:\Users\VICTUS\AppData\Local\Programs\Python\Python313\python.exe" `
+    -Execute "C:\Users\VICTUS\AppData\Local\Programs\Python\Python313\pythonw.exe" `
     -Argument "scripts\weekly_ingest.py" `
     -WorkingDirectory "D:\Agentic_ai_project\praman"
 
@@ -76,6 +76,13 @@ the right basis to retune either number, not a guess made now.
 No task was created or changed in this check. Interactive logon requires the user
 to be logged in; waking the computer does not log the user in.
 
+On 30 September, after that inspection, the user approved changing only the existing
+task's executable to `pythonw.exe`. The change was applied and re-read: wake-to-run
+and missed-start recovery remain True, logon remains Interactive, and the task is
+Ready. The action keeps `scripts\weekly_ingest.py` and its working directory. This
+avoids a console window that can be closed accidentally; no password was supplied.
+Manual ingestion still uses `python scripts/weekly_ingest.py` in the foreground.
+
 ### Durable ingestion progress (Phase A Step 0)
 
 `weekly_ingest.py` appends and flushes a `started` line before any ingestion step,
@@ -91,6 +98,37 @@ ES_SYSTEM_REQUIRED)` during work and restores the thread's previous state in
 Failure to acquire the request is reported and leaves an unfinished start;
 the script does not silently promise sleep protection. This prevents idle sleep,
 not shutdown, manual sleep, or a scheduler time limit.
+
+### Recovery backups (Phase A Step 1)
+
+Configuration: `config/backup_stores.json`. Local destination: `D:\PramanBackups`.
+Cloud is **disabled** until the user confirms a working synced folder; no access
+to the configured OneDrive destination occurs while disabled. No encryption.
+
+- Desk: one backup per IST calendar day, retain 14 locally (14 in cloud when enabled).
+- Praman: one backup per ISO calendar week, retain 8 locally (2 in cloud when enabled).
+- The ingestion entry point calls backups after the same-day bhavcopy step, including
+  when an earlier ingestion step failed, so an ingestion failure does not prevent
+  protecting the journal. The foreground run started before this code change needs
+  a separate backup command after it finishes.
+- `python scripts/backup_stores.py` creates due backups. Both this tool and the
+  milestone snapshot tool use `shared/sqlite_backup.py`: SQLite online backup from
+  a read-only source. Neither copies live database files. Copying an already-built
+  compressed archive to the optional cloud destination is safe.
+- Archives are timestamped ZIP files containing the SQLite snapshot and a JSON
+  manifest. The manifest records all user-table row counts, a whole-database SHA-256,
+  and a deterministic content SHA-256 for every Desk journal table. Values are read
+  from the completed snapshot, so concurrent ingestion cannot skew the baseline.
+- Archives publish by a same-directory atomic rename. A temporary restore verifies
+  integrity, row counts, journal hashes, and the database hash before any retention
+  removal. Re-running within the same period verifies the existing latest archive.
+- `desk backup verify` restores the latest archive for each store and enabled
+  destination into temporary folders and repeats all checks. It never restores over
+  a live store. `desk status` shows last backup and last successful restore times
+  from the append-only operational log `logs/backups.jsonl`.
+
+Retention only removes recognized archives directly inside the configured backup
+folder. Other files and incomplete archives are not treated as recovery points.
 
 ## The design point: two different dates answer two different questions
 

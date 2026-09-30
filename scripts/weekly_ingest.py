@@ -240,6 +240,13 @@ def step_bhavcopy_today() -> None:
         conn.close()
 
 
+def step_backups() -> None:
+    from desk.backups import run_backups
+    for report in run_backups():
+        print(f"[BACKUP] {report['kind']} {report['event']}: "
+              f"{report['archive']} ({report['compressed_bytes']} bytes)")
+
+
 STEPS = [
     ("bhavcopy", step_bhavcopy),
     ("announcements", step_announcements),
@@ -247,6 +254,7 @@ STEPS = [
     ("corporate_actions", step_corporate_actions),
     ("asm_gsm", step_asm_gsm),
     ("bhavcopy_today", step_bhavcopy_today),
+    ("backups", step_backups),
 ]
 
 

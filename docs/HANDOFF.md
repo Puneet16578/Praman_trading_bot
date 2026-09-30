@@ -36,8 +36,33 @@ repository before relying on it; nothing in this file authorizes anything (CLAUD
 - Live `python desk/cli.py status`: latest trading date 2026-09-25, ingestion
   overall ERROR with one gap, no open positions; ISIN build 2026-09-23 (age 2
   trading sessions in the current store). The store is not caught up to today.
-- Next: stop at Step 1 for the user's local and cloud backup folders and encryption
-  choice. Steps 1–6 remain pending; no NSE downloads have been attempted this session.
+- User selected local `D:\PramanBackups` and cloud
+  `C:\Users\VICTUS\OneDrive\PramanBackups`, no encryption. OneDrive exists but no
+  process/account could be verified. User then explicitly approved proceeding with
+  local backups and keeping cloud disabled until they confirm a synced folder.
+- Retention: 14 daily Desk backups in each enabled destination, 8 weekly Praman
+  backups locally, 2 weekly in cloud when enabled. Local folder created.
+- Step 1 implementation: shared read-only online backup helper, compressed ZIP
+  snapshots with counts and hashes, restore proof before retention, `desk backup
+  verify`, status timestamps, backups appended after ingestion. Ten targeted tests pass.
+- Step 1 code verification: `Ran 552 tests in 115.065s`, `OK`, exit code 0.
+  Production backup/restore proof and compressed sizes are still pending at this
+  code checkpoint. Pre-existing SQLite ResourceWarnings remain.
+- Task change approved by user: existing `PramanDailyIngest` now launches
+  `pythonw.exe` instead of `python.exe`; arguments and working directory unchanged.
+  Re-read confirms wake-to-run and missed-start recovery True, Interactive logon,
+  Ready state. No password, new task, or background helper was created.
+- The terminated 21:33 run's only progress line was
+  `=== 2026-09-30T21:33:17.908703+05:30 weekly_ingest started ===`.
+  There was no completed step or finish. Task result 3221225786 (0xC000013A),
+  externally terminated per the user; the log cannot identify the exact interruption.
+- Foreground ingestion started with approved network access at
+  `2026-09-30T21:49:09.771404+05:30`; bhavcopy completed OK at 21:52:31.
+  Read-only query confirms the store advanced to 2026-09-29. Still running at
+  this checkpoint; do not start an overlapping run. This process loaded the entry
+  point before the backup step was added, so run backups separately after it finishes.
+- Steps 2–6 remain pending. Before Step 2 the user requires confirming the latest
+  completed trading day in `desk status` and reporting ingestion failures by step.
 - Network downloads, test-only pip installation, and push need the user's approval
   when reached. Each tested step must include this handoff in its commit.
 

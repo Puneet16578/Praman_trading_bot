@@ -1272,6 +1272,27 @@ returns before G1's other checks, so it can mask a coexisting data-gap reason.
 Targeted tests: `Ran 30 tests`, `OK`. Full suite: `Ran 525 tests in 111.076s`, `OK` (Python
 exit code 0).
 
+## P8-021 — announcement backfill is not a daily refresh; partial failures can look OK (open)
+
+**Root cause.** During Phase A's foreground ingestion review,
+`scripts/ingest_announcements_full_history.py` was read directly: its remaining
+universe excludes every symbol already represented by any announcement row. This
+resumes a historical backfill but does not refresh newer disclosures for those
+symbols. It also catches per-symbol errors and prints `FAILED` without raising;
+the ingestion wrapper recognizes exceptions and `WARN`, so it can report OK for
+that partially failed step. Its summary currently drops those captured FAILED lines.
+
+**Status.** Open; no pipeline or ingestion-source changes made for this finding.
+Do not interpret an OK announcements step as proof of current disclosure coverage.
+The user-requested latest-trading-day check is a separate bhavcopy check. A fix
+needs a bounded recent-announcement refresh and explicit partial-failure reporting,
+with tests and source-scope review before changing research ingestion behavior.
+
+**Evidence.** `already_fetched_symbols`, the `remaining` filter, and the per-symbol
+exception handler in the script; `_run_capturing` in `scripts/weekly_ingest.py`.
+No claim about how many symbols failed in the active run can be made from these
+code paths alone. Re-verification remains pending a fix.
+
 ## P8-020 — interrupted ingestion left no durable start or progress
 
 **Root cause.** `weekly_ingest.main()` captured all steps in memory and wrote its

@@ -1,0 +1,10 @@
+{
+  "local": {"folder": "D:/PramanBackups", "desk_keep": 14, "praman_keep": 8},
+  "cloud": {
+    "enabled": false,
+    "folder": "C:/Users/VICTUS/OneDrive/PramanBackups",
+    "desk_keep": 14,
+    "praman_keep": 2,
+    "encrypted": false
+  }
+}
