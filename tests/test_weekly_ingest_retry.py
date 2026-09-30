@@ -15,7 +15,7 @@ class BhavcopyTodayRetryTest(unittest.TestCase):
         conn = Mock()
         output = io.StringIO()
         with (
-            patch.object(weekly_ingest, "date") as clock,
+            patch.object(weekly_ingest, "market_today", return_value=today) as clock,
             patch("src.config.settings.get_settings") as settings,
             patch("src.bitemporal.connection.get_connection", return_value=conn),
             patch("src.bitemporal.connection.init_db"),
@@ -24,9 +24,9 @@ class BhavcopyTodayRetryTest(unittest.TestCase):
             patch("time.sleep") as sleep,
             contextlib.redirect_stdout(output),
         ):
-            clock.today.return_value = today
             settings.return_value.database_path = ":memory:"
             weekly_ingest.step_bhavcopy_today()
+        clock.assert_called_once_with()
         conn.close.assert_called_once_with()
         self.assertEqual(ingest.call_args_list, [call(conn, today)] * len(outcomes))
         self.assertEqual(sleep.call_args_list,

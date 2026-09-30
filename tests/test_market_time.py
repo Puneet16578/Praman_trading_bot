@@ -1,6 +1,7 @@
 """P8-018: one NSE (IST) calendar clock -- log timestamps, the ingestion-health age, and the G7
 override month."""
 import sqlite3
+import re
 import sys
 import tempfile
 import unittest
@@ -17,6 +18,17 @@ from shared.market_time import IST, market_date, parse_logged_timestamp
 
 
 class MarketDateTest(unittest.TestCase):
+    def test_desk_and_scripts_use_the_market_calendar_clock(self):
+        root = Path(__file__).resolve().parents[1]
+        forbidden = re.compile(r"\b(?:date|datetime)\s*\.\s*today\s*\(")
+        violations = []
+        for folder in ("desk", "scripts"):
+            for path in sorted((root / folder).rglob("*.py")):
+                for number, line in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), 1):
+                    if forbidden.search(line):
+                        violations.append(f"{path.relative_to(root)}:{number}: {line.strip()}")
+        self.assertEqual(violations, [], "Use shared.market_time.market_today():\n" + "\n".join(violations))
+
     def test_utc_evening_is_next_ist_date(self):
         self.assertEqual(market_date(datetime(2026, 9, 30, 19, 0, tzinfo=timezone.utc)).isoformat(), "2026-10-01")
 
@@ -33,20 +45,24 @@ class SameDayIngestionHealthTest(unittest.TestCase):
     """The run that printed "(-1d ago)": a naive IST start time was labelled UTC, putting a run
     from minutes earlier 5.5 hours in the future."""
 
+    now = datetime(2026, 9, 28, 9, 0, tzinfo=timezone.utc)
+
     def _line_for(self, start: str) -> str:
         with tempfile.TemporaryDirectory() as tmp:
             log = Path(tmp) / "weekly_ingest.log"
             log.write_text(f"=== {start} weekly_ingest (finished {start}) overall=OK steps: bhavcopy=OK ===\n"
                            "  GAPs: 0\n", encoding="utf-8")
-            with patch("desk.ingestion_health.LOG_PATH", log):
+            with patch("desk.ingestion_health.LOG_PATH", log), \
+                    patch("desk.ingestion_health.datetime", wraps=datetime) as clock:
+                clock.now.return_value = self.now
                 return ingestion_health_line()
 
     def test_same_day_run_with_offset_is_zero_days_old(self):
-        start = (datetime.now(IST) - timedelta(minutes=1)).isoformat(timespec="seconds")
+        start = (self.now.astimezone(IST) - timedelta(minutes=1)).isoformat(timespec="seconds")
         self.assertIn("(0d ago)", self._line_for(start))
 
     def test_same_day_legacy_naive_run_is_zero_days_old(self):
-        start = (datetime.now(IST) - timedelta(minutes=1)).replace(tzinfo=None).isoformat(timespec="seconds")
+        start = (self.now.astimezone(IST) - timedelta(minutes=1)).replace(tzinfo=None).isoformat(timespec="seconds")
         line = self._line_for(start)
         self.assertIn("(0d ago)", line)
         self.assertNotIn("-1d", line)

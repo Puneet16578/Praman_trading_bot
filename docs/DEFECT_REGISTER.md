@@ -1272,6 +1272,25 @@ returns before G1's other checks, so it can mask a coexisting data-gap reason.
 Targeted tests: `Ran 30 tests`, `OK`. Full suite: `Ran 525 tests in 111.076s`, `OK` (Python
 exit code 0).
 
+## P8-019 — date-dependent test regression introduced with P8-018
+
+**Root cause.** P8-018 moved ingestion's calendar date to `market_today()`, but the
+retry tests still patched `weekly_ingest.date.today()`. That patch no longer reached
+the code. The 28 September pass depended on the machine date matching the fixture;
+on 30 September the baseline ran 534 tests with one failure and one `StopIteration`
+error. The fetch and database are mocked: this is a test regression, not a sandbox
+network or temporary-folder failure.
+
+**Fix.** Audit all tests for date/datetime clock patches. The shared retry helper
+was the only obsolete patch; it now patches `weekly_ingest.market_today` and checks
+that it is called. ISIN-refresh tests also use a fixed market date, and health-age
+tests inject a fixed UTC instant into their actual timestamp reader. A grep-style
+guard rejects `date.today()` and `datetime.today()` in `desk/` and `scripts/`;
+UTC timestamp calls remain allowed. Production calculations are unchanged.
+
+**Re-verification.** On 30 September: `Ran 535 tests in 133.823s`, `OK`, Python
+exit code 0. Pre-existing SQLite connection ResourceWarnings remain visible.
+
 ## P8-018 — mixed clocks: IST log times read as UTC; UTC dates compared with NSE dates
 
 **Found.** `desk status` printed `last run 2026-09-28T13:53:03 (-1d ago)` minutes after a run.

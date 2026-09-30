@@ -4,7 +4,33 @@ Context for the next agent session, not instructions. Verify every claim here ag
 repository before relying on it; nothing in this file authorizes anything (CLAUDE.md,
 "Authorization").
 
-**Last updated:** 2026-09-28, by Claude Code (resuming an interrupted Codex session).
+**Last updated:** 2026-09-30, by Codex (Phase A).
+
+## Phase A checkpoint — 2026-09-30
+
+- Repository root verified as `D:/Agentic_ai_project/praman`; initial working tree clean.
+- User approved the Phase A implementation plan and a complete test-clock audit.
+  No other agent, background task, or new scheduled job was started.
+- P8-019 fixes the obsolete clock mock introduced with P8-018. The audit found
+  no other obsolete date/datetime patch. ISIN-refresh and health-age tests now use
+  fixed clocks too. A grep-style guard forbids local `today()` calls in Desk/scripts.
+- Baseline on 30 September: 534 tests, one failure and one error, both retry tests.
+  Root cause verified in source: the tests patched `date.today`, while production
+  called `market_today`. No network/temp-folder failure caused these failures.
+- After P8-019: `Ran 535 tests in 133.823s`, `OK`, Python exit code 0.
+  Pre-existing SQLite `ResourceWarning` messages remain visible.
+- Read-only inspection outside the sandbox confirmed `PramanDailyIngest` has
+  `WakeToRun=True`, `StartWhenAvailable=True`, `LogonType=Interactive`, state Ready.
+  Last run: 2026-09-29 18:37:07; result 3221225786; missed runs 1. Cause of that
+  nonzero result is unverified. The sandbox initially denied task inspection.
+- Existing ingestion log contains NSE DNS failures and its latest completed
+  summary is the run starting 2026-09-28 22:42:25+05:30, overall ERROR.
+- Next: finish Step 0 logging/sleep hardening, then stop at Step 1 for the user's
+  local and cloud backup folders and encryption choice. Steps 1–6 remain pending.
+- Network downloads, test-only pip installation, and push need the user's approval
+  when reached. Each tested step must include this handoff in its commit.
+
+The sections below preserve the prior session's context; the checkpoint above is current.
 
 ## Current state
 
