@@ -68,11 +68,14 @@ def ingestion_health_line() -> str:
             if gm and last_summary is not None:
                 last_gaps = int(gm.group("n"))
 
-        if unfinished:
-            return (f"Ingestion health: started {next(reversed(unfinished))}, never finished "
-                    "(no matching finish recorded; may still be running).")
+        unfinished_notice = (
+            f"started {next(reversed(unfinished))}, never finished "
+            "(no matching finish recorded; may still be running)"
+        ) if unfinished else ""
 
         if last_summary is None:
+            if unfinished_notice:
+                return f"Ingestion health: {unfinished_notice}."
             return "Ingestion health: UNKNOWN (no run summary found in the log)."
 
         from shared.market_time import parse_logged_timestamp
@@ -83,6 +86,7 @@ def ingestion_health_line() -> str:
         return (
             f"Ingestion health: last run {last_summary['start']} ({staleness}), "
             f"overall={last_summary['overall']}, gaps={last_gaps if last_gaps is not None else '?'}"
+            + (f"; {unfinished_notice}." if unfinished_notice else "")
         )
     except Exception as exc:  # best-effort only -- never lets a log-parsing problem break `desk status`
         return f"Ingestion health: UNKNOWN (could not parse log: {exc})."

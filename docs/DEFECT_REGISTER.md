@@ -1281,6 +1281,9 @@ resumes a historical backfill but does not refresh newer disclosures for those
 symbols. It also catches per-symbol errors and prints `FAILED` without raising;
 the ingestion wrapper recognizes exceptions and `WARN`, so it can report OK for
 that partially failed step. Its summary currently drops those captured FAILED lines.
+The underlying `fetch_symbol_announcements` also returns an empty list for any
+non-200 response, making that response indistinguishable from a genuinely empty
+history to its caller. No claim that such a response occurred in this run is made.
 
 **Status.** Open; no pipeline or ingestion-source changes made for this finding.
 Do not interpret an OK announcements step as proof of current disclosure coverage.
@@ -1316,6 +1319,12 @@ Windows sleep API successfully.
 Live status still reports the pre-change log's ERROR and latest trading date
 2026-09-25. No live ingestion or network download was run. Old interruptions with
 no start entry cannot be reconstructed by the new parser.
+
+**Follow-up, 2026-09-30.** Once a real interrupted start existed, status was refined
+to show the latest completed summary alongside unmatched starts. A later recovery
+can now be assessed without erasing the earlier interruption. The regression test
+requires both the old unmatched timestamp and the later OK result. Full suite:
+`Ran 552 tests in 119.817s`, `OK`, exit code 0.
 
 ## P8-019 — date-dependent test regression introduced with P8-018
 

@@ -46,8 +46,19 @@ repository before relying on it; nothing in this file authorizes anything (CLAUD
   snapshots with counts and hashes, restore proof before retention, `desk backup
   verify`, status timestamps, backups appended after ingestion. Ten targeted tests pass.
 - Step 1 code verification: `Ran 552 tests in 115.065s`, `OK`, exit code 0.
-  Production backup/restore proof and compressed sizes are still pending at this
-  code checkpoint. Pre-existing SQLite ResourceWarnings remain.
+  Committed as `8a0af81`. Pre-existing SQLite ResourceWarnings remain.
+- First production backup command and explicit `desk backup verify` both exited 0.
+  Desk ZIP: 3,793 bytes; Praman ZIP: 329,916,828 bytes. Both passed integrity, row
+  counts, and database hashes; every Desk journal table hash matched. Production
+  journal is empty, with populated-WAL and corruption recovery covered in tests.
+  Full proof: `docs/desk/phase_a_backups.md`. These snapshots were taken during
+  ingestion after bhavcopy reached September 29, before the same-day step.
+- P8-020 status refinement: keep the latest completed run visible alongside any
+  older unmatched start, rather than allowing the old abort to hide recovery.
+  Full suite: `Ran 552 tests in 119.817s`, `OK`, exit code 0.
+- P8-021 is open: announcement backfill skips already-cached symbols, and its
+  caught failures can look OK in the wrapper. No research-ingestion behavior was
+  changed. An OK step is not evidence that current disclosures were refreshed.
 - Task change approved by user: existing `PramanDailyIngest` now launches
   `pythonw.exe` instead of `python.exe`; arguments and working directory unchanged.
   Re-read confirms wake-to-run and missed-start recovery True, Interactive logon,

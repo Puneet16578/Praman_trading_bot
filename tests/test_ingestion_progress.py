@@ -57,6 +57,8 @@ class IngestionProgressTest(unittest.TestCase):
         self.log.write_text("=== 2026-09-28T18:00:00+05:30 weekly_ingest started ===\n")
         self.assertEqual(self.run_steps([]), 0)
         self.assertIn("started 2026-09-28T18:00:00+05:30, never finished", self.health())
+        self.assertIn("overall=OK", self.health())
+        self.assertIn("last run", self.health())
 
     def test_completed_old_run_does_not_hide_new_start(self):
         self.assertEqual(self.run_steps([]), 0)
