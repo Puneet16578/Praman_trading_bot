@@ -65,7 +65,9 @@ shape (P2-003, docs/DEFECT_REGISTER.md -- the archive silently serving a differe
 """
 from __future__ import annotations
 import contextlib
+import ctypes
 import io
+import os
 import re
 import sys
 import time
@@ -287,11 +289,51 @@ def _extract_gaps_and_mismatches(output: str) -> tuple[list[str], list[str]]:
     return gaps, mismatches
 
 
+def _append_log(text: str) -> None:
+    """Make progress durable before starting the next potentially long operation."""
+    with LOG_PATH.open("a", encoding="utf-8") as stream:
+        stream.write(text.rstrip("\n") + "\n")
+        stream.flush()
+        os.fsync(stream.fileno())
+    print(text.rstrip("\n"), flush=True)
+
+
+@contextlib.contextmanager
+def _prevent_sleep():
+    """Hold a Windows system-awake request on this thread; restore its previous state."""
+    if sys.platform != "win32":
+        yield
+        return
+    set_state = ctypes.windll.kernel32.SetThreadExecutionState
+    set_state.argtypes = [ctypes.c_uint]
+    set_state.restype = ctypes.c_uint
+    previous = set_state(0x80000001)  # ES_CONTINUOUS | ES_SYSTEM_REQUIRED (not display)
+    if not previous:
+        raise RuntimeError("Could not request Windows sleep prevention")
+    try:
+        yield
+    finally:
+        if not set_state(previous):
+            raise RuntimeError("Could not restore Windows execution state")
+
+
 def main() -> int:
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    started = datetime.now(IST).isoformat(timespec="seconds")
+    started = datetime.now(IST).isoformat(timespec="microseconds")
+    _append_log(f"=== {started} weekly_ingest started ===")
+    with _prevent_sleep():
+        return _run_steps_and_summarize(started)
 
-    results = [_run_capturing(label, fn) for label, fn in STEPS]
+
+def _run_steps_and_summarize(started: str) -> int:
+    results = []
+    for label, fn in STEPS:
+        result = _run_capturing(label, fn)
+        results.append(result)
+        completed = datetime.now(IST).isoformat(timespec="microseconds")
+        _append_log(f"=== {started} weekly_ingest step={label} "
+                    f"status={result['status']} completed={completed} ===")
+
 
     all_gaps: list[str] = []
     all_mismatches: list[str] = []
@@ -319,10 +361,7 @@ def main() -> int:
             lines.extend(f"    {ln}" for ln in r["error"].splitlines())
 
     block = "\n".join(lines) + "\n"
-    with open(LOG_PATH, "a", encoding="utf-8") as f:
-        f.write(block)
-
-    print(block)
+    _append_log(block)
     return 1 if overall_status == "ERROR" else 0
 
 

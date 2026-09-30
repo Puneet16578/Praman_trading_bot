@@ -25,8 +25,19 @@ repository before relying on it; nothing in this file authorizes anything (CLAUD
   nonzero result is unverified. The sandbox initially denied task inspection.
 - Existing ingestion log contains NSE DNS failures and its latest completed
   summary is the run starting 2026-09-28 22:42:25+05:30, overall ERROR.
-- Next: finish Step 0 logging/sleep hardening, then stop at Step 1 for the user's
-  local and cloud backup folders and encryption choice. Steps 1–6 remain pending.
+- P8-019 committed as `173b7a7` with this handoff.
+- Step 0 / P8-020: ingestion writes durable starts and per-step progress; status
+  matches finishes and reports unfinished runs; Windows execution state is held
+  while running and restored on exit, guarded for other platforms. Seven targeted
+  tests pass. Existing task settings required no changes.
+- Step 0 full suite: `Ran 542 tests in 197.270s`, `OK`, Python exit code 0.
+  The real Windows API also ran successfully in the existing mocked-ingestion
+  summary tests. ResourceWarnings remain as in the baseline.
+- Live `python desk/cli.py status`: latest trading date 2026-09-25, ingestion
+  overall ERROR with one gap, no open positions; ISIN build 2026-09-23 (age 2
+  trading sessions in the current store). The store is not caught up to today.
+- Next: stop at Step 1 for the user's local and cloud backup folders and encryption
+  choice. Steps 1–6 remain pending; no NSE downloads have been attempted this session.
 - Network downloads, test-only pip installation, and push need the user's approval
   when reached. Each tested step must include this handoff in its commit.
 

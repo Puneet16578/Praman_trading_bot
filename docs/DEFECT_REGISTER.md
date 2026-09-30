@@ -1272,6 +1272,30 @@ returns before G1's other checks, so it can mask a coexisting data-gap reason.
 Targeted tests: `Ran 30 tests`, `OK`. Full suite: `Ran 525 tests in 111.076s`, `OK` (Python
 exit code 0).
 
+## P8-020 — interrupted ingestion left no durable start or progress
+
+**Root cause.** `weekly_ingest.main()` captured all steps in memory and wrote its
+first log entry only after they finished. An interrupted or sleeping process could
+leave no evidence of the run, so Desk status continued displaying an older summary.
+The process held no Windows system-awake request. The existing scheduled task's
+wake and missed-start settings were already correct; this was not a task-setting bug.
+
+**Fix.** Append, flush, and fsync a start before work and a status after every step.
+Match each finished summary to its microsecond-resolution start timestamp. Desk
+status reports unmatched starts, even if a later run completed. Hold and restore
+the Windows thread's execution state with a guarded context manager; non-Windows
+platforms do not call the API. No ingestion data calculations or task credentials change.
+
+**Re-verification.** Seven targeted tests pass, including interruption between
+steps, progress visibility during the next step, ERROR completion, overlapping
+unfinished/completed runs, Windows restoration after interruption, API failure,
+and non-Windows behavior. Full suite: `Ran 542 tests in 197.270s`, `OK`, Python
+exit code 0. Existing mocked-ingestion summary tests also exercised the real
+Windows sleep API successfully.
+Live status still reports the pre-change log's ERROR and latest trading date
+2026-09-25. No live ingestion or network download was run. Old interruptions with
+no start entry cannot be reconstructed by the new parser.
+
 ## P8-019 — date-dependent test regression introduced with P8-018
 
 **Root cause.** P8-018 moved ingestion's calendar date to `market_today()`, but the

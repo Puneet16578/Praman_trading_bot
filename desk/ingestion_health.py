@@ -17,6 +17,7 @@ _SUMMARY_RE = re.compile(
     r"steps: (?P<steps>.*?) ===\s*$"
 )
 _GAPS_RE = re.compile(r"^\s*GAPs: (?P<n>\d+)")
+_START_RE = re.compile(r"^=== (?P<start>\S+) weekly_ingest started ===\s*$")
 
 STALE_AFTER_DAYS = 7  # PROPOSED, matching the roughly-weekly cadence weekly_ingest.py's own name implies
 
@@ -51,15 +52,25 @@ def ingestion_health_line() -> str:
         text = LOG_PATH.read_text(encoding="utf-8")
         last_summary = None
         last_gaps = None
+        unfinished = {}
         for line in text.splitlines():
+            started = _START_RE.match(line)
+            if started:
+                unfinished[started.group("start")] = None
+                continue
             m = _SUMMARY_RE.match(line)
             if m:
                 last_summary = m.groupdict()
+                unfinished.pop(last_summary["start"], None)
                 last_gaps = None
                 continue
             gm = _GAPS_RE.match(line)
             if gm and last_summary is not None:
                 last_gaps = int(gm.group("n"))
+
+        if unfinished:
+            return (f"Ingestion health: started {next(reversed(unfinished))}, never finished "
+                    "(no matching finish recorded; may still be running).")
 
         if last_summary is None:
             return "Ingestion health: UNKNOWN (no run summary found in the log)."

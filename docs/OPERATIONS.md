@@ -45,6 +45,7 @@ $Trigger = New-ScheduledTaskTrigger -Weekly `
     -At 6:00PM
 
 $Settings = New-ScheduledTaskSettingsSet `
+    -WakeToRun `
     -StartWhenAvailable `
     -ExecutionTimeLimit (New-TimeSpan -Hours 3) `
     -DontStopOnIdleEnd
@@ -70,8 +71,26 @@ cover the new step's up-to-90-minute retry budget on top of the other five steps
 against NSE's actual publish-time distribution — real evening-run timestamps, once they exist, are
 the right basis to retune either number, not a guess made now.
 
-**Not yet actually registered** — these are the commands to run, not confirmation they were run;
-registering a persistent Windows scheduled task is an action for the user to take.
+**Existing task verified 2026-09-30:** `PramanDailyIngest` has `WakeToRun=True`,
+`StartWhenAvailable=True`, and `LogonType=Interactive` (no stored password).
+No task was created or changed in this check. Interactive logon requires the user
+to be logged in; waking the computer does not log the user in.
+
+### Durable ingestion progress (Phase A Step 0)
+
+`weekly_ingest.py` appends and flushes a `started` line before any ingestion step,
+then a timestamped status after each step, and finally the existing summary.
+The run's start timestamp links all these entries. `desk status` reports
+`started <time>, never finished` if a start has no matching finish, including when
+a later run completed. This means no finish is recorded; the run may still be active.
+Logs from before this change cannot reveal interrupted runs that wrote no start.
+
+On Windows the script holds `SetThreadExecutionState(ES_CONTINUOUS |
+ES_SYSTEM_REQUIRED)` during work and restores the thread's previous state in
+`finally`, including on interruption. Other platforms skip the Windows API.
+Failure to acquire the request is reported and leaves an unfinished start;
+the script does not silently promise sleep protection. This prevents idle sleep,
+not shutdown, manual sleep, or a scheduler time limit.
 
 ## The design point: two different dates answer two different questions
 
