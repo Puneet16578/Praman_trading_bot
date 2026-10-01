@@ -1,7 +1,7 @@
 import numpy as np
 
 from desk.lib.connection import get_desk_connection
-from desk.outcomes import outcome_firewall
+from desk.outcome_firewall import require_outcome_access
 
 def evaluate(month: str = None):
     desk_conn = get_desk_connection()
@@ -39,7 +39,7 @@ def evaluate(month: str = None):
     valid_trades = []
     for t in trades:
         try:
-            outcome_firewall(t["open_date"])
+            require_outcome_access(t["open_date"])
             valid_trades.append(t)
         except ValueError:
             pass # Skip forward window trades

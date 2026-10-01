@@ -20,7 +20,7 @@ from desk.lib.connection import get_desk_connection
 from desk.lib.rulebook import load_active_rulebook
 from desk.lib.costs import load_active_cost_config
 from desk.screening_plan import screen_event, execution_observation
-from desk.outcomes import outcome_firewall
+from desk.outcome_firewall import require_outcome_access
 from scripts.phase8_robustness_relabel_t0 import compute_t0_relative, load_market_index
 
 # Global init for workers
@@ -59,7 +59,7 @@ def evaluate_single(row):
     # 2. Outcomes & Tail Metrics
     # Only if NOT in forward window. (We use the firewall for safety, although the input list is filtered)
     try:
-        outcome_firewall(event_date)
+        require_outcome_access(event_date)
     except ValueError:
         return {"symbol": symbol, "event_date": event_date, "state": state, "veto": veto_reasons, "fill": None, "forward_window": True}
 
@@ -132,7 +132,14 @@ def evaluate_single(row):
             band = band_as_of(desk_conn, symbol, session, report_date=session)
             if band.kind == "FIXED" and band.percent is not None:
                 lc_denominator += 1
-                limit = round((r["prev_close"] * (1 - band.percent/100)) * 20) / 20.0
+                earlier = [d for d in hist.trading_days if d < session]
+                if not earlier:
+                    continue
+                previous = hist.price_row_as_of(earlier[-1], session)
+                if previous is None:
+                    continue
+                previous_adjusted = previous["close_price"] / compute_adjustment_factor(conn, symbol, earlier[-1], session)
+                limit = round((previous_adjusted * (1 - band.percent/100)) * 20) / 20.0
                 if r["low_price"] <= limit:
                     locked_lc_days += 1
     

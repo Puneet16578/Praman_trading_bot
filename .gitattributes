@@ -7,3 +7,4 @@
 # already checked out or edited with CRLF before this rule existed.
 rulebook/* text eol=lf
 config/* text eol=lf
+docs/desk/*.md text eol=lf

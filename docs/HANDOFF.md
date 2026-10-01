@@ -2,6 +2,13 @@
 
 ## Round 2 review - 2026-10-01
 
+- P8-026 checkpoint: duplicate outcomes module removed; evaluator and draft
+  replay use the single IST firewall. Event and calendar boundary tests pass,
+  with a grep guard against a second Desk cutoff. Raw prior-close replay input
+  replaced by an adjusted historical close. Same full-suite verification above
+  covers these changes: 577 tests, OK. No replay run yet.
+- `.gitattributes` now fixes docs/desk Markdown to LF.
+
 - Root verified; initial changes were one trailing blank line in tests/test_desk_risk.py and untracked scratch/, preserved.
 - Initial suite: 574 tests in 260.781s, FAILED (2): local clock in duplicate firewall; raw previous close in draft replay.
 - P8-025: backups inspected through read-only temporary copies. No thesis, decision or paper-trade rows found. Originals untouched. Normal schema initialization preserved all live rows. See docs/desk/store_inventory_round2.md.
