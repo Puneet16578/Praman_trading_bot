@@ -279,3 +279,10 @@ ADD COLUMN isin_map_built_at TEXT` when needed, and checks the unchanged count
 inside a savepoint. Real desk migration: **0 rows before, 0 after**. Existing rows
 are never backfilled with a guessed build timestamp. The migration also runs
 idempotently when opening a Desk database. Tests cover a populated legacy table.
+
+## Test-only timezone dependency - 2026-10-02
+
+There are no pytz imports or references in desk/ or src/. Production Desk time
+uses shared.market_time. pytz 2026.4 is installed in the test environment alongside
+empyrical-reloaded 0.5.12 for the drawdown cross-check; it is not a Desk clock
+dependency. No new production timezone dependency was introduced.

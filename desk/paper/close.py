@@ -79,7 +79,7 @@ def close_approved_trade(praman_conn, desk_conn, trade_id: str, *, reason: str, 
     the ACTIVE cost config at fill time (loaded by the caller) -- required, not defaulted."""
     from desk.journal import store as jstore
 
-    if not reason:
+    if not reason or not reason.strip():
         raise PaperCloseRefused("reason is required to close a paper trade.")
 
     latest = jstore.latest_trade_event(desk_conn, trade_id)
@@ -87,6 +87,8 @@ def close_approved_trade(praman_conn, desk_conn, trade_id: str, *, reason: str, 
 
     now = now or datetime.now(timezone.utc)
     not_before_date = market_date(now).isoformat()
+    jstore.record_journal_event(desk_conn, event_type='MANUAL_CLOSE_REQUEST', trade_id=trade_id,
+                               detail={'not_before_date': not_before_date}, reason=reason)
     return _attempt_close_fill(praman_conn, desk_conn, trade_id, latest["quantity"], reason,
                                 costs, cost_config_hash, not_before_date)
 

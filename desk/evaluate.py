@@ -2,9 +2,17 @@ import numpy as np
 
 from desk.lib.connection import get_desk_connection
 from desk.outcome_firewall import require_outcome_access
+from desk.process_quality import audit_trade_process
 
 def evaluate(month: str = None):
     desk_conn = get_desk_connection()
+    try:
+        return _evaluate_connection(desk_conn, month)
+    finally:
+        desk_conn.close()
+
+
+def _evaluate_connection(desk_conn, month=None):
     
     # 1. Opportunity counts by state
     if month:
@@ -23,26 +31,24 @@ def evaluate(month: str = None):
     
     # Fetch all closed paper trades
     q = """
-    SELECT o.event_date as open_date, o.price as open_price, o.quantity as qty, o.buy_cost_inr, 
+    SELECT o.trade_id, o.event_date as open_date, o.price as open_price, o.quantity as qty, o.buy_cost_inr, 
            c.event_date as close_date, c.price as close_price, c.sell_cost_inr, c.reason
     FROM paper_trade_events o
     JOIN paper_trade_events c ON o.trade_id = c.trade_id
     WHERE o.event_type = 'OPEN' AND c.event_type = 'CLOSE'
     """
-    if month:
-        # filter by open_date or close_date matching month? Let's say open_date
-        q += f" AND o.event_date LIKE '{month}%'"
-        
-    trades = desk_conn.execute(q).fetchall()
-    
-    # Filter out forward window
+    # Check the entry date before fetching any corresponding exit price.
     valid_trades = []
-    for t in trades:
+    entries = desk_conn.execute("SELECT trade_id,event_date FROM paper_trade_events WHERE event_type='OPEN' "
+                                "AND (? IS NULL OR event_date LIKE ?)", (month, f'{month}%')).fetchall()
+    for entry in entries:
         try:
-            require_outcome_access(t["open_date"])
-            valid_trades.append(t)
+            require_outcome_access(entry['event_date'])
         except ValueError:
-            pass # Skip forward window trades
+            continue
+        valid_trades.extend(desk_conn.execute(q + ' AND o.trade_id=? ORDER BY c.event_date,c.event_id',
+                                              (entry['trade_id'],)).fetchall())
+    valid_trades.sort(key=lambda r: (r['close_date'], r['trade_id']))
             
     n = len(valid_trades)
     print(f"Count (n): {n}")
@@ -66,7 +72,6 @@ def evaluate(month: str = None):
         "Poetic Justice (Bad Process, Bad Outcome)": 0
     }
     
-    valid_process_prefixes = ("price", "stop", "target", "time", "horizon", "evidence", "risk", "portfolio")
     
     # Load market index
     market_index = {}
@@ -106,8 +111,7 @@ def evaluate(month: str = None):
             losses.append(net_ret)
             
         # Process check
-        reason = t["reason"].lower() if t["reason"] else ""
-        is_good_process = any(reason.startswith(p) for p in valid_process_prefixes)
+        is_good_process = audit_trade_process(desk_conn, t['trade_id'])['good']
         
         if is_good_process:
             process_good += 1

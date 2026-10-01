@@ -2,6 +2,15 @@
 
 ## Round 2 review - 2026-10-01
 
+- P8-028: evaluator process audit now checks complete thesis at entry,
+  unlogged violations, absence of G7 override and recorded exit provenance.
+  Ten adversarial process tests pass; full suite 588 tests, OK (189.306s).
+  Manual-close requests and monitor triggers are recorded before closes.
+- No pytz references in Desk/src; installed pytz is test-environment support
+  for the empyrical cross-check. Handoff is UTF-8 without NUL bytes.
+- P8-029 records this review's initially undersized 2019 sample failure and
+  deterministic correction. Rulebook v2 and full foreground replay remain.
+
 - Item 5 verified on 2026-10-02: Amendment 5 label source diff against afe3e2b
   is empty. Five full result dictionaries equal outputs of the pinned source
   on the same temporary data snapshot; see docs/desk/label_value_verification.md.

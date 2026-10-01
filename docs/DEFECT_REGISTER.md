@@ -1272,6 +1272,29 @@ returns before G1's other checks, so it can mask a coexisting data-gap reason.
 Targeted tests: `Ran 30 tests`, `OK`. Full suite: `Ran 525 tests in 111.076s`, `OK` (Python
 exit code 0).
 
+## P8-028 - evaluator treated a matching exit reason as good process
+
+**Root cause.** The evaluator classified process using only an exit-reason prefix.
+It did not inspect the original entry thesis, overrides or rule violations.
+**Fix.** Audit the linked thesis and decision as recorded before entry, detect
+unlogged violations (including unlogged stop widening), reject any G7 override,
+and require a prior recorded exit trigger or reasoned manual-close request.
+Manual close and monitor now append explicit provenance before recording exits.
+The evaluator checks the outcome firewall before fetching exit prices and closes
+its database connection on every return. Existing journal rows are untouched.
+**Verification.** Ten targeted tests pass, including incomplete/late thesis,
+reason-only and late trigger failures, G7 decision/journal overrides, unlogged
+violation and stop-widening detection, valid trigger and reasoned manual close.
+
+## P8-029 - diagnostic sampler assumed every year had 29 catalogue events
+
+**Root cause.** The first draft of this review's sampler requested 29 events from
+2019, where the final catalogue contains none, and failed before evaluating data.
+**Fix.** Take all available events from undersized strata and fill the remaining
+sample without replacement with the fixed seed. No outcomes informed selection.
+**Verification.** Exactly 200 historical events completed; identifiers and all
+input-only gate results are committed in gate_diagnostics_round2.json.
+
 ## P8-027 - research screening rejected every candidate for absent user sector
 
 **Root cause.** G2 required sector while mechanical screening always supplied None.

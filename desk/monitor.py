@@ -92,6 +92,9 @@ def run_monitor(praman_conn, desk_conn, run_date: str) -> dict:
             # the price. Two identical trades therefore show identical P&L (desk/risk/officer.py:
             # realized_pnl_inr) whether a stop or a manual close ended them.
             sell_cost_inr = round_trip_cost_inr(stop_fill.price, latest["quantity"], loaded_costs.costs, "sell")
+            jstore.record_journal_event(desk_conn, event_type='EXIT_TRIGGER', trade_id=trade_id,
+                                       detail={'trigger': 'price', 'event_date': stop_fill.event_date},
+                                       reason=f'stop ({stop_fill.kind})')
             jstore.close_paper_trade(desk_conn, trade_id=trade_id, event_date=stop_fill.event_date,
                                       price=stop_fill.price, reason=f"stop ({stop_fill.kind})",
                                       sell_cost_inr=sell_cost_inr, cost_config_hash=loaded_costs.sha256)
