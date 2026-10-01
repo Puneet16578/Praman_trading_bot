@@ -204,4 +204,11 @@ Nothing. The working tree is clean after the handoff commit.
  -   S t e p   3   P r o o f :   E x e c u t e d   s c r a t c h / p r o o f _ s c a n . p y   f o r   t h e   l a s t   1 0   t r a d i n g   d a y s .   O u t p u t   m a t c h e d   e x p e c t a t i o n s   ( 3 1 5   S C R E E N _ F A I L ,   2 1 8   E x e c u t i o n s   w r i t t e n ) .   D B   c l e a r e d   c o r r e c t l y .  
  -   U n r e s o l v e d   I S I N   s y m b o l s :   M o d i f i e d   d e s k / s c a n . p y   t o   c o u n t   s y m b o l s   l a c k i n g   a   v a l i d   e q u i t y   I S I N   a n d   r e p o r t   i t   v i a   l o g g i n g   a n d   s t d o u t   o n   e v e r y   r u n .  
  -   S c r a t c h   F i l e s :   C o n f i r m e d   s c r a t c h /   w a s   c o m p l e t e l y   u n t r a c k e d   a n d   s u c c e s s f u l l y   a d d e d   i t   t o   . g i t i g n o r e .  
+  
+ # #   R e v i e w - a n d - R e p a i r :   P o i n t   6  
+ -   R e n a m e d   p h a s e 1 1 _ s h a d o w _ r e p l a y . p y   t o   d e s k _ s h a d o w _ r e p l a y . p y .  
+ -   I m p l e m e n t e d   o u t c o m e _ f i r e w a l l   i n   d e s k / o u t c o m e s . p y   t o   r e j e c t   r e q u e s t s   f o r   e v e n t s   > =   2 0 2 6 - 0 9 - 1 6   i f   t o d a y   <   2 0 2 7 - 0 6 - 0 1 .  
+ -   U p d a t e d   s h a d o w   r e p l a y   s c r i p t   t o   l o a d   t h e   A m e n d m e n t   5   l a b e l   f u n c t i o n   ( c o m p u t e _ t 0 _ r e l a t i v e )   d i r e c t l y   r a t h e r   t h a n   p h a s e 8 _ r e l a b e l _ t 0 _ r e l a t i v e . c s v .  
+ -   U p d a t e d   s h a d o w   r e p l a y   s c r i p t   t o   r e l y   o n   t h e   f i r e w a l l   a n d   r e p o r t   p r i m a r y   a n a l y s i s   ( 2 0 1 9 - 1 0 - 0 1   t o   2 0 2 5 - 1 2 - 3 1 )   a n d   d e s c r i p t i v e   a n a l y s i s   ( 2 0 2 6 - 0 1 - 0 1   t o   2 0 2 6 - 0 9 - 1 5 )   s e p a r a t e l y .  
+ -   S p o t - c h e c k e d   5   e v e n t s   u s i n g   a   s c r a t c h   s c r i p t   t o   c o n f i r m   c o m p u t e _ t 0 _ r e l a t i v e   o u t p u t s   t h e   e x p e c t e d   l a b e l   k e y s .  
  
