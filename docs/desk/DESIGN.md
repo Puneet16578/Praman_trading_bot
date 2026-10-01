@@ -70,6 +70,11 @@ unknowable) → research memory.
 
 ## Build order
 
+Phase A adds an inputs-only opportunity log for the existing unusual-move
+catalogue. A later phase will add a daily table of every eligible stock-day with
+anomaly flags, so research is not limited to events the catalogue already notices.
+That daily universe table is not part of Phase A.
+
 1. Deterministic core.
 2. Market and sector context.
 3. Minimal fundamentals slice.

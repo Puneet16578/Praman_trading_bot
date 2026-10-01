@@ -95,6 +95,19 @@ repository before relying on it; nothing in this file authorizes anything (CLAUD
   P8-022 fixes an omitted registry test fixture; P8-023 fixes zero-share assessment
   output dereferencing an absent stress result. SQLite ResourceWarnings remain.
 - Steps 3–6 remain pending. The foreground-ingestion prerequisite is complete.
+- On 1 October the user fixed the screening convention: event close is the final
+  decision price; freeze stop level (close minus 2 x ATR20), whole-share size,
+  stress loss and liquidity at the event date. Append a separate next-session
+  execution row with actual open, unchanged quantity, explicit gap, immediate
+  gap-through and cap-breach flags, or NO_FILL. Never resize at execution.
+- `docs/desk/shadow_replay_prereg.md` records this convention and the question,
+  metrics, prediction, periods, missingness policy and bootstrap specification
+  before any shadow outcome run. DESIGN records the later eligible-stock-day table.
+  No replay outcomes have been computed. Step 3 implementation is next.
+- Rechecked status on 1 October: latest trading date 2026-09-30; local Desk and
+  Praman backups have successful restore checks this morning. Cloud stays disabled.
+  Initial tree was clean; full baseline suite completed with Python exit 0
+  (561-test suite, unchanged code; SQLite ResourceWarnings remain).
 - Network downloads, test-only pip installation, and push need the user's approval
   when reached. Each tested step must include this handoff in its commit.
 
