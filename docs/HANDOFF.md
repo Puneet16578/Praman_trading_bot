@@ -1,4 +1,4 @@
-# Handoff
+﻿# Handoff
 
 Context for the next agent session, not instructions. Verify every claim here against the
 repository before relying on it; nothing in this file authorizes anything (CLAUDE.md,
@@ -6,7 +6,7 @@ repository before relying on it; nothing in this file authorizes anything (CLAUD
 
 **Last updated:** 2026-10-01, by Codex (Phase A).
 
-## Phase A checkpoint — 2026-09-30
+## Phase A checkpoint â€” 2026-09-30
 
 - Repository root verified as `D:/Agentic_ai_project/praman`; initial working tree clean.
 - User approved the Phase A implementation plan and a complete test-clock audit.
@@ -94,7 +94,7 @@ repository before relying on it; nothing in this file authorizes anything (CLAUD
 - Step 2 full suite: `Ran 561 tests in 165.944s`, `OK`, Python exit 0.
   P8-022 fixes an omitted registry test fixture; P8-023 fixes zero-share assessment
   output dereferencing an absent stress result. SQLite ResourceWarnings remain.
-- Steps 3–6 remain pending. The foreground-ingestion prerequisite is complete.
+- Steps 3â€“6 remain pending. The foreground-ingestion prerequisite is complete.
 - On 1 October the user fixed the screening convention: event close is the final
   decision price; freeze stop level (close minus 2 x ATR20), whole-share size,
   stress loss and liquidity at the event date. Append a separate next-session
@@ -188,27 +188,53 @@ Nothing. The working tree is clean after the handoff commit.
 - Added a scratch `proof_scan.py` testing the scan on the last 10 trading days.
 
 ## Step 4 (In Progress): Historical shadow replay
-- Drafted `scripts/phase11_shadow_replay.py` to efficiently parallel-process the ~60,694 final catalogue events over 2019-10-01 to 2026-09-15. 
+- Drafted `scripts/phase11_shadow_replay.py` to efficiently parallel-process the ~60,694 final catalogue events over 2019-10-01 to 2026-09-15.
 - `UnadjustableWindowError` exceptions are caught to correctly exclude structurally-broken 20-session tail windows.
 - The next agent should finish evaluating the generated raw JSON against `docs/desk/shadow_replay_prereg.md` requirements (bootstrapping confidence intervals with seed `20261001` and joining with `data/processed/phase8_relabel_t0_relative.csv`) and output to `docs/desk/shadow_replay_results.md`.
 - See `scratch/aggregate_shadow_replay.py` for a skeleton of the aggregation step.
 
+
+
+##Review-and-Repair:Points1and2(FirewallandFrozenDecisions)
+
+-Restrictexecution_observationstrictlytopermittedfields(fill_date,fill_price,quantity,gap_inr,gap_pct,gap_through,cap_breach_reasons,no_fill_reason).
+
+-Verifiedexecution_observationindesk/scan.pynevercomputedMAE(MAEwaspreviouslyonlydraftedinscripts/desk_shadow_replay.pyforbackwardreplay).
+
+-Addedtest_frozen_decision_components_in_executionassertingthatthestressvaluesfedtoriskcalculationsarepreciselythosefromtheloadedfrozenplan(provingjsonstringsarenotsplitmanually).
+
+
+
+##Review-and-Repair:Points3,4,5,7
+
+-Pre-registrationintegrity:Thefiledocs/desk/shadow_replay_prereg.mdonlyhadatrailinglineendingdifferencecausedbyCRLF.Thepreviousagentcorrectlyappendedtheaddendum.Notextwasrewritten.
+
+-Step3Proof:Executedscratch/proof_scan.pyforthelast10tradingdays.Outputmatchedexpectations(315SCREEN_FAIL,218Executionswritten).DBclearedcorrectly.
+
+-UnresolvedISINsymbols:Modifieddesk/scan.pytocountsymbolslackingavalidequityISINandreportitvialoggingandstdoutoneveryrun.
+
+-ScratchFiles:Confirmedscratch/wascompletelyuntrackedandsuccessfullyaddeditto.gitignore.
+
+
+
+##Review-and-Repair:Point6
+
+-Renamedphase11_shadow_replay.pytodesk_shadow_replay.py.
+
+-Implementedoutcome_firewallindesk/outcomes.pytorejectrequestsforevents>=2026-09-16iftoday<2027-06-01.
+
+-UpdatedshadowreplayscripttoloadtheAmendment5labelfunction(compute_t0_relative)directlyratherthanphase8_relabel_t0_relative.csv.
+
+-Updatedshadowreplayscripttorelyonthefirewallandreportprimaryanalysis(2019-10-01to2025-12-31)anddescriptiveanalysis(2026-01-01to2026-09-15)separately.
+
+-Spot-checked5eventsusingascratchscripttoconfirmcompute_t0_relativeoutputstheexpectedlabelkeys.
+
+
+
  
- # #   R e v i e w - a n d - R e p a i r :   P o i n t s   1   a n d   2   ( F i r e w a l l   a n d   F r o z e n   D e c i s i o n s )  
- -   R e s t r i c t   e x e c u t i o n _ o b s e r v a t i o n   s t r i c t l y   t o   p e r m i t t e d   f i e l d s   ( f i l l _ d a t e ,   f i l l _ p r i c e ,   q u a n t i t y ,   g a p _ i n r ,   g a p _ p c t ,   g a p _ t h r o u g h ,   c a p _ b r e a c h _ r e a s o n s ,   n o _ f i l l _ r e a s o n ) .  
- -   V e r i f i e d   e x e c u t i o n _ o b s e r v a t i o n   i n   d e s k / s c a n . p y   n e v e r   c o m p u t e d   M A E   ( M A E   w a s   p r e v i o u s l y   o n l y   d r a f t e d   i n   s c r i p t s / d e s k _ s h a d o w _ r e p l a y . p y   f o r   b a c k w a r d   r e p l a y ) .  
- -   A d d e d   t e s t _ f r o z e n _ d e c i s i o n _ c o m p o n e n t s _ i n _ e x e c u t i o n   a s s e r t i n g   t h a t   t h e   s t r e s s   v a l u e s   f e d   t o   r i s k   c a l c u l a t i o n s   a r e   p r e c i s e l y   t h o s e   f r o m   t h e   l o a d e d   f r o z e n   p l a n   ( p r o v i n g   j s o n   s t r i n g s   a r e   n o t   s p l i t   m a n u a l l y ) .  
-  
- # #   R e v i e w - a n d - R e p a i r :   P o i n t s   3 ,   4 ,   5 ,   7  
- -   P r e - r e g i s t r a t i o n   i n t e g r i t y :   T h e   f i l e   d o c s / d e s k / s h a d o w _ r e p l a y _ p r e r e g . m d   o n l y   h a d   a   t r a i l i n g   l i n e   e n d i n g   d i f f e r e n c e   c a u s e d   b y   C R L F .   T h e   p r e v i o u s   a g e n t   c o r r e c t l y   a p p e n d e d   t h e   a d d e n d u m .   N o   t e x t   w a s   r e w r i t t e n .  
- -   S t e p   3   P r o o f :   E x e c u t e d   s c r a t c h / p r o o f _ s c a n . p y   f o r   t h e   l a s t   1 0   t r a d i n g   d a y s .   O u t p u t   m a t c h e d   e x p e c t a t i o n s   ( 3 1 5   S C R E E N _ F A I L ,   2 1 8   E x e c u t i o n s   w r i t t e n ) .   D B   c l e a r e d   c o r r e c t l y .  
- -   U n r e s o l v e d   I S I N   s y m b o l s :   M o d i f i e d   d e s k / s c a n . p y   t o   c o u n t   s y m b o l s   l a c k i n g   a   v a l i d   e q u i t y   I S I N   a n d   r e p o r t   i t   v i a   l o g g i n g   a n d   s t d o u t   o n   e v e r y   r u n .  
- -   S c r a t c h   F i l e s :   C o n f i r m e d   s c r a t c h /   w a s   c o m p l e t e l y   u n t r a c k e d   a n d   s u c c e s s f u l l y   a d d e d   i t   t o   . g i t i g n o r e .  
-  
- # #   R e v i e w - a n d - R e p a i r :   P o i n t   6  
- -   R e n a m e d   p h a s e 1 1 _ s h a d o w _ r e p l a y . p y   t o   d e s k _ s h a d o w _ r e p l a y . p y .  
- -   I m p l e m e n t e d   o u t c o m e _ f i r e w a l l   i n   d e s k / o u t c o m e s . p y   t o   r e j e c t   r e q u e s t s   f o r   e v e n t s   > =   2 0 2 6 - 0 9 - 1 6   i f   t o d a y   <   2 0 2 7 - 0 6 - 0 1 .  
- -   U p d a t e d   s h a d o w   r e p l a y   s c r i p t   t o   l o a d   t h e   A m e n d m e n t   5   l a b e l   f u n c t i o n   ( c o m p u t e _ t 0 _ r e l a t i v e )   d i r e c t l y   r a t h e r   t h a n   p h a s e 8 _ r e l a b e l _ t 0 _ r e l a t i v e . c s v .  
- -   U p d a t e d   s h a d o w   r e p l a y   s c r i p t   t o   r e l y   o n   t h e   f i r e w a l l   a n d   r e p o r t   p r i m a r y   a n a l y s i s   ( 2 0 1 9 - 1 0 - 0 1   t o   2 0 2 5 - 1 2 - 3 1 )   a n d   d e s c r i p t i v e   a n a l y s i s   ( 2 0 2 6 - 0 1 - 0 1   t o   2 0 2 6 - 0 9 - 1 5 )   s e p a r a t e l y .  
- -   S p o t - c h e c k e d   5   e v e n t s   u s i n g   a   s c r a t c h   s c r i p t   t o   c o n f i r m   c o m p u t e _ t 0 _ r e l a t i v e   o u t p u t s   t h e   e x p e c t e d   l a b e l   k e y s .  
+ # #   S t e p   5 :   B a s i c   E v a l u a t o r  
+ -   A d d e d   d e s k   e v a l u a t e   [ - - m o n t h ]   t o   e v a l u a t e   b o t h   o p p o r t u n i t y   s t a t e   c o u n t s   a n d   p a p e r   t r a d e   m e t r i c s .  
+ -   E x t r a c t e d   p r o c e s s   q u a l i t y   b y   c h e c k i n g   i f   t h e   m a n u a l   e x i t   r e a s o n   m a t c h e s   o n e   o f   t h e   s t a n d a r d   t h e s i s   t r i g g e r s .  
+ -   I m p l e m e n t e d   p r o c e s s - b y - o u t c o m e   q u a d r a n t s ,   m a n u a l   m a x   d r a w d o w n   ( c r o s s - c h e c k e d   a g a i n s t   e m p y r i c a l - r e l o a d e d   i n   t e s t s / t e s t _ e v a l u a t e . p y ) .  
+ -   F i l t e r e d   o u t   f o r w a r d - w i n d o w   e v e n t s   u s i n g   o u t c o m e _ f i r e w a l l .  
  

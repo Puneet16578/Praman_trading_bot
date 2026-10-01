@@ -296,6 +296,10 @@ def cmd_backup_verify(args):
         raise SystemExit(1)
 
 
+def cmd_evaluate(args):
+    from desk.evaluate import evaluate
+    evaluate(args.month)
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="desk")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -303,6 +307,10 @@ def main(argv=None):
     backup = sub.add_parser("backup")
     backup_sub = backup.add_subparsers(dest="backup_command", required=True)
     backup_sub.add_parser("verify").set_defaults(func=cmd_backup_verify)
+
+    ev = sub.add_parser("evaluate")
+    ev.add_argument("--month", help="Format YYYY-MM")
+    ev.set_defaults(func=cmd_evaluate)
 
     p = sub.add_parser("rulebook")
     rb_sub = p.add_subparsers(dest="rulebook_command", required=True)
