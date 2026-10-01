@@ -100,3 +100,58 @@ class WholeShareSizingTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+@unittest.skipUnless(_PRODUCTION_STORE_EXISTS, "Real Praman production store not found.")
+class StressLossScaleBugTest(unittest.TestCase):
+    def test_bajfinance_overnight_gap_stress_loss_uses_current_price_scale(self):
+        """P8-024: BAJFINANCE on 2025-06-18 has a cumulative factor of 10. The risk must be 
+        calculated using the unscaled decision-date close (e.g. 919), not the normalized 9,190."""
+        from src.bitemporal.guard import latest_as_of
+        from src.signals.price_adjustment import compute_adjustment_factor
+        from desk.risk.officer import worst_overnight_gap_loss_inr
+        
+        conn = get_live_connection()
+        try:
+            symbol, day = "BAJFINANCE", "2025-06-18"
+            rows = sorted((r for r in latest_as_of(conn, "bhavcopy", day, symbol=symbol, series="EQ")
+                           if r["event_date"] <= day), key=lambda r: r["event_date"])[-21:]
+            factors = [compute_adjustment_factor(conn, symbol, r["event_date"], day) for r in rows]
+            gaps = [(rows[i]["open_price"]/factors[i]) / (rows[i-1]["close_price"]/factors[i-1])-1
+                    for i in range(1, len(rows))]
+            expected = abs(min(0, *gaps)) * rows[-1]["close_price"] * 10
+            self.assertGreater(expected, 0)
+            self.assertAlmostEqual(worst_overnight_gap_loss_inr(conn, symbol, day, 10, 20), expected)
+        finally:
+            conn.close()
+
+    def test_stress_loss_is_invariant_to_synthetic_splits(self):
+        """A stock's stress loss is the same whether or not it has historical splits."""
+        from unittest.mock import patch
+        from desk.risk.officer import worst_overnight_gap_loss_inr
+        
+        conn = get_live_connection()
+        try:
+            symbol, day = "AXISBANK", "2021-10-27"
+            base_loss = worst_overnight_gap_loss_inr(conn, symbol, day, 10, 20)
+            
+            # Synthetic 2:1 split 5 days ago
+            original_factor = __import__("src.signals.price_adjustment", fromlist=["compute_adjustment_factor"]).compute_adjustment_factor
+            original_adj_close = __import__("src.signals.price_adjustment", fromlist=["adjusted_close"]).adjusted_close
+            
+            def mock_factor(conn, sym, ev_date, as_of):
+                f = original_factor(conn, sym, ev_date, as_of)
+                # If event date is before 2021-10-20, apply 2.0 factor
+                return f * (2.0 if ev_date < "2021-10-20" else 1.0)
+                
+            def mock_adj_close(conn, sym, ev_date, as_of):
+                c = original_adj_close(conn, sym, ev_date, as_of)
+                # If event date is before 2021-10-20, price would be halved in adjusted terms
+                return c / (2.0 if ev_date < "2021-10-20" else 1.0)
+
+            with patch("desk.risk.officer.compute_adjustment_factor", side_effect=mock_factor), \
+                 patch("desk.risk.officer.adjusted_close", side_effect=mock_adj_close):
+                 
+                synthetic_loss = worst_overnight_gap_loss_inr(conn, symbol, day, 10, 20)
+                self.assertAlmostEqual(base_loss, synthetic_loss)
+        finally:
+            conn.close()

@@ -172,3 +172,9 @@ Nothing. The working tree is clean after the handoff commit.
 - **Discrepancies in the previous handoff:** it described about 21 uncommitted files (+534/-25)
   and four syntactically invalid test calls. On resume there were 17 files (about +411/-22), all
   compiled, and the four calls were already valid. The work was verified directly, not taken on trust.
+
+## Step 1: Stress-loss bug fix (2026-10-01)
+- Fixed P8-024 where the overnight-gap stress loss multiplied the current close by the cumulative corporate-action factor, inflating the component for stocks with past splits (like BAJFINANCE).
+- Regression tests added in `tests/test_desk_risk.py` for BAJFINANCE and a synthetic split showing the stress loss is invariant to historical splits.
+- Reported that no committed worked example or stored decision was affected (since `data/desk/desk.sqlite` has 0 rows and is unused yet).
+- Appended a dated addendum to `docs/desk/shadow_replay_prereg.md`.

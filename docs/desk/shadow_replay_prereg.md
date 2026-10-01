@@ -114,3 +114,7 @@ they cannot establish a causal benefit or independent predictive edge.
 
 Write `docs/desk/shadow_replay_results.md` whatever the findings, including
 coverage failures, missing comparisons, provenance and reproducible commands.
+
+## Addendum: Stress loss calculation fix (2026-10-01)
+
+Before any replay outcome was computed, a code defect (P8-024) in the overnight-gap stress loss was fixed. The original code multiplied the decision-date raw close by the cumulative corporate-action factor before applying the percentage gap. This falsely inflated the stress loss for any stock with past splits or bonuses (e.g., BAJFINANCE used ₹9,190 instead of ₹919). The fix applies the gap fraction directly to the current unscaled close, ensuring stress loss is in current rupees. This change is committed before any shadow replay results are generated.

@@ -70,7 +70,9 @@ def worst_overnight_gap_loss_inr(conn, symbol: str, as_of_date: str, quantity: f
     current_close_row = hist.price_row_as_of(as_of_date, as_of_date)
     if current_close_row is None:
         return None
-    current_close = current_close_row["close_price"] * hist.cum_factor_up_to(as_of_date)
+    # At the decision date the raw close is already on the current share basis.
+    # The cumulative factor is useful for return ratios, not a rupee price (P8-024).
+    current_close = current_close_row["close_price"]
 
     worst_pct = 0.0
     for i in range(start_idx, idx):

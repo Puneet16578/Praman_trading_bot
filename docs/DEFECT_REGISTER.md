@@ -1272,6 +1272,21 @@ returns before G1's other checks, so it can mask a coexisting data-gap reason.
 Targeted tests: `Ran 30 tests`, `OK`. Full suite: `Ran 525 tests in 111.076s`, `OK` (Python
 exit code 0).
 
+## P8-024 — overnight-gap stress loss used the wrong current price scale
+
+**Root cause.** `desk/risk/officer.py` multiplied the decision-date raw close by
+the cumulative corporate-action factor before applying an adverse percentage gap.
+That normalized series is useful for return ratios, but is not the current rupee
+price. Direct store check: BAJFINANCE on 2025-06-18 closed at 919, with cumulative
+factor 10; the old risk calculation used 9,190. This is a code defect, not a
+sandbox/network/temp-folder failure.
+
+**Fix.** Apply the gap percentage to the unscaled decision-date close. Historical
+gap comparisons still adjust both prices onto the same as-of basis. A regression
+test independently computes the worst gap from real adjusted OHLC rows across
+BAJFINANCE's split/bonus and checks its current-rupee loss. Full-suite verification
+is recorded in HANDOFF with the implementation checkpoint.
+
 ## P8-022 — new circuit-band table omitted from shared append-only test fixture
 
 **Root cause.** Agent-introduced during Phase A Step 2: adding `circuit_bands` to
