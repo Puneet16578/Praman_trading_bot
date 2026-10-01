@@ -269,6 +269,12 @@ job is the Windows data-ingestion task.
 
 ## Desk invariants
 
+**Durable-store non-negotiable (2026-10-01):** No script, test, proof, or experiment
+may delete, clear, truncate, replace, or recreate `data/desk/desk.sqlite` or the
+Praman store. All proofs and experiments run on temporary copies. Schema setup
+uses the normal additive, idempotent initializer and preserves every existing
+row. Backups remain untouched; inspect read-only temporary copies only.
+
 The Praman Expert Desk (`desk/`, `docs/desk/`) is a separate, later-added layer for personal trading
 decisions, built on top of everything above. **The Desk reads Praman; it never modifies it** — no
 writes to the Praman store, no changes to pinned scripts, no changes to `src/` without explicit

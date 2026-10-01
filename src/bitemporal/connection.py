@@ -3,12 +3,16 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 from .schema import BITEMPORAL_TABLES
+from shared.store_safety import install_guard, protect_connection
+
+install_guard()
 
 def get_connection(db_path: str | Path = ":memory:") -> sqlite3.Connection:
     if db_path != ":memory:":
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
+    protect_connection(conn, db_path)
     conn.execute("PRAGMA foreign_keys = ON")
     if db_path != ":memory:":
         # WAL (write-ahead log) is a per-database-file setting, not per-connection -- set once here

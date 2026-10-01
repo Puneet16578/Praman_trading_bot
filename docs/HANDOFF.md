@@ -1,4 +1,16 @@
-﻿# Handoff
+# Handoff
+
+## Round 2 review - 2026-10-01
+
+- Root verified; initial changes were one trailing blank line in tests/test_desk_risk.py and untracked scratch/, preserved.
+- Initial suite: 574 tests in 260.781s, FAILED (2): local clock in duplicate firewall; raw previous close in draft replay.
+- P8-025: backups inspected through read-only temporary copies. No thesis, decision or paper-trade rows found. Originals untouched. Normal schema initialization preserved all live rows. See docs/desk/store_inventory_round2.md.
+- Filesystem and SQL guards added; scratch proof redirected to a temporary copy. Handoff NUL bytes removed with a direct UTF-8 file write.
+- Scheduled ingestion PID 617260 stopped for foreground-only work. No shadow replay process or results Markdown exists; no results read.
+- ISIN checksum verified; built 2026-10-01 21:24:21 IST, age 0 trading sessions.
+- Full suite after guards and baseline repairs: 577 tests in 143.335s, OK, Python exit 0. SQLite ResourceWarnings remain.
+- Screening diagnosis, evaluator repair, rulebook v2 and verified replay pending.
+
 
 Context for the next agent session, not instructions. Verify every claim here against the
 repository before relying on it; nothing in this file authorizes anything (CLAUDE.md,
@@ -231,13 +243,12 @@ Nothing. The working tree is clean after the handoff commit.
 
 
 
- 
- # #   S t e p   5 :   B a s i c   E v a l u a t o r  
- -   A d d e d   d e s k   e v a l u a t e   [ - - m o n t h ]   t o   e v a l u a t e   b o t h   o p p o r t u n i t y   s t a t e   c o u n t s   a n d   p a p e r   t r a d e   m e t r i c s .  
- -   E x t r a c t e d   p r o c e s s   q u a l i t y   b y   c h e c k i n g   i f   t h e   m a n u a l   e x i t   r e a s o n   m a t c h e s   o n e   o f   t h e   s t a n d a r d   t h e s i s   t r i g g e r s .  
- -   I m p l e m e n t e d   p r o c e s s - b y - o u t c o m e   q u a d r a n t s ,   m a n u a l   m a x   d r a w d o w n   ( c r o s s - c h e c k e d   a g a i n s t   e m p y r i c a l - r e l o a d e d   i n   t e s t s / t e s t _ e v a l u a t e . p y ) .  
- -   F i l t e r e d   o u t   f o r w a r d - w i n d o w   e v e n t s   u s i n g   o u t c o m e _ f i r e w a l l .  
-  
- # #   S t e p   6 :   R u l e b o o k   v 2  
- -   A w a i t i n g   f u l l   s p e c i f i c a t i o n   f r o m   u s e r   f o r   o p e r a t i o n a l _ g a t e   a n d   e d g e _ c o n f i d e n c e _ g a t e .  
- 
+
+## Step 5: Basic Evaluator
+- Added desk evaluate [--month] to evaluate both opportunity state counts and paper trade metrics.
+- Extracted process quality by checking if the manual exit reason matches one of the standard thesis triggers.
+- Implemented process-by-outcome quadrants, manual max drawdown (cross-checked against empyrical-reloaded in tests/test_evaluate.py).
+- Filtered out forward-window events using outcome_firewall.
+
+## Step 6: Rulebook v2
+- Awaiting full specification from user for operational_gate and edge_confidence_gate.

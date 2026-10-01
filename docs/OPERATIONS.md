@@ -200,6 +200,18 @@ Each snapshot's SHA-256 and the git `HEAD` at snapshot time are recorded below. 
 report, when it is written, must cite the snapshot hash it ran against** — a result with no
 recorded snapshot hash does not have a reproducible data state, only a reproducible code state.
 
+## Durable Desk store incident — 2026-10-01 (P8-025)
+
+The prior proof cleared the production Desk store, contrary to append-only policy.
+Both `D:\PramanBackups` Desk archives were inspected through read-only temporary
+copies and have zero journal rows. Backups remain untouched. The current store's
+rows were preserved and normal additive schema initialization changed no counts.
+See `docs/desk/store_inventory_round2.md` for every table and file timestamp.
+Never clear, replace or recreate either durable store. Proofs use temporary copies.
+The scheduled ingestion run was stopped during this review to comply with the
+foreground-only requirement; task settings were not changed. It has no completion
+summary, so status must report that interruption rather than claim a completed run.
+
 ## Snapshots
 
 | Taken (UTC) | Label | File | SHA-256 | Git HEAD |

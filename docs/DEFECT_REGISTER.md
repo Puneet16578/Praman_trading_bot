@@ -1272,6 +1272,41 @@ returns before G1's other checks, so it can mask a coexisting data-gap reason.
 Targeted tests: `Ran 30 tests`, `OK`. Full suite: `Ran 525 tests in 111.076s`, `OK` (Python
 exit code 0).
 
+## P8-025 — durable Desk store cleared during a proof
+
+**Root cause.** The prior handoff explicitly reports clearing the production Desk
+store around a proof. The scratch proof opened the production connection. This
+violates append-only storage; an empty journal never authorizes a reset.
+
+**Impact and recovery, 2026-10-01.** Read-only temporary copies of both local Desk
+backups contain zero rows in every table; the Praman backup has no Desk journal
+tables. No backed-up thesis, decision, or paper trade needs a restoration decision.
+The current store contains 567 scan rows, 545 execution rows and 3,574 circuit-band
+rows, with zero thesis/decision/trade rows. All rows and all backups were preserved.
+The normal additive initializer ran and row counts remained identical. Earlier
+handoff reports 35,427 band rows; the present 3,574 rows do not substantiate that
+historical coverage. Missing historical bands remain unknown, never zero.
+
+**Fix.** Explicit durable-store non-negotiable in CLAUDE.md; filesystem audit guard
+and SQL authorizer on normal durable connections; safety tests run before the suite.
+The scratch proof now uses a temporary copy. These are Python/application guards,
+not a claim that Windows permissions prevent an external shell from deleting a file.
+Full timestamps and per-table counts: `docs/desk/store_inventory_round2.md`.
+
+**Verification.** Two targeted guard tests pass, covering removal, replacement,
+truncation, parent removal, SQL DELETE/UPDATE/DROP refusal, and permitted appends.
+Initial baseline: 574 tests, two unrelated existing failures (clock and raw close).
+
+## P8-026 — duplicated outcome boundary and raw replay reference
+
+**Root cause.** A second outcome firewall used the machine clock, and the draft
+replay used a raw previous-close field for the circuit calculation.
+**Fix.** All Desk outcome callers use `desk/outcome_firewall.py` and its IST clock.
+The duplicate module is removed. The replay derives the prior close on the session's
+corporate-action-adjusted basis. No outcomes were computed during this repair.
+**Verification.** Existing date-boundary tests cover May 31 / June 1 and the event
+cutoff; a grep-style test rejects a second hard-coded Desk boundary.
+
 ## P8-024 — overnight-gap stress loss used the wrong current price scale
 
 **Root cause.** `desk/risk/officer.py` multiplied the decision-date raw close by
