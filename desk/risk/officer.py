@@ -1,9 +1,8 @@
 """Sizing and stress loss. Long-only in Phase 1 (entry > stop < target is the only shape the
 rulebook and gates assume) -- nothing here computes or accepts a short position.
 
-Costs are computed from the loaded cost config only -- never hardcoded here. Circuit bands are
-UNKNOWN in Phase 1 (item 5/7): stress loss does NOT account for a circuit-locked exit becoming
-impossible; this is stated in the returned StressLoss record, not silently omitted.
+Costs are computed from the loaded cost config only. Dated circuit-band snapshots
+add a fixed-band lock scenario; dynamic ranges and missing snapshots remain explicit.
 """
 from __future__ import annotations
 import math
@@ -14,6 +13,7 @@ from src.signals.price_adjustment import adjusted_close, compute_adjustment_fact
 
 from ..lib.costs import CostConfig
 from ..lib.rulebook import DeskRulebook
+from ..circuit_bands import CircuitBand
 
 
 def round_trip_cost_inr(price: float, quantity: float, costs: CostConfig, side: str) -> float:
@@ -100,11 +100,14 @@ class StressLossResult:
     planned_loss_component_inr: float
     worst_gap_component_inr: float | None
     floor_component_inr: float
-    circuit_band_caveat: str = "Circuit bands are UNKNOWN in Phase 1 -- this figure does not account for a circuit-locked exit becoming impossible."
+    circuit_band_caveat: str = "Circuit band UNKNOWN; locked-circuit loss is unavailable."
+    locked_circuit_loss_inr: float | None = None
+    circuit_band: CircuitBand = CircuitBand()
 
 
 def compute_stress_loss(conn, symbol: str, as_of_date: str, entry: float, stop: float, quantity: float,
-                         costs: CostConfig, rulebook: DeskRulebook) -> StressLossResult:
+                         costs: CostConfig, rulebook: DeskRulebook,
+                         circuit_band: CircuitBand | None = None) -> StressLossResult:
     """Floor is now `stress_loss_floor_pct_of_position` (rulebook), not a hardcoded rupee constant
     -- a fixed rupee floor means nothing across different capital sizes, and hardcoding it in code
     is exactly what the constitution's "gates, not scores; nothing invented" discipline forbids."""
@@ -113,11 +116,24 @@ def compute_stress_loss(conn, symbol: str, as_of_date: str, entry: float, stop: 
     position_value = entry * quantity
     floor = position_value * rulebook.risk.stress_loss_floor_pct_of_position / 100.0
     components = [planned, floor] + ([gap_loss] if gap_loss is not None else [])
+    band = circuit_band or CircuitBand()
+    locked = None
+    if band.kind == "FIXED":
+        locked = position_value * band.percent / 100.0 * rulebook.risk.circuit_lock_days
+        components.append(locked)
+        caveat = f"Fixed-band scenario: band x {rulebook.risk.circuit_lock_days} lock days; not an exit guarantee."
+    elif band.kind == "DYNAMIC":
+        caveat = "Dynamic operating range can flex; no fixed-band locked-circuit loss is asserted."
+    else:
+        caveat = "Circuit band UNKNOWN; locked-circuit loss is unavailable."
     return StressLossResult(
         stress_loss_inr=max(components),
         planned_loss_component_inr=planned,
         worst_gap_component_inr=gap_loss,
         floor_component_inr=floor,
+        locked_circuit_loss_inr=locked,
+        circuit_band=band,
+        circuit_band_caveat=caveat,
     )
 
 

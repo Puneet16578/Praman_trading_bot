@@ -79,7 +79,17 @@ def cmd_assess(args):
     for gate, r in result.gate_results.items():
         print(f"  {gate}: {r.result} {list(r.reasons)}")
     if result.position_size is not None:
-        print(f"  position_size={result.position_size:.2f} stress_loss={result.stress_loss.stress_loss_inr:.2f}")
+        print(f"  position_size={result.position_size:.2f}")
+    if result.stress_loss is not None:
+        loss = result.stress_loss
+        print(f"  circuit_band={loss.circuit_band.label()}")
+        print(f"  planned_stop_loss={loss.planned_loss_component_inr:.2f} stress_loss={loss.stress_loss_inr:.2f}")
+        locked = f"{loss.locked_circuit_loss_inr:.2f}" if loss.locked_circuit_loss_inr is not None else "N/A"
+        print(f"  locked_circuit_loss={locked}; {loss.circuit_band_caveat}")
+    else:
+        from desk.circuit_bands import band_as_of
+        print(f"  circuit_band={band_as_of(desk_conn, args.symbol, as_of_date).label()}")
+        print("  planned_stop_loss=N/A stress_loss=N/A locked_circuit_loss=N/A (no sized plan)")
 
     praman_conn.close()
     desk_conn.close()

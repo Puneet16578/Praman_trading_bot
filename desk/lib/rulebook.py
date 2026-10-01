@@ -23,6 +23,7 @@ ACTIVE_POINTER_PATH = RULEBOOK_DIR / "ACTIVE"
 
 
 class RiskLimits(BaseModel):
+    circuit_lock_days: int = Field(2, ge=1, description="Fixed-band locked-exit scenario; user-approved Phase A default")
     capital_allocated_inr: float = Field(..., gt=0)
     risk_per_trade_pct: float = Field(..., gt=0, le=100)
     max_open_risk_pct: float = Field(..., gt=0, le=100, description="On STRESS loss, not planned loss")

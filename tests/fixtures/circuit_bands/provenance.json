@@ -1,0 +1,11 @@
+{
+  "url": "https://nsearchives.nseindia.com/content/equities/sec_list_30092026.csv",
+  "full_source_sha256": "8b4d3062576148b2fa5239c203fb05cff753a4a1f71c2e3eb30d1d3ee9b1cad7",
+  "published_at": "2026-09-30T17:58:10+05:30",
+  "report_date": "2026-09-30",
+  "selected_symbols": [
+    "A2ZINFRA",
+    "RELIANCE"
+  ],
+  "note": "Unchanged cell values selected from the full NSE CSV; CSV serialization performed by csv.DictWriter."
+}

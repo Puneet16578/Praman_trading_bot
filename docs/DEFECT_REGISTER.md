@@ -1272,6 +1272,28 @@ returns before G1's other checks, so it can mask a coexisting data-gap reason.
 Targeted tests: `Ran 30 tests`, `OK`. Full suite: `Ran 525 tests in 111.076s`, `OK` (Python
 exit code 0).
 
+## P8-022 — new circuit-band table omitted from shared append-only test fixture
+
+**Root cause.** Agent-introduced during Phase A Step 2: adding `circuit_bands` to
+`DESK_TABLES` without adding its sample INSERT to the registry-wide append-only
+test caused two `KeyError: circuit_bands` errors. Targeted circuit-band trigger
+tests already passed; the existing registry-wide test could not create its row.
+This was not a sandbox or temporary-folder failure.
+
+**Fix.** Add a populated circuit-band fixture to the registry-wide UPDATE/DELETE
+checks. Re-verification is recorded with Step 2 in the handoff.
+
+## P8-023 — desk assess crashed while printing a zero-share position
+
+**Root cause.** The engine deliberately returns a zero size and no stress-loss
+record when budget caps cannot admit one share. CLI printing checked only whether
+size was non-NULL, then dereferenced `result.stress_loss.stress_loss_inr`.
+
+**Fix.** Print size independently and print numeric losses only when their record
+exists; otherwise show N/A with the absence of a sized plan. This also lets band
+provenance be shown when there is no complete thesis. Re-verification is recorded
+with Step 2 in the handoff.
+
 ## P8-021 — announcement backfill is not a daily refresh; partial failures can look OK (open)
 
 **Root cause.** During Phase A's foreground ingestion review,

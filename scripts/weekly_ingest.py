@@ -240,6 +240,11 @@ def step_bhavcopy_today() -> None:
         conn.close()
 
 
+def step_circuit_bands() -> None:
+    from ingest_price_bands import run
+    print(run())
+
+
 def step_backups() -> None:
     from desk.backups import run_backups
     for report in run_backups():
@@ -254,6 +259,7 @@ STEPS = [
     ("corporate_actions", step_corporate_actions),
     ("asm_gsm", step_asm_gsm),
     ("bhavcopy_today", step_bhavcopy_today),
+    ("circuit_bands", step_circuit_bands),
     ("backups", step_backups),
 ]
 

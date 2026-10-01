@@ -82,8 +82,19 @@ repository before relying on it; nothing in this file authorizes anything (CLAUD
   `desk_20261001T012818106568Z.zip`, 3,793 bytes; weekly Praman archive re-verified.
   No ingestion process remains active. Backup/restore code and proof commits
   `8a0af81` and `da7e346` were pushed before the interruption.
-- Steps 2–6 remain pending. Before Step 2 the user requires confirming the latest
-  completed trading day in `desk status` and reporting ingestion failures by step.
+- Step 2 completed: NSE dated price-band reports stored append-only with publication
+  knowledge dates and exact-date as-of reads. Reports describe the next session;
+  missing dates stay UNKNOWN. Derivatives are explicitly DYNAMIC, not fixed 10%.
+  Assess shows planned, locked-circuit, and stress losses; stress includes the
+  two-day locked loss. No pinned scripts or Praman source code changed.
+- Source report: `docs/desk/price_band_source.md`. Production ingestion for ten
+  report dates, 2026-09-17 through 2026-09-30, inserted 35,427 rows, independently
+  checked against SQLite counts. Real fixture tests cover A2ZINFRA (5%) and
+  RELIANCE (dynamic), append-only history, replay watermarks and unavailable dates.
+- Step 2 full suite: `Ran 561 tests in 165.944s`, `OK`, Python exit 0.
+  P8-022 fixes an omitted registry test fixture; P8-023 fixes zero-share assessment
+  output dereferencing an absent stress result. SQLite ResourceWarnings remain.
+- Steps 3–6 remain pending. The foreground-ingestion prerequisite is complete.
 - Network downloads, test-only pip installation, and push need the user's approval
   when reached. Each tested step must include this handoff in its commit.
 

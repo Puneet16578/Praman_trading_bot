@@ -172,8 +172,33 @@ MONITOR_RUNS = DeskTable(
     """,
 )
 
+CIRCUIT_BANDS = DeskTable(
+    name="circuit_bands",
+    ddl="""
+        CREATE TABLE circuit_bands (
+            row_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            symbol TEXT NOT NULL,
+            series TEXT NOT NULL,
+            security_name TEXT NOT NULL,
+            event_date TEXT NOT NULL,
+            knowledge_date TEXT NOT NULL,
+            recorded_at TEXT NOT NULL,
+            band_kind TEXT NOT NULL CHECK(band_kind IN ('FIXED', 'DYNAMIC')),
+            band_pct REAL,
+            remarks TEXT NOT NULL,
+            source_url TEXT NOT NULL,
+            source_sha256 TEXT NOT NULL,
+            published_at TEXT NOT NULL,
+            CHECK((band_kind='FIXED' AND band_pct > 0 AND band_pct <= 100)
+                  OR (band_kind='DYNAMIC' AND band_pct IS NULL)),
+            UNIQUE(symbol, series, event_date, knowledge_date, source_sha256)
+        )
+    """,
+    indices=("CREATE INDEX IF NOT EXISTS idx_circuit_bands_asof ON circuit_bands(symbol,event_date,knowledge_date)",),
+)
+
 DESK_TABLES: dict[str, DeskTable] = {
-    t.name: t for t in (DECISIONS, THESES, PAPER_TRADE_EVENTS, JOURNAL_EVENTS, OPPORTUNITIES, MONITOR_RUNS)
+    t.name: t for t in (DECISIONS, THESES, PAPER_TRADE_EVENTS, JOURNAL_EVENTS, OPPORTUNITIES, MONITOR_RUNS, CIRCUIT_BANDS)
 }
 
 

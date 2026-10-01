@@ -14,6 +14,7 @@ import json
 from dataclasses import dataclass, field
 
 from src.bitemporal.guard import read_as_of
+from ..circuit_bands import band_as_of
 
 from ..evidence.bundle import EvidenceBundle, assemble_evidence_bundle
 from ..lib.costs import CostConfig
@@ -165,7 +166,8 @@ def run_assessment(conn, desk_conn, *, symbol: str, as_of_date: str, sector: str
                 "already exceeds the allowed risk-per-trade, open-risk, per-stock, or per-sector budget.",
             ))
         else:
-            stress_loss = compute_stress_loss(conn, symbol, as_of_date, entry, stop, position_size, costs, rulebook)
+            stress_loss = compute_stress_loss(conn, symbol, as_of_date, entry, stop, position_size, costs, rulebook,
+                                              circuit_band=band_as_of(desk_conn, symbol, as_of_date))
             planned = planned_loss_inr(entry, stop, position_size, costs)
 
             _adv_shares, adv_turnover = _average_daily_volume_and_turnover(conn, symbol, as_of_date, ADV_LOOKBACK_SESSIONS)
