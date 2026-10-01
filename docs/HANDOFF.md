@@ -2,6 +2,13 @@
 
 ## Round 2 review - 2026-10-01
 
+- Item 5 verified on 2026-10-02: Amendment 5 label source diff against afe3e2b
+  is empty. Five full result dictionaries equal outputs of the pinned source
+  on the same temporary data snapshot; see docs/desk/label_value_verification.md.
+  Replay label history now also passes the pinned ISIN rename groups.
+- Full suite with label wiring and evaluator repair: 588 tests in 189.306s,
+  OK, Python exit 0. No full replay outcomes computed yet.
+
 - Resumed 2026-10-02. No Python background process remained. P8-027 fixed
   research-only sector applicability and verified current ISIN freshness.
   Foreground temporary-copy ten-session scan: 538 events, 403 SCREEN_PASS,

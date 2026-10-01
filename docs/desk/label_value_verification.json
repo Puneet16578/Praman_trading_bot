@@ -1,0 +1,100 @@
+{
+  "pin": "afe3e2bd07abe8b602c4119b916f7696a3c12131",
+  "source": "scripts/phase8_robustness_relabel_t0.py",
+  "function": "compute_t0_relative",
+  "git_diff": "",
+  "source_sha256": "2ff69581aedd202e4d9ab99e02253bf4575aace1c9ffaed98337f93e7804200d",
+  "comparisons": [
+    {
+      "symbol": "63MOONS",
+      "event_date": "2020-01-01",
+      "current": {
+        "signed_return_90d": -0.370037868452851,
+        "collapsed_t0_primary": true,
+        "collapsed_t0_secondary": true,
+        "excluded_reason": null,
+        "survivorship_flag": ""
+      },
+      "pinned": {
+        "signed_return_90d": -0.370037868452851,
+        "collapsed_t0_primary": true,
+        "collapsed_t0_secondary": true,
+        "excluded_reason": null,
+        "survivorship_flag": ""
+      }
+    },
+    {
+      "symbol": "A2ZINFRA",
+      "event_date": "2021-01-01",
+      "current": {
+        "signed_return_90d": -0.3007412736660139,
+        "collapsed_t0_primary": true,
+        "collapsed_t0_secondary": true,
+        "excluded_reason": null,
+        "survivorship_flag": ""
+      },
+      "pinned": {
+        "signed_return_90d": -0.3007412736660139,
+        "collapsed_t0_primary": true,
+        "collapsed_t0_secondary": true,
+        "excluded_reason": null,
+        "survivorship_flag": ""
+      }
+    },
+    {
+      "symbol": "3PLAND",
+      "event_date": "2022-01-03",
+      "current": {
+        "signed_return_90d": -0.1421028252915506,
+        "collapsed_t0_primary": true,
+        "collapsed_t0_secondary": true,
+        "excluded_reason": null,
+        "survivorship_flag": ""
+      },
+      "pinned": {
+        "signed_return_90d": -0.1421028252915506,
+        "collapsed_t0_primary": true,
+        "collapsed_t0_secondary": true,
+        "excluded_reason": null,
+        "survivorship_flag": ""
+      }
+    },
+    {
+      "symbol": "AAREYDRUGS",
+      "event_date": "2024-01-01",
+      "current": {
+        "signed_return_90d": -0.2742267340286104,
+        "collapsed_t0_primary": true,
+        "collapsed_t0_secondary": true,
+        "excluded_reason": null,
+        "survivorship_flag": ""
+      },
+      "pinned": {
+        "signed_return_90d": -0.2742267340286104,
+        "collapsed_t0_primary": true,
+        "collapsed_t0_secondary": true,
+        "excluded_reason": null,
+        "survivorship_flag": ""
+      }
+    },
+    {
+      "symbol": "3IINFOLTD",
+      "event_date": "2025-01-01",
+      "current": {
+        "signed_return_90d": -0.16897798403084896,
+        "collapsed_t0_primary": true,
+        "collapsed_t0_secondary": true,
+        "excluded_reason": null,
+        "survivorship_flag": ""
+      },
+      "pinned": {
+        "signed_return_90d": -0.16897798403084896,
+        "collapsed_t0_primary": true,
+        "collapsed_t0_secondary": true,
+        "excluded_reason": null,
+        "survivorship_flag": ""
+      }
+    }
+  ],
+  "qualification": "Same temporary data snapshot and identical stitched EQ/BE/BZ histories supplied to both source versions; code-equivalence check, not a claim about the data vintage at the pinned commit."
+}

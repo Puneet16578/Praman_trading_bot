@@ -22,6 +22,7 @@ from desk.lib.costs import load_active_cost_config
 from desk.screening_plan import screen_event, execution_observation
 from desk.outcome_firewall import require_outcome_access
 from scripts.phase8_robustness_relabel_t0 import compute_t0_relative, load_market_index
+from src.ingestion.nse_market_data.isin_mapping import load_isin_map, build_symbol_groups
 
 # Global init for workers
 conn = None
@@ -30,9 +31,10 @@ rulebook = None
 costs = None
 market_index = None
 global_days = None
+symbol_groups = None
 
 def init_worker():
-    global conn, desk_conn, rulebook, costs, market_index, global_days
+    global conn, desk_conn, rulebook, costs, market_index, global_days, symbol_groups
     settings = get_settings()
     conn = get_connection(settings.database_path)
     desk_conn = get_desk_connection()
@@ -40,6 +42,7 @@ def init_worker():
     costs = load_active_cost_config().costs
     market_index = load_market_index()
     global_days = sorted(market_index.keys())
+    symbol_groups = build_symbol_groups(load_isin_map(Path(__file__).resolve().parents[1] / 'data/raw/nse_symbol_isin_current.json'))
 
 def evaluate_single(row):
     symbol, event_date, direction = row["symbol"], row["event_date"], row["direction"]
@@ -64,7 +67,7 @@ def evaluate_single(row):
         return {"symbol": symbol, "event_date": event_date, "state": state, "veto": veto_reasons, "fill": None, "forward_window": True}
 
     # Outcome Label (Amendment 5)
-    hist = build_symbol_history(conn, symbol, extend_with_series=("BE", "BZ"))
+    hist = build_symbol_history(conn, symbol, symbol_group=symbol_groups.get(symbol, [symbol]), extend_with_series=("BE", "BZ"))
     outcome_dict = compute_t0_relative(hist, event_date, direction, market_index, global_days)
     label = outcome_dict["collapsed_t0_primary"]
     
