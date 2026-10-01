@@ -51,6 +51,8 @@ def screen_event(conn, desk_conn, symbol, event_date, rulebook, costs, *, isin_m
     plan["quantity"] = int(assessment.position_size or 0)
     plan["stress"] = asdict(assessment.stress_loss) if assessment.stress_loss else None
     plan["portfolio_assumption"] = "Independent research candidate; empty hypothetical portfolio."
+    plan["sector_policy"] = "Not applicable in research; never inferred or represented as a Fact."
+    plan["isin_map_built_at"] = isin_map_built_at
     # Retain the exact ADV denominator used by the decision gate for fill-time flagging.
     from desk.gates.engine import _average_daily_volume_and_turnover, ADV_LOOKBACK_SESSIONS
     _, plan["adv_turnover"] = _average_daily_volume_and_turnover(conn, symbol, event_date, ADV_LOOKBACK_SESSIONS)

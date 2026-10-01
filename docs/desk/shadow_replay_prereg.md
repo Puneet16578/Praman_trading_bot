@@ -118,3 +118,20 @@ coverage failures, missing comparisons, provenance and reproducible commands.
 ## Addendum: Stress loss calculation fix (2026-10-01)
 
 Before any replay outcome was computed, a code defect (P8-024) in the overnight-gap stress loss was fixed. The original code multiplied the decision-date raw close by the cumulative corporate-action factor before applying the percentage gap. This falsely inflated the stress loss for any stock with past splits or bonuses (e.g., BAJFINANCE used ₹9,190 instead of ₹919). The fix applies the gap fraction directly to the current unscaled close, ensuring stress loss is in current rupees. This change is committed before any shadow replay results are generated.
+
+## Addendum: Research sector applicability repair (2026-10-01, round 2)
+
+Inputs-only diagnosis found G2 required user-supplied sector on every mechanical
+research candidate although screening always supplies no sector. Sector is now
+not applicable to research G2. It remains Unknown in the evidence bundle, never
+invented as a Fact. Normal user assessments still require sector. G1 and G3-G6
+are unchanged; G7/G8 remain not applicable. The ATR20 entry/stop plan supplies
+G5/G6 inputs; missing or invalid plans still cannot pass. Empty hypothetical
+portfolio and single-candidate sector-cap assumptions remain explicit.
+
+Nightly scans check verified current ISIN metadata. Reconstructed historical
+screening cannot establish historical map freshness and records that limitation;
+it uses the current identity map and no fabricated historical build date.
+This repair is based only on gate inputs, before this review computes any label
+spot-check or replay outcome. Prior background replay results are not used.
+No gate thresholds, outcome definitions, periods or bootstrap settings change.

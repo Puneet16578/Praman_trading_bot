@@ -1272,6 +1272,21 @@ returns before G1's other checks, so it can mask a coexisting data-gap reason.
 Targeted tests: `Ran 30 tests`, `OK`. Full suite: `Ran 525 tests in 111.076s`, `OK` (Python
 exit code 0).
 
+## P8-027 - research screening rejected every candidate for absent user sector
+
+**Root cause.** G2 required sector while mechanical screening always supplied None.
+ATR-based entry/stop inputs already existed, so missing user thesis fields were
+not a universal G6 blocker. Current ISIN metadata verifies at age zero.
+**Fix.** Exclude only sector from research-mode G2; keep it Unknown in the bundle.
+User assessments still require it. Invalid ATR, surveillance, liquidity and risk
+failures remain failures. Nightly scans now pass verified map metadata and retain
+previous frozen records. Range proofs share the nightly path and temporary copies.
+**Verification.** 11 screening tests pass. Complete ten-session proof: 538 events,
+403 passes / 135 failures, 503 execution rows, no durable writes. Historical
+200-event baseline: G2 fails all 200; one G1, seven G4, 36 G5 and one G6 also fail.
+Exact first/every-gate tables and reasons: docs/desk/gate_diagnostics_round2.md.
+Dated pre-registration addendum prepared before this review computes any outcomes.
+
 ## P8-025 — durable Desk store cleared during a proof
 
 **Root cause.** The prior handoff explicitly reports clearing the production Desk

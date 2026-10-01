@@ -80,12 +80,14 @@ def g1_data_quality(conn, symbol: str, as_of_date: str, gap_check_calendar_days:
     return GateResult("G1", PASS)
 
 
-def g2_evidence_sufficiency(bundle: EvidenceBundle, rulebook: DeskRulebook) -> GateResult:
+def g2_evidence_sufficiency(bundle: EvidenceBundle, rulebook: DeskRulebook, *, screening: bool = False) -> GateResult:
     coverage = compute_coverage(bundle)
-    missing = [d for d in rulebook.required_evidence_dimensions.required if not coverage.is_present(d)]
+    required = [d for d in rulebook.required_evidence_dimensions.required
+                if not (screening and d == 'sector')]
+    missing = [d for d in required if not coverage.is_present(d)]
     if missing:
         return GateResult("G2", FAIL, tuple(f"Required dimension {d!r} is UNKNOWN, not a Fact." for d in missing))
-    return GateResult("G2", PASS)
+    return GateResult("G2", PASS, ("Sector is not applicable to independent mechanical research candidates.",) if screening else ())
 
 
 def g3_structural_integrity(bundle: EvidenceBundle) -> GateResult:

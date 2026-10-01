@@ -2,6 +2,17 @@
 
 ## Round 2 review - 2026-10-01
 
+- Resumed 2026-10-02. No Python background process remained. P8-027 fixed
+  research-only sector applicability and verified current ISIN freshness.
+  Foreground temporary-copy ten-session scan: 538 events, 403 SCREEN_PASS,
+  135 SCREEN_FAIL, 503 execution observations. Complete gate and reason counts:
+  `docs/desk/gate_diagnostics_round2.md` and companion JSON.
+- Historical input-only baseline sample: 200 events, all rejected by G2's missing
+  user sector; additional gates overlap. No usable 2019 catalogue events exist.
+- Screening checkpoint suite: `Ran 578 tests in 225.323s`, `OK`, Python exit 0.
+  Dated research screening addendum is committed with this checkpoint before
+  any label spot-check or replay outcome calculation in this review.
+
 - P8-026 checkpoint: duplicate outcomes module removed; evaluator and draft
   replay use the single IST firewall. Event and calendar boundary tests pass,
   with a grep guard against a second Desk cutoff. Raw prior-close replay input

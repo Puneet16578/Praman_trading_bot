@@ -139,7 +139,7 @@ def run_assessment(conn, desk_conn, *, symbol: str, as_of_date: str, sector: str
     # only). Deriving the state from the complete set afterward, via _derive_state(), is what makes
     # "record every gate's result every time" possible.
     gate_results["G1"] = g1_data_quality(conn, symbol, as_of_date, isin_map_built_at=isin_map_built_at)
-    gate_results["G2"] = g2_evidence_sufficiency(bundle, rulebook)
+    gate_results["G2"] = g2_evidence_sufficiency(bundle, rulebook, screening=screening)
     gate_results["G3"] = g3_structural_integrity(bundle)
     gate_results["G4"] = g4_surveillance(conn, symbol, as_of_date, bundle, rulebook)
 

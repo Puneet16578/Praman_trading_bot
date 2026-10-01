@@ -19,6 +19,16 @@ from desk.risk.officer import worst_overnight_gap_loss_inr
 
 
 class ScreeningPlanTest(unittest.TestCase):
+    def test_research_sector_is_inapplicable_but_user_assessment_still_requires_it(self):
+        from desk.gates.checks import g2_evidence_sufficiency
+        from desk.evidence.types import Unknown
+        _, result = screen_event(self.conn, self.desk, 'AXISBANK', '2021-10-27', self.rb, self.costs)
+        self.assertIsInstance(result.evidence_bundle.sector, Unknown)
+        self.assertEqual(result.gate_results['G2'].result, 'PASS')
+        self.assertEqual(g2_evidence_sufficiency(result.evidence_bundle, self.rb).result, 'FAIL')
+        result.evidence_bundle.delivery = Unknown('delivery', 'measurement', 'missing')
+        self.assertEqual(g2_evidence_sufficiency(result.evidence_bundle, self.rb, screening=True).result, 'FAIL')
+
     def setUp(self):
         self.conn = get_live_connection()
         self.addCleanup(self.conn.close)
