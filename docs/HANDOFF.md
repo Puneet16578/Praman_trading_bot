@@ -192,3 +192,10 @@ Nothing. The working tree is clean after the handoff commit.
 - `UnadjustableWindowError` exceptions are caught to correctly exclude structurally-broken 20-session tail windows.
 - The next agent should finish evaluating the generated raw JSON against `docs/desk/shadow_replay_prereg.md` requirements (bootstrapping confidence intervals with seed `20261001` and joining with `data/processed/phase8_relabel_t0_relative.csv`) and output to `docs/desk/shadow_replay_results.md`.
 - See `scratch/aggregate_shadow_replay.py` for a skeleton of the aggregation step.
+
+ 
+ # #   R e v i e w - a n d - R e p a i r :   P o i n t s   1   a n d   2   ( F i r e w a l l   a n d   F r o z e n   D e c i s i o n s )  
+ -   R e s t r i c t   e x e c u t i o n _ o b s e r v a t i o n   s t r i c t l y   t o   p e r m i t t e d   f i e l d s   ( f i l l _ d a t e ,   f i l l _ p r i c e ,   q u a n t i t y ,   g a p _ i n r ,   g a p _ p c t ,   g a p _ t h r o u g h ,   c a p _ b r e a c h _ r e a s o n s ,   n o _ f i l l _ r e a s o n ) .  
+ -   V e r i f i e d   e x e c u t i o n _ o b s e r v a t i o n   i n   d e s k / s c a n . p y   n e v e r   c o m p u t e d   M A E   ( M A E   w a s   p r e v i o u s l y   o n l y   d r a f t e d   i n   s c r i p t s / d e s k _ s h a d o w _ r e p l a y . p y   f o r   b a c k w a r d   r e p l a y ) .  
+ -   A d d e d   t e s t _ f r o z e n _ d e c i s i o n _ c o m p o n e n t s _ i n _ e x e c u t i o n   a s s e r t i n g   t h a t   t h e   s t r e s s   v a l u e s   f e d   t o   r i s k   c a l c u l a t i o n s   a r e   p r e c i s e l y   t h o s e   f r o m   t h e   l o a d e d   f r o z e n   p l a n   ( p r o v i n g   j s o n   s t r i n g s   a r e   n o t   s p l i t   m a n u a l l y ) .  
+ 

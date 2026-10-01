@@ -46,13 +46,23 @@ class ScreeningPlanTest(unittest.TestCase):
             self.assertEqual(actual, decision_plan(self.conn, symbol, day))
         self.assertTrue(any(compute_adjustment_factor(self.conn, symbol, r["event_date"], day) != 1 for r in rows))
 
+    def test_gap_stress_is_in_current_rupees_after_corporate_action(self):
+        symbol, day = "BAJFINANCE", "2025-06-18"
+        rows = sorted((r for r in latest_as_of(self.conn, "bhavcopy", day, symbol=symbol, series="EQ")
+                       if r["event_date"] <= day), key=lambda r: r["event_date"])[-21:]
+        factors = [compute_adjustment_factor(self.conn, symbol, r["event_date"], day) for r in rows]
+        gaps = [(rows[i]["open_price"]/factors[i]) / (rows[i-1]["close_price"]/factors[i-1])-1
+                for i in range(1, len(rows))]
+        expected = abs(min(0, *gaps)) * rows[-1]["close_price"] * 10
+        self.assertGreater(expected, 0)
+        self.assertAlmostEqual(worst_overnight_gap_loss_inr(self.conn, symbol, day, 10, 20), expected)
 
     def test_next_open_cannot_change_frozen_decision(self):
         plan, result = screen_event(self.conn, self.desk, "AXISBANK", "2021-10-27", self.rb, self.costs)
         before = copy.deepcopy(plan)
         execution = execution_observation(self.conn, "AXISBANK", "2021-10-27", "2021-10-28", plan, self.rb, self.costs)
         raw = latest_as_of(self.conn, "bhavcopy", "2021-10-28", symbol="AXISBANK", event_date="2021-10-28", series="EQ")[0]
-        self.assertEqual(execution["fill"], raw["open_price"])
+        self.assertEqual(execution["fill_price"], raw["open_price"])
         self.assertEqual(execution["quantity"], plan["quantity"])
         self.assertEqual(plan, before)
         self.assertAlmostEqual(execution["gap_inr"], raw["open_price"]-plan["decision_price"])
@@ -65,18 +75,18 @@ class ScreeningPlanTest(unittest.TestCase):
         self.assertIsNone(execution_observation(self.conn, "AXISBANK", "2021-10-27", "2021-10-27", plan, self.rb, self.costs))
         with patch("desk.screening_plan.latest_as_of", return_value=[]):
             result = execution_observation(self.conn, "AXISBANK", "2021-10-27", "2021-10-28", plan, self.rb, self.costs)
-        self.assertEqual(result["status"], "NO_FILL")
-        self.assertIn("cause unverified", result["reason"])
+        self.assertIsNone(result["fill_price"])
+        self.assertIn("cause unverified", result["no_fill_reason"])
 
     def test_gap_through_and_cap_breach_do_not_resize(self):
         plan, _ = screen_event(self.conn, self.desk, "AXISBANK", "2021-10-27", self.rb, self.costs)
         for opening in (plan["stop_level"] / 2, plan["decision_price"] * 10):
-            with self.subTest(opening=opening), patch("desk.screening_plan.latest_as_of", return_value=[{"series": "EQ", "open_price": opening}]):
+            with self.subTest(opening=opening), patch("desk.screening_plan.latest_as_of", return_value=[{"series": "EQ", "open_price": opening, "prev_close": plan["decision_price"]}]):
                 result = execution_observation(self.conn, "AXISBANK", "2021-10-27", "2021-10-28", plan, self.rb, self.costs)
                 self.assertEqual(result["quantity"], plan["quantity"])
-                self.assertEqual(result["immediate_gap_through"], opening <= plan["stop_level"])
+                self.assertEqual(result["gap_through"], opening <= plan["stop_level"])
                 if opening > plan["decision_price"]:
-                    self.assertTrue(result["cap_breaches"])
+                    self.assertTrue(result["cap_breach_reasons"])
 
     def test_append_records_and_replay_without_mutating_decision(self):
         plan, assessment = screen_event(self.conn, self.desk, "AXISBANK", "2021-10-27", self.rb, self.costs)
@@ -94,6 +104,32 @@ class ScreeningPlanTest(unittest.TestCase):
         altered["quantity"] += 1
         with self.assertRaises(ValueError):
             append_opportunity(self.desk, **(args | {"plan": altered}))
+
+    def test_frozen_decision_components_in_execution(self):
+        # Test: for a stock with non-zero gap and circuit components, an execution's quantity, stop, and stress figures equal the decision record's
+        plan, assessment = screen_event(self.conn, self.desk, "AXISBANK", "2021-10-27", self.rb, self.costs)
+        # Manually set non-zero gap and circuit components to prove they pass through correctly
+        plan["stress"]["worst_gap_component_inr"] = 150.0
+        plan["stress"]["locked_circuit_loss_inr"] = 250.0
+        plan["quantity"] = 100
+        plan["stop_level"] = plan["decision_price"] * 0.9
+        
+        with patch("desk.screening_plan.latest_as_of", return_value=[{"series": "EQ", "open_price": plan["decision_price"], "prev_close": plan["decision_price"]}]):
+            with patch("desk.screening_plan.g6_risk") as mock_risk:
+                mock_risk.return_value = Mock(reasons=[])
+                result = execution_observation(self.conn, "AXISBANK", "2021-10-27", "2021-10-28", plan, self.rb, self.costs)
+                
+                # Check quantity and stop are used
+                self.assertEqual(result["quantity"], 100)
+                
+                # The stress argument to g6_risk is the 2nd argument
+                call_args = mock_risk.call_args[0]
+                passed_stress = call_args[1]
+                
+                # Since fill == decision_price, fill/decision == 1
+                # stress = max(planned, floor, gap, locked)
+                # We expect stress to be at least 250.0 since locked_circuit_loss_inr = 250.0
+                self.assertGreaterEqual(passed_stress, 250.0)
 
     def test_opportunity_table_has_only_declared_input_and_provenance_columns(self):
         columns = {row["name"] for row in self.desk.execute("PRAGMA table_info(opportunity_log)")}

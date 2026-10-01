@@ -65,24 +65,29 @@ def execution_observation(conn, symbol, event_date, as_of, plan, rulebook, costs
     if not dates:
         return None
     session = dates[0][0]
-    result = {"execution_date": session, "knowledge_date": as_of,
-              "quantity": plan["quantity"], "decision_price": plan.get("decision_price"),
-              "stop_level": plan.get("stop_level"), "fill": None,
-              "gap_inr": None, "gap_pct": None, "immediate_gap_through": False,
-              "cap_breaches": [], "status": "NO_FILL", "reason": ""}
-    if not plan["quantity"]:
-        result["reason"] = "No positive whole-share quantity in the frozen decision."
+    result = {
+        "fill_date": session,
+        "fill_price": None,
+        "quantity": plan.get("quantity", 0),
+        "gap_inr": None,
+        "gap_pct": None,
+        "gap_through": False,
+        "cap_breach_reasons": [],
+        "no_fill_reason": ""
+    }
+    if not result["quantity"]:
+        result["no_fill_reason"] = "No positive whole-share quantity in the frozen decision."
         return result
     rows = latest_as_of(conn, "bhavcopy", as_of, symbol=symbol, event_date=session)
     rows = sorted((r for r in rows if r["series"] in ("EQ", "BE", "BZ")),
                   key=lambda r: ("EQ", "BE", "BZ").index(r["series"]))
     if not rows or not rows[0]["open_price"] or rows[0]["open_price"] <= 0:
-        result["reason"] = "No usable opening price for the security on the next market session; cause unverified."
+        result["no_fill_reason"] = "No usable opening price for the security on the next market session; cause unverified."
         return result
     fill = rows[0]["open_price"]
     quantity, stop, decision = plan["quantity"], plan["stop_level"], plan["decision_price"]
-    result.update(status="FILLED", fill=fill, gap_inr=fill-decision,
-                  gap_pct=100*(fill/decision-1), immediate_gap_through=fill <= stop)
+    result.update(fill_price=fill, gap_inr=fill-decision, gap_pct=100*(fill/decision-1), gap_through=fill <= stop)
+    
     # Reprice only the fixed decision scenarios: do not consume post-decision volatility.
     loss = plan["stress"]
     planned = planned_loss_inr(fill, min(stop, fill), quantity, costs)
@@ -90,9 +95,9 @@ def execution_observation(conn, symbol, event_date, as_of, plan, rulebook, costs
                  (loss["worst_gap_component_inr"] or 0) * fill/decision,
                  (loss["locked_circuit_loss_inr"] or 0) * fill/decision)
     risk = g6_risk(planned, stress, 0, fill*quantity, fill*quantity, rulebook)
-    result["cap_breaches"].extend(risk.reasons)
+    result["cap_breach_reasons"].extend(risk.reasons)
     if planned > rulebook.risk.capital_allocated_inr * rulebook.risk.risk_per_trade_pct / 100:
-        result["cap_breaches"].append("Fill exceeds per-trade planned-risk cap.")
+        result["cap_breach_reasons"].append("Fill exceeds per-trade planned-risk cap.")
     liquidity = g5_liquidity(order_value_inr=fill*quantity, avg_daily_turnover_inr=plan["adv_turnover"], rulebook=rulebook)
-    result["cap_breaches"].extend(liquidity.reasons)
+    result["cap_breach_reasons"].extend(liquidity.reasons)
     return result

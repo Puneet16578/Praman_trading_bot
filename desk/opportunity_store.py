@@ -51,7 +51,7 @@ def append_execution(conn, opportunity_id, observation):
     conn.execute("""INSERT INTO opportunity_executions
         (opportunity_id,event_date,knowledge_date,recorded_at,record_type,observation,content_hash)
         VALUES (?,?,?,?, 'EXECUTION', ?,?)""",
-        (opportunity_id, observation["execution_date"], observation["knowledge_date"],
+        (opportunity_id, observation["fill_date"], observation["fill_date"],
          datetime.now(timezone.utc).isoformat(), canonical(observation), digest))
     conn.commit()
     return True
