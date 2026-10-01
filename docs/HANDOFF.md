@@ -186,3 +186,9 @@ Nothing. The working tree is clean after the handoff commit.
 - Evaluated events are safely firewalled in `outcome_firewall.py`.
 - Added `desk_scan` to `scripts/weekly_ingest.py` (the nightly task) after the ingestion step.
 - Added a scratch `proof_scan.py` testing the scan on the last 10 trading days.
+
+## Step 4 (In Progress): Historical shadow replay
+- Drafted `scripts/phase11_shadow_replay.py` to efficiently parallel-process the ~60,694 final catalogue events over 2019-10-01 to 2026-09-15. 
+- `UnadjustableWindowError` exceptions are caught to correctly exclude structurally-broken 20-session tail windows.
+- The next agent should finish evaluating the generated raw JSON against `docs/desk/shadow_replay_prereg.md` requirements (bootstrapping confidence intervals with seed `20261001` and joining with `data/processed/phase8_relabel_t0_relative.csv`) and output to `docs/desk/shadow_replay_results.md`.
+- See `scratch/aggregate_shadow_replay.py` for a skeleton of the aggregation step.
