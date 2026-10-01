@@ -34,11 +34,20 @@ def run_scan(run_date: str = None):
     symbol_groups = build_symbol_groups(isin_map) if isin_map else {}
     
     filtered_symbols = []
+    unresolved_isin_count = 0
     for s in symbols:
         isin = isin_map.get(s)
         if not isin or isin.startswith("INF"):
+            unresolved_isin_count += 1
             continue
         filtered_symbols.append(s)
+        
+    import logging
+    logger = logging.getLogger("desk.scan")
+    if unresolved_isin_count > 0:
+        msg = f"Excluded {unresolved_isin_count} symbols without a valid equity ISIN."
+        logger.info(msg)
+        print(msg)
     
     demerger_windows = catalogue.build_demerger_windows(praman_conn)
     
