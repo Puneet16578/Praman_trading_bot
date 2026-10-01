@@ -178,3 +178,11 @@ Nothing. The working tree is clean after the handoff commit.
 - Regression tests added in `tests/test_desk_risk.py` for BAJFINANCE and a synthetic split showing the stress loss is invariant to historical splits.
 - Reported that no committed worked example or stored decision was affected (since `data/desk/desk.sqlite` has 0 rows and is unused yet).
 - Appended a dated addendum to `docs/desk/shadow_replay_prereg.md`.
+
+## Step 3: Nightly opportunity logger (2026-10-01)
+- Verified and finalized the previous agent's uncommitted work for `desk scan`.
+- Implemented `desk scan` which evaluates opportunities using the existing catalogue trigger and gate orchestrator in research mode.
+- `opportunity_log` and `opportunity_executions` append-only tables are created and enforced by SQLite triggers.
+- Evaluated events are safely firewalled in `outcome_firewall.py`.
+- Added `desk_scan` to `scripts/weekly_ingest.py` (the nightly task) after the ingestion step.
+- Added a scratch `proof_scan.py` testing the scan on the last 10 trading days.

@@ -13,6 +13,15 @@ from desk.lib.schema import DESK_TABLES
 SCRATCH_DB = Path(__file__).resolve().parents[1] / "data" / "desk" / "_test_append_only.sqlite"
 
 _SAMPLE_INSERT = {
+    "opportunity_log": (
+        "INSERT INTO opportunity_log(symbol,event_date,knowledge_date,recorded_at,inputs,evidence_bundle_hash,"
+        "gate_results,state,reasons,content_hash,code_commit,praman_watermark,desk_watermark,rulebook_hash,cost_config_hash) "
+        "VALUES('X','2026-01-01','2026-01-01','2026-01-01T00:00:00+00:00','{}','h','{}','SCREEN_FAIL','[]','h','c','p','d','r','k')"
+    ),
+    "opportunity_executions": (
+        "INSERT INTO opportunity_executions(opportunity_id,event_date,knowledge_date,recorded_at,record_type,observation,content_hash) "
+        "VALUES(1,'2026-01-02','2026-01-02','2026-01-02T00:00:00+00:00','EXECUTION','{}','h')"
+    ),
     "circuit_bands": (
         "INSERT INTO circuit_bands (symbol,series,security_name,event_date,knowledge_date,recorded_at,"
         "band_kind,band_pct,remarks,source_url,source_sha256,published_at) VALUES "

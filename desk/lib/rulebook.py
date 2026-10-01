@@ -95,6 +95,10 @@ class PaperToLiveCriteria(BaseModel):
     require_exit_trigger_on_every_closed_trade: bool
 
 
+class ScreeningConvention(BaseModel):
+    stop_multiple: float = Field(2.0, gt=0, description="Fixed research stop distance in ATR20 units")
+
+
 class DeskRulebook(BaseModel):
     version: str
     dated: str
@@ -105,6 +109,7 @@ class DeskRulebook(BaseModel):
     inference_rules: InferenceRuleThresholds
     required_evidence_dimensions: RequiredEvidenceDimensions
     paper_to_live_criteria: PaperToLiveCriteria
+    screening: ScreeningConvention = Field(default_factory=ScreeningConvention)
 
 
 class LoadedRulebook(BaseModel):

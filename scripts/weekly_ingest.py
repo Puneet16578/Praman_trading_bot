@@ -245,6 +245,26 @@ def step_circuit_bands() -> None:
     print(run())
 
 
+def step_desk_scan() -> None:
+    from desk.scan import run_scan
+    
+    # We want to scan the latest bhavcopy date, which might be today or earlier.
+    from src.bitemporal.connection import get_connection
+    from src.config.settings import get_settings
+    conn = get_connection(get_settings().database_path)
+    try:
+        row = conn.execute("SELECT MAX(event_date) AS d FROM bhavcopy").fetchone()
+        latest = row["d"] if row else None
+    finally:
+        conn.close()
+        
+    if latest:
+        events = run_scan(latest)
+        print(f"[DESK_SCAN] Scanned {latest}: {events} events processed")
+    else:
+        print("[DESK_SCAN] No bhavcopy data to scan.")
+
+
 def step_backups() -> None:
     from desk.backups import run_backups
     for report in run_backups():
@@ -260,6 +280,7 @@ STEPS = [
     ("asm_gsm", step_asm_gsm),
     ("bhavcopy_today", step_bhavcopy_today),
     ("circuit_bands", step_circuit_bands),
+    ("desk_scan", step_desk_scan),
     ("backups", step_backups),
 ]
 

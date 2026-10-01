@@ -276,6 +276,16 @@ def cmd_replay(args):
         raise SystemExit(1)
 
 
+def cmd_scan(args):
+    from desk.scan import run_scan
+    
+    praman_conn = get_live_connection()
+    run_date = args.date or _latest_bhavcopy_date(praman_conn)
+    praman_conn.close()
+    
+    events = run_scan(run_date)
+    print(f"Scan complete for {run_date}. {events} opportunities logged/updated.")
+
 def cmd_backup_verify(args):
     from desk.backups import verify_latest
     try:
@@ -334,6 +344,10 @@ def main(argv=None):
     p = sub.add_parser("replay")
     p.add_argument("decision_id", type=int)
     p.set_defaults(func=cmd_replay)
+
+    p = sub.add_parser("scan")
+    p.add_argument("--date")
+    p.set_defaults(func=cmd_scan)
 
     args = parser.parse_args(argv)
     args.func(args)

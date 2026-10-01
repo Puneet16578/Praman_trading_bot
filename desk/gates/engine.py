@@ -117,7 +117,7 @@ def run_assessment(conn, desk_conn, *, symbol: str, as_of_date: str, sector: str
                     thesis: dict | None, rulebook: DeskRulebook, costs: CostConfig,
                     g7_override_reason: str | None = None,
                     symbol_to_sector: dict[str, str] | None = None,
-                    isin_map_built_at=_CURRENT_MAP) -> AssessmentResult:
+                    isin_map_built_at=_CURRENT_MAP, screening: bool = False) -> AssessmentResult:
     from desk.paper.open import is_as_of_live
     if isin_map_built_at is _CURRENT_MAP:
         from shared.isin_map_metadata import verified_built_at
@@ -125,8 +125,8 @@ def run_assessment(conn, desk_conn, *, symbol: str, as_of_date: str, sector: str
 
     as_of_live = is_as_of_live(conn, as_of_date)
 
-    has_trade_history = thesis is not None and _thesis_has_any_trade(desk_conn, thesis)
-    if thesis is not None and is_expired(thesis, as_of_date, has_trade_history):
+    has_trade_history = not screening and thesis is not None and _thesis_has_any_trade(desk_conn, thesis)
+    if not screening and thesis is not None and is_expired(thesis, as_of_date, has_trade_history):
         return AssessmentResult(state=EXPIRED, gate_results={}, evidence_bundle=None, as_of_is_live=as_of_live,
                                 isin_map_built_at=isin_map_built_at)
 
@@ -147,8 +147,9 @@ def run_assessment(conn, desk_conn, *, symbol: str, as_of_date: str, sector: str
     stress_loss = None
     if thesis is not None:
         entry, stop = thesis["planned_entry"], thesis["planned_stop"]
-        open_risk_used = _open_risk_used_inr(desk_conn)
-        capital_at_stock, capital_at_sector = _capital_at_stock_and_sector(desk_conn, symbol, sector, symbol_to_sector)
+        open_risk_used = 0.0 if screening else _open_risk_used_inr(desk_conn)
+        capital_at_stock, capital_at_sector = ((0.0, 0.0) if screening else
+            _capital_at_stock_and_sector(desk_conn, symbol, sector, symbol_to_sector))
 
         position_size = compute_position_size(entry, stop, rulebook, open_risk_used, capital_at_stock, capital_at_sector)
 
@@ -182,6 +183,14 @@ def run_assessment(conn, desk_conn, *, symbol: str, as_of_date: str, sector: str
     else:
         gate_results["G5"] = GateResult("G5", UNKNOWN, ("No thesis supplied.",))
         gate_results["G6"] = GateResult("G6", UNKNOWN, ("No thesis supplied.",))
+
+    if screening:
+        for gate in ("G7", "G8"):
+            gate_results[gate] = GateResult(gate, "NOT_APPLICABLE", ("Mechanical research screening.",))
+        state = "SCREEN_PASS" if all(gate_results[f"G{i}"].result == PASS for i in range(1, 7)) else "SCREEN_FAIL"
+        return AssessmentResult(state=state, gate_results=gate_results, evidence_bundle=bundle,
+                                position_size=position_size, stress_loss=stress_loss,
+                                as_of_is_live=as_of_live, isin_map_built_at=isin_map_built_at)
 
     gate_results["G7"] = g7_behavioural(
         recent_g7_overrides_this_month=_g7_overrides_this_month(desk_conn, as_of_date),

@@ -197,8 +197,47 @@ CIRCUIT_BANDS = DeskTable(
     indices=("CREATE INDEX IF NOT EXISTS idx_circuit_bands_asof ON circuit_bands(symbol,event_date,knowledge_date)",),
 )
 
+OPPORTUNITY_LOG = DeskTable(
+    name="opportunity_log",
+    ddl="""CREATE TABLE opportunity_log (
+        opportunity_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        symbol TEXT NOT NULL,
+        event_date TEXT NOT NULL,
+        knowledge_date TEXT NOT NULL,
+        recorded_at TEXT NOT NULL,
+        inputs TEXT NOT NULL,
+        evidence_bundle_hash TEXT NOT NULL,
+        gate_results TEXT NOT NULL,
+        state TEXT NOT NULL CHECK(state IN ('SCREEN_PASS', 'SCREEN_FAIL')),
+        reasons TEXT NOT NULL,
+        content_hash TEXT NOT NULL,
+        code_commit TEXT NOT NULL,
+        praman_watermark TEXT NOT NULL,
+        desk_watermark TEXT NOT NULL,
+        rulebook_hash TEXT NOT NULL,
+        cost_config_hash TEXT NOT NULL,
+        UNIQUE(symbol, event_date)
+    )""",
+)
+
+OPPORTUNITY_EXECUTIONS = DeskTable(
+    name="opportunity_executions",
+    ddl="""CREATE TABLE opportunity_executions (
+        execution_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        opportunity_id INTEGER NOT NULL REFERENCES opportunity_log(opportunity_id),
+        event_date TEXT NOT NULL,
+        knowledge_date TEXT NOT NULL,
+        recorded_at TEXT NOT NULL,
+        record_type TEXT NOT NULL CHECK(record_type='EXECUTION'),
+        observation TEXT NOT NULL,
+        content_hash TEXT NOT NULL,
+        UNIQUE(opportunity_id)
+    )""",
+)
+
 DESK_TABLES: dict[str, DeskTable] = {
-    t.name: t for t in (DECISIONS, THESES, PAPER_TRADE_EVENTS, JOURNAL_EVENTS, OPPORTUNITIES, MONITOR_RUNS, CIRCUIT_BANDS)
+    t.name: t for t in (DECISIONS, THESES, PAPER_TRADE_EVENTS, JOURNAL_EVENTS, OPPORTUNITIES, MONITOR_RUNS, CIRCUIT_BANDS,
+                        OPPORTUNITY_LOG, OPPORTUNITY_EXECUTIONS)
 }
 
 
