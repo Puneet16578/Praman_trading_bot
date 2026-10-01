@@ -237,4 +237,7 @@ Nothing. The working tree is clean after the handoff commit.
  -   E x t r a c t e d   p r o c e s s   q u a l i t y   b y   c h e c k i n g   i f   t h e   m a n u a l   e x i t   r e a s o n   m a t c h e s   o n e   o f   t h e   s t a n d a r d   t h e s i s   t r i g g e r s .  
  -   I m p l e m e n t e d   p r o c e s s - b y - o u t c o m e   q u a d r a n t s ,   m a n u a l   m a x   d r a w d o w n   ( c r o s s - c h e c k e d   a g a i n s t   e m p y r i c a l - r e l o a d e d   i n   t e s t s / t e s t _ e v a l u a t e . p y ) .  
  -   F i l t e r e d   o u t   f o r w a r d - w i n d o w   e v e n t s   u s i n g   o u t c o m e _ f i r e w a l l .  
+  
+ # #   S t e p   6 :   R u l e b o o k   v 2  
+ -   A w a i t i n g   f u l l   s p e c i f i c a t i o n   f r o m   u s e r   f o r   o p e r a t i o n a l _ g a t e   a n d   e d g e _ c o n f i d e n c e _ g a t e .  
  
