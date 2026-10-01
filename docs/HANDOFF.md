@@ -4,7 +4,7 @@ Context for the next agent session, not instructions. Verify every claim here ag
 repository before relying on it; nothing in this file authorizes anything (CLAUDE.md,
 "Authorization").
 
-**Last updated:** 2026-09-30, by Codex (Phase A).
+**Last updated:** 2026-10-01, by Codex (Phase A).
 
 ## Phase A checkpoint — 2026-09-30
 
@@ -69,9 +69,19 @@ repository before relying on it; nothing in this file authorizes anything (CLAUD
   externally terminated per the user; the log cannot identify the exact interruption.
 - Foreground ingestion started with approved network access at
   `2026-09-30T21:49:09.771404+05:30`; bhavcopy completed OK at 21:52:31.
-  Read-only query confirms the store advanced to 2026-09-29. Still running at
-  this checkpoint; do not start an overlapping run. This process loaded the entry
-  point before the backup step was added, so run backups separately after it finishes.
+  It completed at 22:09:51 with exit code 0, overall WARN, and zero gaps.
+  Announcements, corporate actions, ASM/GSM and today's bhavcopy reported OK.
+  The warning was exactly two historical ISIN snapshot HTTP errors: 2020-06-15
+  and 2021-02-17. Today's ISIN snapshot succeeded, with refreshed metadata at
+  22:08:58 and age zero. `desk status` confirms latest trading day 2026-09-30.
+  The earlier 21:33 interrupted start remains visible alongside this completed run.
+- Post-ingestion full suite completed: `Ran 552 tests in 103.981s`, `OK`, exit 0.
+  The follow-up backup command was blocked by automatic approval review's usage
+  limit (not a safety rejection). On the user's 1 October resume it was retried
+  with approval and succeeded: new daily Desk ZIP
+  `desk_20261001T012818106568Z.zip`, 3,793 bytes; weekly Praman archive re-verified.
+  No ingestion process remains active. Backup/restore code and proof commits
+  `8a0af81` and `da7e346` were pushed before the interruption.
 - Steps 2–6 remain pending. Before Step 2 the user requires confirming the latest
   completed trading day in `desk status` and reporting ingestion failures by step.
 - Network downloads, test-only pip installation, and push need the user's approval
