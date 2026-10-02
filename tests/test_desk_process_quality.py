@@ -14,7 +14,7 @@ class ProcessQualityTest(unittest.TestCase):
         self.addCleanup(self.conn.close)
         self.trade = 'AXISBANK:1'
 
-    def entry(self, *, incomplete=False, override=None, late_thesis=False):
+    def entry(self, *, incomplete=False, override=None, late_thesis=False, stress_loss=None):
         thesis = copy.deepcopy(COMPLETE_AXISBANK_THESIS)
         if incomplete:
             thesis['hypotheses'] = []
@@ -24,7 +24,8 @@ class ProcessQualityTest(unittest.TestCase):
             decision = store.record_decision(self.conn, symbol='AXISBANK', as_of_date='2021-10-26', thesis_id=thesis_id,
                 evidence_bundle_hash='e', gate_results={}, state='ELIGIBLE', rulebook_version='test', rulebook_hash='r',
                 cost_config_version='test', cost_config_hash='c', code_commit='code', praman_watermark='p',
-                desk_watermark_value='d', as_of_is_live=True, isin_map_built_at='', override_reason=override)
+                desk_watermark_value='d', as_of_is_live=True, isin_map_built_at='', override_reason=override,
+                stress_loss_inr=stress_loss)
         with patch('desk.journal.store._now', return_value='2021-10-27T00:00:00+00:00'):
             store.open_paper_trade(self.conn, trade_id=self.trade, decision_id=decision, event_date='2021-10-27',
                                    price=750, quantity=10, stop=700, target=820, buy_cost_inr=1, cost_config_hash='c')

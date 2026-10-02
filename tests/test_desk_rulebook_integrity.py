@@ -173,7 +173,8 @@ class RealRulebookAndCostsLoadTest(unittest.TestCase):
 
     def test_real_rulebook_loads_and_matches_the_approved_capital_figure(self):
         loaded = load_active_rulebook()
-        self.assertEqual(loaded.version_file, "desk_rulebook_v1.yaml")
+        self.assertEqual(loaded.version_file, (Path(__file__).resolve().parents[1] / 'rulebook/ACTIVE').read_text().strip())
+        self.assertIn(loaded.rulebook.version, ('v1', 'v2'))
         self.assertRegex(loaded.sha256, r"^[0-9a-f]{64}$")
         self.assertEqual(loaded.rulebook.risk.capital_allocated_inr, 500000)
         self.assertIsNone(loaded.rulebook.surveillance_exclusions.max_asm_stage)

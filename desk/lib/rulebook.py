@@ -12,7 +12,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, Field, ValidationError, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator, AliasChoices
 
 from .versioned_config import (
     VersionedConfigError, resolve_active_version, require_git_clean_and_tracked, sha256_lf_normalized,
@@ -96,7 +96,28 @@ class PaperToLiveCriteria(BaseModel):
 
 
 class ScreeningConvention(BaseModel):
-    stop_multiple: float = Field(2.0, gt=0, description="Fixed research stop distance in ATR20 units")
+    stop_multiple: float = Field(2.0, gt=0, validation_alias=AliasChoices('screening_stop_atr_multiple', 'stop_multiple'),
+                                description="Fixed research stop distance in ATR20 units")
+
+
+class OperationalGate(BaseModel):
+    min_calendar_days: int = Field(..., ge=1)
+    min_closed_paper_trades: int = Field(..., ge=1)
+    max_unlogged_rule_violations: int = Field(..., ge=0)
+    max_open_risk_budget_breaches: int = Field(..., ge=0)
+    require_recorded_exit_on_every_trade: bool
+    max_open_high_severity_defects: int = Field(..., ge=0)
+
+
+class EdgeConfidenceGate(BaseModel):
+    min_logged_opportunities: int = Field(..., ge=1)
+    min_distinct_market_regimes: int = Field(..., ge=2)
+    require_out_of_sample_evaluation: bool
+    require_positive_expectancy_after_costs: bool
+    bootstrap_confidence_level: float = Field(..., gt=0, lt=1)
+    bootstrap_lower_bound_must_exceed: float
+    require_equal_weighted_market_comparison: bool
+    require_neighbouring_parameter_stability: bool
 
 
 class DeskRulebook(BaseModel):
@@ -108,8 +129,19 @@ class DeskRulebook(BaseModel):
     behavioural_brakes: BehaviouralBrakes
     inference_rules: InferenceRuleThresholds
     required_evidence_dimensions: RequiredEvidenceDimensions
-    paper_to_live_criteria: PaperToLiveCriteria
+    paper_to_live_criteria: PaperToLiveCriteria | None = None
+    operational_gate: OperationalGate | None = None
+    edge_confidence_gate: EdgeConfidenceGate | None = None
     screening: ScreeningConvention = Field(default_factory=ScreeningConvention)
+
+    @model_validator(mode='after')
+    def validate_gate_versions(self):
+        if self.version == 'v2':
+            if self.paper_to_live_criteria is not None or self.operational_gate is None or self.edge_confidence_gate is None:
+                raise ValueError('v2 requires the two new gates and forbids paper_to_live_criteria.')
+        elif self.paper_to_live_criteria is None:
+            raise ValueError('Legacy versions require paper_to_live_criteria.')
+        return self
 
 
 class LoadedRulebook(BaseModel):

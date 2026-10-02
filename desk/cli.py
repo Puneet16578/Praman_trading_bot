@@ -110,6 +110,8 @@ def cmd_status(args):
     budget = rulebook.rulebook.risk.capital_allocated_inr * rulebook.rulebook.risk.max_open_risk_pct / 100.0
     print(f"Open risk used: {open_risk:.2f} / {budget:.2f}")
     print(f"Open positions: {jstore.open_trade_ids(desk_conn)}")
+    from desk.readiness import print_gate_progress
+    print_gate_progress(desk_conn, rulebook.rulebook)
     print(ingestion_health_line())
     from desk.backups import status_line
     print(status_line())

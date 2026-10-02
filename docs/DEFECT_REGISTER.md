@@ -1286,6 +1286,15 @@ its database connection on every return. Existing journal rows are untouched.
 reason-only and late trigger failures, G7 decision/journal overrides, unlogged
 violation and stop-widening detection, valid trigger and reasoned manual close.
 
+## P8-030 - readiness test imported a discoverable TestCase as a fixture
+
+**Root cause.** The initial readiness test imported ProcessQualityTest directly,
+causing unittest to rediscover its ten methods and inflate the targeted count.
+**Fix.** Import its module under a fixture alias instead; no duplicate TestCase
+class is exposed to discovery in the readiness module.
+**Verification.** Targeted readiness run now reports seven distinct tests, OK.
+No production behavior or research result was affected.
+
 ## P8-029 - diagnostic sampler assumed every year had 29 catalogue events
 
 **Root cause.** The first draft of this review's sampler requested 29 events from

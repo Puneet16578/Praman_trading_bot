@@ -2,6 +2,13 @@
 
 ## Round 2 review - 2026-10-01
 
+- Rulebook v2: two typed gates, explicit two-day circuit lock and 2xATR stop,
+  v1 unchanged. Seven distinct readiness tests pass. Full pre-activation suite:
+  `Ran 595 tests in 362.702s`, `OK`, exit 0. V2 was loaded directly for its schema
+  and progress tests; the live loader requires committing ACTIVE before loading it.
+  This checkpoint activates v2; normal status and the next full suite verify that
+  committed loader path. Readiness surfaces unresolved P8-007 and P8-021 statuses.
+
 - P8-028: evaluator process audit now checks complete thesis at entry,
   unlogged violations, absence of G7 override and recorded exit provenance.
   Ten adversarial process tests pass; full suite 588 tests, OK (189.306s).
