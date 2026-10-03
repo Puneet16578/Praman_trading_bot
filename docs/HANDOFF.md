@@ -11,8 +11,10 @@
   scratch-ignore fragment; `git check-ignore` now matches. Scratch is preserved.
 - Current live read-only Desk counts: 0 decisions/theses/trades, 580 opportunities,
   545 executions, 3,574 bands. V2 active; operational NOT_MET, edge NOT_EVALUABLE.
-- The two requested follow-up analyses have not run. Next: commit their explicit
-  pre-registration before computing quintile or cap-size comparisons.
+- Round-2 confirmation and P8-036 committed as `b5c9e76`.
+- The two requested follow-up analyses have not run. Their detailed protocol is
+  `docs/desk/shadow_replay_followup_prereg.md`, committed before implementation
+  or real follow-up calculations. Next: synthetic tests and foreground runner.
 
 ## Completed historical replay - 2026-10-03
 
