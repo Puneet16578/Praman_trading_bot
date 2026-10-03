@@ -2,6 +2,18 @@
 
 ## Round 2 review - 2026-10-01
 
+- P8-034 verification: full suite `Ran 610 tests in 180.088s`, `OK`, exit 0.
+  Recovery retained 32 previously missing identities and corrected 51 current
+  ISIN conflicts; detailed before/after values are in the recovery JSON. Next:
+  refresh the input proof, then run the foreground replay from this commit.
+
+- Pre-run identity audit caught P8-034 after bafd371, before full outcomes:
+  57 events/10 symbols missing despite fresh map metadata. Recovered through
+  actual NSE snapshots; all 70,638 catalogue rows now resolve to non-fund ISINs.
+  Refresh now retains old identities and applies today's observations last.
+  Recovery provenance: docs/desk/isin_recovery_round2.json. A dated preregistration
+  addendum records this input repair; full replay still awaits its commit.
+
 - Resumed 2026-10-03. Full suite with committed rulebook v2 and repaired replay:
   `Ran 609 tests in 282.945s`, `OK`, Python exit 0. Existing SQLite ResourceWarnings
   remain. Fourteen new replay tests include cached/uncached assessment equality.

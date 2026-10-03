@@ -64,7 +64,10 @@ def main() -> None:
         except Exception as exc:
             print(f"WARN {d.isoformat()}: snapshot failed ({type(exc).__name__}); skipped")
 
-    merged = merge_isin_snapshots(snapshots)
+    # Keep historical identities if a snapshot becomes unavailable. Fresh dated
+    # evidence overrides this retained fallback; today's snapshot wins last.
+    retained = json.loads(OUTPUT_PATH.read_text(encoding='utf-8')) if OUTPUT_PATH.exists() else {}
+    merged = merge_isin_snapshots([retained, *snapshots[1:], snapshots[0]])
     print(f"\nMerged map: {len(merged)} distinct symbols")
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)

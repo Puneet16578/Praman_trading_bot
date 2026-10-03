@@ -1,0 +1,272 @@
+{
+  "old_sha256": "20b4cefde5d7c921a38219a6457e23bddc51812ad44b039be912eb577450e924",
+  "new_metadata": {
+    "built_at": "2026-10-03T15:19:47.271820+05:30",
+    "build_time_source": "refresh",
+    "map_sha256": "2b33925b6b589d46f721a98eb0fb96a1bebba0b31a893e0b733de4137981dc0e",
+    "snapshot_dates": [
+      "2019-11-15",
+      "2020-06-15",
+      "2021-02-17",
+      "2021-06-15",
+      "2021-07-22",
+      "2022-06-15",
+      "2023-06-15",
+      "2025-02-04",
+      "2025-06-16",
+      "2025-10-13",
+      "2026-09-10",
+      "2026-09-22",
+      "2026-10-01"
+    ],
+    "snapshot_dates_source": "refresh"
+  },
+  "recovered": {
+    "DHANVARSHA": "INE615R01029",
+    "DHARAMSI": "INE505A01010",
+    "IMPEXFERRO": "INE691G01015",
+    "JTLINFRA": "INE391J01024",
+    "MARSHALL": "INE00SZ01018",
+    "WFL": "INE02WG01016",
+    "WINPRO": "INE974C01022",
+    "YAARI": "INE126M01010",
+    "APOORVA": "INE217S01014",
+    "CFEL": "INE700F01024",
+    "CRESTO": "INE203Y01012",
+    "CURAA": "INE117B01020",
+    "DEEP": "INE00IY01012",
+    "EKI": "INE0CPR01018",
+    "GICL": "INE947T01022",
+    "GRADIENTE": "INE361K01017",
+    "GRAVISSHO": "INE214F01026",
+    "GSEC10ADD": "INF740KA1ZI7",
+    "KAVDEFENCE": "INE641C01019",
+    "KSR": "INE1SPP01016",
+    "LADDERUP": "INE519D01015",
+    "MEDICAPQ": "INE442D01010",
+    "MILKYMIST": "INE00IT01020",
+    "MONEYBOXX": "INE296Q01012",
+    "QUINT": "INE641R01017",
+    "SAB": "INE137M01017",
+    "SAYAJIHOTL": "INE318C01014",
+    "SHERVANI": "INE011D01013",
+    "SONAL": "INE321M01017",
+    "TERAI": "INE390D01011",
+    "ALFREDHE": "INE782D01027",
+    "DSFCL": "INE0OFM01015"
+  },
+  "changed": {
+    "AJMERA": {
+      "before": "INE298G01027",
+      "after": "INE298G01035"
+    },
+    "ANGELONE": {
+      "before": "INE732I01013",
+      "after": "INE732I01021"
+    },
+    "BECTORFOOD": {
+      "before": "INE495P01012",
+      "after": "INE495P01020"
+    },
+    "BEML": {
+      "before": "INE258A01016",
+      "after": "INE258A01024"
+    },
+    "BESTAGRO": {
+      "before": "INE052T01013",
+      "after": "INE052T01021"
+    },
+    "BHARATRAS": {
+      "before": "INE838B01013",
+      "after": "INE838B01021"
+    },
+    "CAMS": {
+      "before": "INE596I01012",
+      "after": "INE596I01020"
+    },
+    "FCL": {
+      "before": "INE045J01026",
+      "after": "INE045J01034"
+    },
+    "GEEKAYWIRE": {
+      "before": "INE669X01024",
+      "after": "INE669X01032"
+    },
+    "GOKULAGRO": {
+      "before": "INE314T01025",
+      "after": "INE314T01033"
+    },
+    "INDOTHAI": {
+      "before": "INE337M01013",
+      "after": "INE337M01021"
+    },
+    "IVZINGOLD": {
+      "before": "INF205K01361",
+      "after": "INF205KA1BP1"
+    },
+    "IVZINNIFTY": {
+      "before": "INF205K01DA9",
+      "after": "INF205KA1CC7"
+    },
+    "KOTAKBANK": {
+      "before": "INE237A01028",
+      "after": "INE237A01036"
+    },
+    "KRISHANA": {
+      "before": "INE506W01012",
+      "after": "INE506W01020"
+    },
+    "MCX": {
+      "before": "INE745G01035",
+      "after": "INE745G01043"
+    },
+    "QNIFTY": {
+      "before": "INF082J01028",
+      "after": "INF082J01499"
+    },
+    "ROLEXRINGS": {
+      "before": "INE645S01016",
+      "after": "INE645S01024"
+    },
+    "SILVERTUC": {
+      "before": "INE625X01018",
+      "after": "INE625X01026"
+    },
+    "SKMEGGPROD": {
+      "before": "INE411D01015",
+      "after": "INE411D01023"
+    },
+    "SUMEETINDS": {
+      "before": "INE235C01010",
+      "after": "INE235C01036"
+    },
+    "TATAINVEST": {
+      "before": "INE672A01018",
+      "after": "INE672A01026"
+    },
+    "TDPOWERSYS": {
+      "before": "INE419M01027",
+      "after": "INE419M01035"
+    },
+    "TEMBO": {
+      "before": "INE869Y01010",
+      "after": "INE869Y01028"
+    },
+    "V2RETAIL": {
+      "before": "INE945H01013",
+      "after": "INE945H01021"
+    },
+    "AVROIND": {
+      "before": "INE652Z01017",
+      "after": "INE652Z01025"
+    },
+    "BANKNIFTY1": {
+      "before": "INF174K01F59",
+      "after": "INF174KA1ZB7"
+    },
+    "CONS": {
+      "before": "INF174KA1JE5",
+      "after": "INF174KA1ZF8"
+    },
+    "DBEIL": {
+      "before": "INE0OPA01019",
+      "after": "INE0OPA01027"
+    },
+    "GROWWGOLD": {
+      "before": "INF666M01IW1",
+      "after": "INF666M01OE7"
+    },
+    "GROWWSLVR": {
+      "before": "INF666M01LA1",
+      "after": "INF666M01OF4"
+    },
+    "HEALTHADD": {
+      "before": "INF740KA1UF4",
+      "after": "INF740KA1ZG1"
+    },
+    "JLHL": {
+      "before": "INE682M01012",
+      "after": "INE682M01020"
+    },
+    "KIRLPNU": {
+      "before": "INE811A01020",
+      "after": "INE811A01038"
+    },
+    "KMEW": {
+      "before": "INE0CJD01011",
+      "after": "INE0CJD01029"
+    },
+    "LICMFGOLD": {
+      "before": "INF397L01554",
+      "after": "INF767K01SM1"
+    },
+    "MBAPL": {
+      "before": "INE900L01010",
+      "after": "INE900L01028"
+    },
+    "MIDCAP": {
+      "before": "INF174KA1IB3",
+      "after": "INF174KA1ZC5"
+    },
+    "MIDQ50ADD": {
+      "before": "INF740KA1QL0",
+      "after": "INF740KA1ZF3"
+    },
+    "MWL": {
+      "before": "INE0JYY01011",
+      "after": "INE0JYY01029"
+    },
+    "NARMADA": {
+      "before": "INE117Z01011",
+      "after": "INE117Z01029"
+    },
+    "NUVAMA": {
+      "before": "INE531F01015",
+      "after": "INE531F01023"
+    },
+    "NV20": {
+      "before": "INF174K01Z71",
+      "after": "INF174KA1ZE1"
+    },
+    "OSWALSEEDS": {
+      "before": "INE00IK01011",
+      "after": "INE00IK01029"
+    },
+    "PASHUPATI": {
+      "before": "INE124Y01010",
+      "after": "INE124Y01028"
+    },
+    "POCL": {
+      "before": "INE063E01053",
+      "after": "INE063E01061"
+    },
+    "PSUBANK": {
+      "before": "INF373I01023",
+      "after": "INF174KA1A86"
+    },
+    "SIGMA": {
+      "before": "INE0A0S01010",
+      "after": "INE0A0S01028"
+    },
+    "SILVER1": {
+      "before": "INF174KA1KU9",
+      "after": "INF174KA1ZD3"
+    },
+    "SILVERADD": {
+      "before": "INF740KA1RE3",
+      "after": "INF740KA1ZQ0"
+    },
+    "WEBELSOLAR": {
+      "before": "INE855C01015",
+      "after": "INE855C01023"
+    }
+  },
+  "catalogue_events_verified": 70638,
+  "unresolved_or_fund_events": 0,
+  "snapshot_sha256": {
+    "isin_20220615.json": "3ddf29e344f0d7812f594f72313028bf6e74c2b0d2548fa63a9de7fd2b1435ca",
+    "isin_20260910.json": "6c7ff86bb05e9c300570d6c68de15382c627a454e9ce2cd5657cc65e127b0c65",
+    "isin_20260922.json": "9ce9f54913ba021ffcc3b8203aa48963444a2a4e5ba04ba89a7115f4d98ec6b2",
+    "isin_20261001.json": "b15c04c198c6b2f42d1023f6ad7208c7ade9a6de6b7f8b4385011fc8a7126861"
+  }
+}

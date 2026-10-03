@@ -57,7 +57,12 @@ def main():
         events = events[:args.screen_only_limit]
     for row in events:
         require_outcome_access(row['event_date'])
-    groups = build_symbol_groups(load_isin_map(ROOT/'data/raw/nse_symbol_isin_current.json'))
+    isin_map = load_isin_map(ROOT/'data/raw/nse_symbol_isin_current.json')
+    unresolved = sorted({r['symbol'] for r in events if not isin_map.get(r['symbol'])})
+    funds = sorted({r['symbol'] for r in events if isin_map.get(r['symbol'],'').startswith('INF')})
+    if unresolved or funds:
+        raise ValueError('Catalogue identity verification failed; repair mappings before outcome access.')
+    groups = build_symbol_groups(isin_map)
     market_index = load_market_index()
     output_dir = ROOT/'docs/desk'
     raw_path = ROOT/'data/processed/desk_shadow_replay_round2.jsonl'
@@ -69,6 +74,7 @@ def main():
                       label_function='scripts.phase8_robustness_relabel_t0.compute_t0_relative')
     files = [catalogue, ROOT/'data/processed/market_index.csv', ROOT/'data/raw/nse_symbol_isin_current.json',
              ROOT/'scripts/phase8_robustness_relabel_t0.py', ROOT/'src/signals/event_catalogue.py',
+             ROOT/'scripts/build_final_event_catalogue.py',
              ROOT/'docs/desk/shadow_replay_prereg.md', Path(__file__).resolve()]
     files += sorted((ROOT/'desk').rglob('*.py'))
     provenance['source_hashes'] = {p.relative_to(ROOT).as_posix():sha256(p) for p in files}

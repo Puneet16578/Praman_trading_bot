@@ -154,3 +154,16 @@ numeric magnitudes; exact reason text is retained in event records. Missing
 first-session gap remains observable independently. All-candidate results are
 primary, and filled-only results are also reported. These denominator details
 implement the registered missingness requirements without changing the outcomes.
+
+## Addendum: retain historical identities (2026-10-03)
+
+The pre-run identity check found 57 catalogue events across ten symbols absent
+from the refreshed map. Refresh had discarded identities when historical fetches
+failed, and merged old snapshots after today's snapshot. The operational merge
+now retains existing identities and gives current observations final precedence.
+NSE snapshots dated 2022-06-15, 2026-09-10, 2026-09-22 and 2026-10-01 recovered
+the missing identities and corrected current conflicts. The entire existing
+70,638-event catalogue resolves to non-fund ISINs again; no events were discarded
+or selected using outcomes. Recovery hashes and changed mappings are recorded in
+`isin_recovery_round2.json`. No full replay outcome has been computed in this
+review. The runner refuses unresolved or fund identities before reading labels.

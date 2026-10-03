@@ -1333,6 +1333,21 @@ input-only profile stopped before any screening or outcome calculation.
 full suite: 609 tests in 282.945s, OK, including runner import and fourteen
 replay checks. No outcome or stored fact was affected.
 
+## P8-034 - ISIN refresh discarded historical identities and reversed precedence
+
+**Root cause.** Refresh rebuilt solely from successful downloads, losing symbols
+when a historical download failed. Today's snapshot was first in a last-wins
+merge, so historical ISINs could overwrite current observations. A fresh build
+timestamp did not imply complete or correctly ordered coverage. The pre-replay
+audit found 57 catalogue events across ten unresolved symbols.
+**Fix.** Retain the existing map as fallback, merge dated historical observations
+in order and today's snapshot last. Recover missing identities using real NSE
+snapshots; preserve the previous map and companion in scratch. Commit a recovery
+audit and dated preregistration addendum. Replay refuses unresolved/fund events.
+**Verification.** All 70,638 existing catalogue rows resolve as equity after
+recovery; no catalogue event was removed. A regression test combines a missing
+historical snapshot, retained delisted identity and reused-symbol conflict.
+
 ## P8-029 - diagnostic sampler assumed every year had 29 catalogue events
 
 **Root cause.** The first draft of this review's sampler requested 29 events from

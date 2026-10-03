@@ -53,6 +53,14 @@ class IsinRefreshTest(unittest.TestCase):
         with patch.object(build_isin_map, "fetch_isin_snapshot", side_effect=self.http_error(503)):
             self.assertEqual(weekly_ingest._run_capturing("isin_map", build_isin_map.main)["status"], "ERROR")
 
+    def test_partial_refresh_retains_old_identity_and_today_wins_conflict(self):
+        self.path.write_text(json.dumps({'DELISTED':'INE000000001','REUSED':'INE000000002'}),encoding='utf-8')
+        with patch.object(build_isin_map,'SNAPSHOT_DATES',[date(2020,1,2),date(2022,6,15)]), patch.object(
+            build_isin_map,'fetch_isin_snapshot',side_effect=[
+                {'REUSED':'INE000000003'}, {'REUSED':'INE000000002'},self.http_error(404)]):
+            build_isin_map.main()
+        self.assertEqual(json.loads(self.path.read_text()),{'DELISTED':'INE000000001','REUSED':'INE000000003'})
+
     def test_404_without_existing_map_is_error(self):
         self.path.unlink()
         with patch.object(build_isin_map, "fetch_isin_snapshot", side_effect=self.http_error(404)):
