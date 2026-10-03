@@ -16,14 +16,15 @@ falling through to Praman's own safe-default tier for that window.
 from __future__ import annotations
 import hashlib
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
+from bisect import bisect_left
 
 from src.agent.adversary import AdversaryAgent
 from src.agent.models import EvidenceClaim
 from src.bitemporal.guard import read_as_of
 from src.mcp.tools import get_disclosure_window, get_surveillance_status
 from src.signals.disclosure_classification import classify_category, classify_disclosure_window
-from src.signals.event_catalogue import build_symbol_history, compute_daily_stats
+from src.signals.event_catalogue import build_symbol_history, compute_daily_stats, TRAILING_WINDOW
 
 from .types import Fact, Unknown
 
@@ -78,15 +79,27 @@ def _verify_and_wrap(claim: EvidenceClaim, unknown_on_reject: Unknown) -> Fact |
     return Fact(claim=claim)
 
 
+def daily_stat_at(hist, as_of_date):
+    """Call the unchanged catalogue statistic on its exact required 62-date window.
+
+    Keep vintages, action prefixes and structural breaks intact. Verification calls
+    recompute independently; no evidence value is cached or accepted on trust.
+    """
+    i = bisect_left(hist.trading_days, as_of_date)
+    if i >= len(hist.trading_days) or hist.trading_days[i] != as_of_date:
+        return None
+    window = replace(hist, trading_days=hist.trading_days[max(0, i-TRAILING_WINDOW-1):i+1])
+    return next((s for s in compute_daily_stats(window) if s.event_date == as_of_date), None)
+
+
 def _price_volume_delivery(conn, symbol: str, as_of_date: str, hist) -> tuple[Fact | Unknown, Fact | Unknown, Fact | Unknown]:
-    stats = compute_daily_stats(hist)
-    match = next((s for s in stats if s.event_date == as_of_date), None)
+    match = daily_stat_at(hist, as_of_date)
     if match is None:
         gap = Unknown("price", "measurement", f"No computable daily stat for {symbol} on {as_of_date}.")
         return gap, gap, gap
 
     def refetch(field_name: str):
-        return lambda: getattr(next(s for s in compute_daily_stats(hist) if s.event_date == as_of_date), field_name)
+        return lambda: getattr(daily_stat_at(hist, as_of_date), field_name)
 
     if match.return_1d is None:
         # A structural break (e.g. a demerger) inside the window compute_daily_stats needs makes

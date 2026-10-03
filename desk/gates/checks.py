@@ -49,13 +49,13 @@ def g1_data_quality(conn, symbol: str, as_of_date: str, gap_check_calendar_days:
         if age > MAX_AGE_TRADING_DAYS:
             return GateResult("G1", FAIL, (f"ISIN map is {age} trading days old (limit {MAX_AGE_TRADING_DAYS}).",))
     market_rows = conn.execute(
-        "SELECT COUNT(*) AS n FROM bhavcopy WHERE event_date = ?", (as_of_date,)
+        "SELECT COUNT(*) AS n FROM bhavcopy WHERE event_date = ? AND knowledge_date <= ?", (as_of_date, as_of_date)
     ).fetchone()["n"]
     if market_rows == 0:
         return GateResult("G1", FAIL, (f"No bhavcopy data at all for {as_of_date} -- the store has not ingested this date.",))
 
     symbol_row = conn.execute(
-        "SELECT COUNT(*) AS n FROM bhavcopy WHERE event_date = ? AND symbol = ?", (as_of_date, symbol)
+        "SELECT COUNT(*) AS n FROM bhavcopy WHERE event_date = ? AND symbol = ? AND knowledge_date <= ?", (as_of_date, symbol, as_of_date)
     ).fetchone()["n"]
     if symbol_row == 0:
         return GateResult("G1", FAIL, (f"No bhavcopy row for {symbol} on {as_of_date}, though other symbols traded that day.",))
@@ -64,14 +64,14 @@ def g1_data_quality(conn, symbol: str, as_of_date: str, gap_check_calendar_days:
     window_start = (as_of - timedelta(days=gap_check_calendar_days)).isoformat()
     market_dates = {
         r["event_date"] for r in conn.execute(
-            "SELECT DISTINCT event_date FROM bhavcopy WHERE event_date > ? AND event_date <= ?",
-            (window_start, as_of_date),
+            "SELECT DISTINCT event_date FROM bhavcopy WHERE event_date > ? AND event_date <= ? AND knowledge_date <= ?",
+            (window_start, as_of_date, as_of_date),
         )
     }
     symbol_dates = {
         r["event_date"] for r in conn.execute(
-            "SELECT DISTINCT event_date FROM bhavcopy WHERE event_date > ? AND event_date <= ? AND symbol = ?",
-            (window_start, as_of_date, symbol),
+            "SELECT DISTINCT event_date FROM bhavcopy WHERE event_date > ? AND event_date <= ? AND symbol = ? AND knowledge_date <= ?",
+            (window_start, as_of_date, symbol, as_of_date),
         )
     }
     missing = sorted(market_dates - symbol_dates)

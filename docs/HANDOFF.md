@@ -2,6 +2,20 @@
 
 ## Round 2 review - 2026-10-01
 
+- Resumed 2026-10-03. Full suite with committed rulebook v2 and repaired replay:
+  `Ran 609 tests in 282.945s`, `OK`, Python exit 0. Existing SQLite ResourceWarnings
+  remain. Fourteen new replay tests include cached/uncached assessment equality.
+  Input-only runtime profiling used no outcomes. Full replay is next, after this
+  commit freezes the G1 addendum and runner. Pre-existing risk-test blank line and
+  untracked scratch directory remain outside the commit.
+
+- 2026-10-02 replay review: P8-031 replaces the defective draft with sequential
+  temporary-copy analysis; P8-032 applies G1 knowledge cutoffs. Thirteen targeted
+  tests pass in 11.948s. No full replay outcomes computed at this checkpoint.
+- Normal committed-v2 `desk status` verified: operational gate unmet, edge gate
+  not evaluable; zero paper history and 567 logged opportunities. P8-007 is an
+  existing unresolved critical entry, P8-021 an unclassified open entry.
+
 - Rulebook v2: two typed gates, explicit two-day circuit lock and 2xATR stop,
   v1 unchanged. Seven distinct readiness tests pass. Full pre-activation suite:
   `Ran 595 tests in 362.702s`, `OK`, exit 0. V2 was loaded directly for its schema

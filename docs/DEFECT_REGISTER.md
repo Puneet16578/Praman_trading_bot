@@ -1288,12 +1288,50 @@ violation and stop-widening detection, valid trigger and reasoned manual close.
 
 ## P8-030 - readiness test imported a discoverable TestCase as a fixture
 
+See also P8-031/P8-032 below for the subsequent replay review.
+
 **Root cause.** The initial readiness test imported ProcessQualityTest directly,
 causing unittest to rediscover its ten methods and inflate the targeted count.
 **Fix.** Import its module under a fixture alias instead; no duplicate TestCase
 class is exposed to discovery in the readiness module.
 **Verification.** Targeted readiness run now reports seven distinct tests, OK.
 No production behavior or research result was affected.
+
+## P8-031 - draft shadow replay did not implement the registered analysis
+
+**Root cause.** The inherited runner used a process pool, security-session tails,
+incorrect action-factor direction, incomplete stop-gap/locked-circuit logic and
+no registered bootstrap comparisons. The earlier P8-026 edit in this review also
+left its header syntactically invalid; a text-based test did not import it.
+No full replay from that code was run in this review.
+**Fix.** Replace it with a sequential runner on read-only temporary copies, the
+unchanged Amendment 5 function, global-session adjusted tails, explicit missing
+denominators, overlapping reason groups, and paired event-date bootstraps.
+Add a runner import/parse test and adversarial path/uncertainty tests. Exact
+SELECT caching and single-date statistic evaluation avoid unnecessary work;
+neither changes the pinned calculation or as-of parameters.
+**Verification.** Thirteen targeted replay tests pass (11.948s), including real
+split/bonus and demerger statistic equivalence. Full-suite and full-run evidence
+will be recorded in the handoff and results.
+
+## P8-032 - G1 availability queries could see late-known rows
+
+**Root cause.** Four direct bhavcopy availability queries bounded event dates
+without bounding knowledge dates, contrary to the as-of contract.
+**Fix.** Add the assessment-date knowledge cutoff to all four queries. Register
+the repair in the dated shadow-replay addendum before full replay outcomes.
+**Verification.** A late-known security row cannot satisfy G1 in the historical
+assessment; included in the thirteen passing replay tests. Thresholds unchanged.
+
+## P8-033 - profiler invocation exposed a relative runner source path
+
+**Root cause.** The new runner assumed `__file__` was absolute when recording
+source hashes. Python's cProfile entry point supplied a relative path; the
+input-only profile stopped before any screening or outcome calculation.
+**Fix.** Resolve the source path before taking its repository-relative name.
+**Verification.** The cProfile input-only run completed 30 events. Subsequent
+full suite: 609 tests in 282.945s, OK, including runner import and fourteen
+replay checks. No outcome or stored fact was affected.
 
 ## P8-029 - diagnostic sampler assumed every year had 29 catalogue events
 

@@ -135,3 +135,22 @@ it uses the current identity map and no fabricated historical build date.
 This repair is based only on gate inputs, before this review computes any label
 spot-check or replay outcome. Prior background replay results are not used.
 No gate thresholds, outcome definitions, periods or bootstrap settings change.
+
+## Addendum: temporal availability queries (2026-10-02)
+
+Source review before the full replay found G1's four direct availability queries
+omitted `knowledge_date <= event_date`. They now apply that cutoff, so a later
+publication cannot fill an apparent historical data gap. A synthetic late-known
+row test proves the boundary. This correctness repair follows the five requested
+label-equivalence spot checks; no replay comparisons have been inspected or used.
+It changes no threshold. The evidence path also calls the unchanged daily-stat
+function on its exact 62-date window; full-history equality is tested across real
+split/bonus and demerger examples. The runner uses immutable temporary database
+copies and exact SQL/parameter caching, including the as-of date.
+
+Reason comparisons group the same semantic check across varying symbols and
+numeric magnitudes; exact reason text is retained in event records. Missing
+20-session paths are excluded explicitly from full-window statistics. The
+first-session gap remains observable independently. All-candidate results are
+primary, and filled-only results are also reported. These denominator details
+implement the registered missingness requirements without changing the outcomes.
