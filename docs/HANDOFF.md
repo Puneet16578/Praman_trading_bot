@@ -2,6 +2,32 @@
 
 ## Follow-up session - 2026-10-04
 
+- Both registered follow-ups completed in the foreground from `d6b7a0b`, after
+  preregistration `bbd5268`. Results: `docs/desk/shadow_replay_followup_results.md`
+  and `.json`; interpretation: `docs/desk/shadow_replay_followup_review.md`.
+- Primary volatility gap: +6.01 pp unstratified, +0.74 pp standardized (95% CI
+  -0.28 to +1.72). Q1/Q3 retain positive descriptive intervals. This supports
+  substantial volatility filtering, not proof of zero residual effect.
+- Primary any-cap breach rate: 54.93% baseline vs 15.44% at registered 90%
+  decision headroom; six zero-share abstentions. Conditional per-trade excess
+  median/p90: 11.63%/40.71% baseline vs 10.15%/41.31% variant. Other caps and both
+  periods have complete size, rate and bootstrap tables. No thresholds tuned.
+- P8-038 is newly OPEN: original decision sizing omits costs in the per-trade
+  bound and G6 does not enforce that cost-inclusive bound. 12,693 primary and
+  1,958 descriptive filled passes already breach at the decision. Research
+  variant accounts for costs; production sizing was deliberately not changed.
+- Frozen hashes, identities, baseline flags/totals, all cap point statistics and
+  maximal integer sizes verified. Independent affine bounds match all 52,831
+  filled PASS variant sizes. Original replay and results remain unchanged.
+- Independent manual linear quintiles and 40 stratum rate/denominator/date counts
+  reproduce all four standardized gaps. Both live-store watermarks still match
+  the original replay. Protocol, active rulebook and pinned label have empty diffs.
+- Final session suite: 626 tests in 112.249s, OK, Python exit 0. Local log:
+  `logs/followup_final_tests_20261004.log`. Existing SQLite ResourceWarnings remain.
+- Requested analysis is complete; final results checkpoint is followed by the
+  requested push. P8-038 remains a separate production-repair task. Older pre-run
+  notes below are chronological evidence of registration before execution.
+
 - Single agent, foreground execution. Initial HEAD `64ac2f1` matched origin/master;
   no other Python/Claude process. Preserved pre-existing risk-test blank line and
   scratch artifacts. Full baseline: 610 tests in 227.455s, OK, Python exit 0;

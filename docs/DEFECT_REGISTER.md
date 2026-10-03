@@ -6,6 +6,7 @@ honesty rule.
 
 | ID | Found | Severity | What it was | Status |
 |---|---|---|---|---|
+| P8-038 | 2026-10-04 registered follow-up | High | Original decision sizing ignores costs in the per-trade risk bound, and G6 does not enforce that bound including costs. | Open: quantified and reproduced; live policy unchanged during registered research |
 | P8-037 | 2026-10-04 follow-up synthetic tests | Low | New missing-value rendering test matched `nan` inside the word `provenance`. | Fixed: match the standalone NaN token; no analysis affected |
 | P8-036 | 2026-10-04 round-2 confirmation | Low | UTF-16 fragment in `.gitignore` made the scratch exclusion ineffective. | Fixed: UTF-8/LF rule; verified with `git check-ignore` |
 | P2-001 | Ph. 2 (NSE ingestion, pre-flight) | High | `jugaad_data.nse.full_bhavcopy_save()` reports success (no exception) even when NSE returns an HTTP error page instead of real bhavcopy data. | Fixed — mitigated at the store layer |
@@ -1349,6 +1350,30 @@ audit and dated preregistration addendum. Replay refuses unresolved/fund events.
 **Verification.** All 70,638 existing catalogue rows resolve as equity after
 recovery; no catalogue event was removed. A regression test combines a missing
 historical snapshot, retained delisted identity and reused-symbol conflict.
+
+## P8-038 - passed decisions can already exceed per-trade risk including costs
+
+**Root cause.** `compute_position_size` divides the per-trade budget by the
+entry-stop distance without transaction costs. The subsequent `g6_risk` checks
+stress against the open-risk budget and stock/sector capital, but does not check
+planned loss including costs against the per-trade budget. The fill observer
+does check that additional limit, so its breaches are not all caused by an
+overnight price change.
+**Evidence.** In the frozen replay, 12,693 of 45,700 filled primary PASS candidates
+and 1,958 of 7,131 descriptive-2026 PASS candidates already breach the per-trade
+cap at their decision price. No other decision cap is breached in those filled
+PASS cohorts. Independent affine sizing bounds and direct measurements confirm
+these counts. A synthetic reproduction with active v2/costs: entry 100, stop 90,
+quantity 500, cap Rs 5,000; planned loss including costs Rs 5,121.39357, yet G6 PASS.
+**Status.** Open. No active sizing or gate was changed after inspecting outcomes.
+The pre-registered research variant correctly includes costs and fits each cap
+at 90%; its improvement therefore combines proper cost-aware decision sizing
+with the registered headroom, not headroom alone. A production repair is a
+separate task and must preserve the original result artifacts.
+**Verification.** Frozen baseline fill flags match the original checks exactly.
+All 52,831 original filled PASS quantities in the two periods were checked for
+variant maximality and agreement with independent affine constraints. Full
+counts and conditional excess distributions are in the follow-up results.
 
 ## P8-037 - rendering test confused provenance with a NaN value
 
