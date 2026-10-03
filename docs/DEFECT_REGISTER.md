@@ -6,6 +6,7 @@ honesty rule.
 
 | ID | Found | Severity | What it was | Status |
 |---|---|---|---|---|
+| P8-036 | 2026-10-04 round-2 confirmation | Low | UTF-16 fragment in `.gitignore` made the scratch exclusion ineffective. | Fixed: UTF-8/LF rule; verified with `git check-ignore` |
 | P2-001 | Ph. 2 (NSE ingestion, pre-flight) | High | `jugaad_data.nse.full_bhavcopy_save()` reports success (no exception) even when NSE returns an HTTP error page instead of real bhavcopy data. | Fixed — mitigated at the store layer |
 | P2-002 | Ph. 2 (NSE ingestion, pre-implementation) | High | `sqlite3` silently binds a `numpy.int64`/`numpy.float64` parameter as a raw BLOB instead of an integer/float — no exception, no warning, and the store's own `numbers.Integral`/`numbers.Real` type check does not catch it (numpy scalars correctly satisfy those ABCs). | Fixed — store coerces to native `int`/`float` before binding |
 | P2-003 | Ph. 2 (NSE ingestion, real-data verification) | High | NSE's bhavcopy archive can return HTTP 200 with well-formed CSV content for a **different date** than the one requested, under the requested date's own URL. For weekends/holidays this is a sane 1-3 day fallback to the nearest prior trading day; for 2019-09-30 specifically, the returned content was for 2019-06-27 — a 95-day anomaly, not a holiday fallback. This also invalidated this project's own earlier "earliest available date: 2019-09-30" claim, which had only checked "is this real CSV," not "is this CSV actually dated 2019-09-30." | Fixed — corrected earliest date to 2019-10-01; ingestion now compares the response's own DATE1 to the requested date and rejects (as a gap) any mismatch beyond a small fallback window |
@@ -1347,6 +1348,18 @@ audit and dated preregistration addendum. Replay refuses unresolved/fund events.
 **Verification.** All 70,638 existing catalogue rows resolve as equity after
 recovery; no catalogue event was removed. A regression test combines a missing
 historical snapshot, retained delisted identity and reused-symbol conflict.
+
+## P8-036 - mixed encoding made the scratch ignore rule ineffective
+
+**Root cause.** Commit `7df208c` appended `scratch/` as a UTF-16 fragment to an
+otherwise UTF-8 `.gitignore`, leaving ten NUL bytes. Git did not recognize the
+rule, despite the old handoff claiming scratch was ignored. Round-2 repaired the
+handoff encoding and Markdown line-ending policy but missed this file.
+**Fix.** Replace only the malformed fragment with UTF-8 `scratch/` and LF.
+All local scratch artifacts remain untouched; nothing is added to tracking.
+**Verification.** Before the repair `git check-ignore scratch/proof_scan.py`
+returned no match. Afterward it identifies `.gitignore:8:scratch/`; the file has
+zero NUL bytes. Baseline suite: 610 tests, OK, exit 0. No research result changed.
 
 ## P8-035 - replay warnings needed statistic-specific denominators
 

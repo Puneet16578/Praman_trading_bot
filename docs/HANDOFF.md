@@ -1,5 +1,19 @@
 # Handoff
 
+## Follow-up session - 2026-10-04
+
+- Single agent, foreground execution. Initial HEAD `64ac2f1` matched origin/master;
+  no other Python/Claude process. Preserved pre-existing risk-test blank line and
+  scratch artifacts. Full baseline: 610 tests in 227.455s, OK, Python exit 0;
+  local log `logs/followup_baseline_20261004.log`.
+- Confirmed every round-2 item with source and commit evidence in
+  `docs/desk/round2_completion_20261004.md`. P8-036 repairs the missed UTF-16
+  scratch-ignore fragment; `git check-ignore` now matches. Scratch is preserved.
+- Current live read-only Desk counts: 0 decisions/theses/trades, 580 opportunities,
+  545 executions, 3,574 bands. V2 active; operational NOT_MET, edge NOT_EVALUABLE.
+- The two requested follow-up analyses have not run. Next: commit their explicit
+  pre-registration before computing quintile or cap-size comparisons.
+
 ## Completed historical replay - 2026-10-03
 
 - Resumed from `67df697`. Initial full suite: 610 tests in 163.817s, OK,
