@@ -6,6 +6,7 @@ honesty rule.
 
 | ID | Found | Severity | What it was | Status |
 |---|---|---|---|---|
+| P8-037 | 2026-10-04 follow-up synthetic tests | Low | New missing-value rendering test matched `nan` inside the word `provenance`. | Fixed: match the standalone NaN token; no analysis affected |
 | P8-036 | 2026-10-04 round-2 confirmation | Low | UTF-16 fragment in `.gitignore` made the scratch exclusion ineffective. | Fixed: UTF-8/LF rule; verified with `git check-ignore` |
 | P2-001 | Ph. 2 (NSE ingestion, pre-flight) | High | `jugaad_data.nse.full_bhavcopy_save()` reports success (no exception) even when NSE returns an HTTP error page instead of real bhavcopy data. | Fixed — mitigated at the store layer |
 | P2-002 | Ph. 2 (NSE ingestion, pre-implementation) | High | `sqlite3` silently binds a `numpy.int64`/`numpy.float64` parameter as a raw BLOB instead of an integer/float — no exception, no warning, and the store's own `numbers.Integral`/`numbers.Real` type check does not catch it (numpy scalars correctly satisfy those ABCs). | Fixed — store coerces to native `int`/`float` before binding |
@@ -1348,6 +1349,16 @@ audit and dated preregistration addendum. Replay refuses unresolved/fund events.
 **Verification.** All 70,638 existing catalogue rows resolve as equity after
 recovery; no catalogue event was removed. A regression test combines a missing
 historical snapshot, retained delisted identity and reused-symbol conflict.
+
+## P8-037 - rendering test confused provenance with a NaN value
+
+**Root cause.** The new empty-group report test searched for the substring `nan`
+anywhere in the text; it matched `provenance`, producing a false failure even
+though every missing numeric result rendered as unavailable.
+**Fix.** Check for the standalone case-insensitive NaN token instead.
+**Verification.** The full suite, including the empty-group renderer and all
+sixteen follow-up tests: 626 tests in 109.457s, OK, Python exit 0. No real follow-up was run before this
+repair; statistics, data and the registered protocol were unchanged.
 
 ## P8-036 - mixed encoding made the scratch ignore rule ineffective
 

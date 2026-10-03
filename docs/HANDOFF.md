@@ -15,6 +15,13 @@
 - The two requested follow-up analyses have not run. Their detailed protocol is
   `docs/desk/shadow_replay_followup_prereg.md`, committed before implementation
   or real follow-up calculations. Next: synthetic tests and foreground runner.
+- Follow-up preregistration committed as `bbd5268`. Implementation now includes
+  sixteen synthetic tests, exact date-multiplicity quantiles, fixed-cost-aware
+  integer sizing and parity checks against original fill-cap flags. P8-037 logs
+  a repaired false-positive NaN assertion in the new report test.
+- Pre-run full suite: 626 tests in 109.457s, OK, Python exit 0; log
+  `logs/followup_implementation_tests_20261004.log`. No real follow-up computed
+  before this implementation checkpoint. Next: foreground run and result review.
 
 ## Completed historical replay - 2026-10-03
 
