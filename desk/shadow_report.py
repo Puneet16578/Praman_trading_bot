@@ -35,7 +35,8 @@ def report_markdown(provenance, summaries):
             for name, row in groups.items():
                 for metric, stat in row['metrics'].items():
                     diff = stat.get('difference_vs_pass', {})
-                    lines.append(f"| {name} / {metric} | {number(stat['estimate'])} | {stat['n_events']} / {stat['denominator']:g} | {stat['missing_events']} | {interval(stat)} | {number(diff.get('estimate'))} | {interval(diff)} |")
+                    warning = ' [small sample]' if stat['small_sample_warning'] else ''
+                    lines.append(f"| {name} / {metric}{warning} | {number(stat['estimate'])} | {stat['n_events']} / {stat['denominator']:g} | {stat['missing_events']} | {interval(stat)} | {number(diff.get('estimate'))} | {interval(diff)} |")
             lines += ['']
     lines += ['## Reproduce', '', '`python -u scripts/desk_shadow_replay.py`', '',
               'Full denominators, missingness reasons and confidence intervals: `shadow_replay_results.json`. '

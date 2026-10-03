@@ -2,6 +2,20 @@
 
 ## Round 2 review - 2026-10-01
 
+- Final pre-replay suite: `Ran 610 tests in 98.901s`, `OK`, Python exit 0.
+  P8-035 adds per-statistic warnings and explicit empty gate groups. Final input
+  proof and label checks are complete. Full replay starts after this checkpoint.
+
+- Final inputs-only verification, 2026-10-03: 540 latest-ten-session candidates,
+  403 pass / 137 fail, 505 execution records, all on temporary Praman/Desk copies.
+  Same historical 200: 158 pass / 42 fail. Full first/every-gate counts and exact
+  reasons updated in gate_diagnostics_round2.md/.json; prior audits retained.
+  All five label value comparisons rerun after identity recovery and still equal.
+- Live Desk now has 580 opportunity rows: 13 append records at 07:00 IST today
+  cite 2986e10, before this resumed review. Other row counts unchanged. Preserved;
+  no Python process present before the next suite. Provenance alone does not
+  establish which launcher wrote them.
+
 - P8-034 verification: full suite `Ran 610 tests in 180.088s`, `OK`, exit 0.
   Recovery retained 32 previously missing identities and corrected 51 current
   ISIN conflicts; detailed before/after values are in the recovery JSON. Next:

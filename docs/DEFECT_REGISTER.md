@@ -1348,6 +1348,17 @@ audit and dated preregistration addendum. Replay refuses unresolved/fund events.
 recovery; no catalogue event was removed. A regression test combines a missing
 historical snapshot, retained delisted identity and reused-symbol conflict.
 
+## P8-035 - replay warnings needed statistic-specific denominators
+
+**Root cause.** Pre-run report review found small-sample warnings used the whole
+group count, which could conceal sparse valid observations for a particular
+metric. Gates with zero rejected candidates were omitted from the tables.
+**Fix.** Record valid-event and date-cluster counts and warnings per statistic;
+include every G1-G6 group even when empty, with unavailable comparisons. Group
+missing ATR-plan reasons consistently. No outcome definition or threshold changed.
+**Verification.** The paired-cluster test asserts per-statistic sample warnings
+and an explicit empty G3 group. This repair precedes the full replay.
+
 ## P8-029 - diagnostic sampler assumed every year had 29 catalogue events
 
 **Root cause.** The first draft of this review's sampler requested 29 events from

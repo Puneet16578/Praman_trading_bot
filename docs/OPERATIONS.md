@@ -280,7 +280,18 @@ inside a savepoint. Real desk migration: **0 rows before, 0 after**. Existing ro
 are never backfilled with a guessed build timestamp. The migration also runs
 idempotently when opening a Desk database. Tests cover a populated legacy table.
 
-## Test-only timezone dependency - 2026-10-02
+## ISIN history retention repair - 2026-10-03
+
+P8-034: a recent build timestamp did not establish complete identity coverage.
+Refresh now retains the existing map as fallback when historical downloads fail,
+and merges dated historical observations before today's observations. Recovery
+from NSE snapshots restored 32 missing identities and corrected 51 current ISIN
+conflicts. All 70,638 catalogue events resolve to non-fund ISINs. The dated audit
+and hashes are in docs/desk/isin_recovery_round2.json. Original map and companion
+were preserved in scratch/isin_before_recovery*.json; durable stores and backups
+were not changed by this repair.
+
+## Test-only timezone dependency (verification)
 
 There are no pytz imports or references in desk/ or src/. Production Desk time
 uses shared.market_time. pytz 2026.4 is installed in the test environment alongside

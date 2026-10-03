@@ -76,6 +76,7 @@ def reason_key(gate, reason):
         ('under ASM', 'ASM'), ('under GSM', 'GSM'), ('Order is', 'order_ADV_cap'),
         ('Exiting under stressed', 'stressed_exit_cap'), ('No candidate order', 'no_plan'),
         ('Average daily turnover', 'ADV_unknown'), ('No candidate trade', 'no_plan'),
+        ('No thesis supplied', 'no_plan'),
         ('open-risk budget', 'open_risk_cap'), ('per-stock cap', 'stock_cap'),
         ('per-sector cap', 'sector_cap'),
     )
@@ -115,7 +116,8 @@ def summarize(rows):
     for row in rows:
         for group in groups_for(row):
             by_group[group].append(row)
-    by_group.setdefault('SCREEN_PASS', [])
+    for name in ('SCREEN_PASS', 'SCREEN_FAIL', 'G1', 'G2', 'G3', 'G4', 'G5', 'G6'):
+        by_group.setdefault(name, [])
     output, boot = {}, {}
     for name in sorted(by_group, key=lambda n: (n != 'SCREEN_PASS', n)):
         group = by_group[name]
@@ -153,7 +155,10 @@ def summarize(rows):
             draws_n = weights @ counts
             draws = np.divide(weights @ sums, draws_n, out=np.full(REPLICATES, np.nan), where=draws_n>0)
             boot[name][metric] = draws
-            stat = dict(estimate=estimate, n_events=n, denominator=denominator, missing_events=len(group)-n, **percentile(draws))
+            metric_dates = int(np.count_nonzero(counts))
+            stat = dict(estimate=estimate, n_events=n, date_clusters=metric_dates,
+                        small_sample_warning=n<30 or metric_dates<10,
+                        denominator=denominator, missing_events=len(group)-n, **percentile(draws))
             if name != 'SCREEN_PASS':
                 base = output['SCREEN_PASS']['metrics'][metric]['estimate']
                 stat['difference_vs_pass'] = dict(estimate=estimate-base if estimate is not None and base is not None else None,

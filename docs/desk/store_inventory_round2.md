@@ -2,6 +2,20 @@
 
 Backup archives were copied to a temporary directory before opening. SQLite copies were opened with mode=ro. Original backups remain untouched.
 
+## Resumed verification - 2026-10-03
+
+The store still exists. Created IST: 2026-10-01T12:32:14.024530+05:30;
+modified IST: 2026-10-03T07:00:45.809165+05:30. Current counts:
+decisions 0, theses 0, paper_trade_events 0, journal_events 0, opportunities 0,
+monitor_runs 0, circuit_bands 3574, opportunity_log 580,
+opportunity_executions 545, sqlite_sequence 3.
+
+Thirteen opportunity rows were appended at 07:00 IST on 3 October under commit
+2986e108a492286c533796b4e10a89cba6b43643, before the resumed review. Their launcher
+is not established solely by row provenance. They remain untouched. No Python
+process was present at the resumed process checks. The original inventory below
+is retained; no backup was changed or restored.
+
 ## Current Desk store
 
 Exists: True. Created / modified (IST): 2026-10-01T12:32:14.024530+05:30 / 2026-10-01T22:01:14.379699+05:30

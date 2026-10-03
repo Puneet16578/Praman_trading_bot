@@ -123,6 +123,9 @@ class ShadowAnalysisTest(unittest.TestCase):
         result = summarize(rows)
         stat = result['SCREEN_FAIL']['metrics']['signed_return_90d']
         self.assertEqual(stat['n_events'],3)
+        self.assertEqual(stat['date_clusters'],3)
+        self.assertTrue(stat['small_sample_warning'])
+        self.assertEqual(result['G3']['n'],0)
         self.assertAlmostEqual(stat['difference_vs_pass']['estimate'],.2)
         for bound in stat['difference_vs_pass']['interval95']:
             self.assertAlmostEqual(bound,.2)
