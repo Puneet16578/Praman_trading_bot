@@ -1,5 +1,37 @@
 # Handoff
 
+## Completed historical replay - 2026-10-03
+
+- Resumed from `67df697`. Initial full suite: 610 tests in 163.817s, OK,
+  Python exit 0. Existing SQLite ResourceWarnings remain.
+- Preserved the interrupted 17,523-record raw artifact as
+  `data/processed/desk_shadow_replay_round2.interrupted_20261003_17523.jsonl`.
+  No other Python or Claude process was present at the initial process check.
+- Full foreground replay completed with exit 0: 70,362 events in 4264.5s,
+  followed by all four registered bootstrap summaries. Primary period: 60,694
+  candidates / 60,498 fills. Descriptive 2026: 9,668 candidates / 9,632 fills.
+- Reports: `docs/desk/shadow_replay_results.md` and `.json`; readable findings
+  and limitations: `docs/desk/shadow_replay_summary.md`.
+- Verified all ordered event identities against the eligible catalogue, all 47
+  source hashes, raw SHA-256, 640 group/statistic denominators and estimates,
+  and exact generated Markdown. All 276 out-of-period events were excluded.
+- Primary >=20% adverse-move rate: PASS 10.00%, FAIL 16.01%; difference +6.01
+  percentage points, cluster-bootstrap 95% interval +5.11 to +6.89. Entry-only
+  gap-through reverses direction. Circuit-band coverage is zero. Fill-time caps
+  were breached by 25,105/45,700 filled primary PASS plans. No readiness or
+  independent predictive-edge claim follows from these observational results.
+- Source code, gates, thresholds, frozen preregistration and pinned pipeline were
+  unchanged. The pre-existing risk-test blank line and untracked scratch folder
+  remain outside this work. No trades or decisions were created.
+- Post-run live Praman and Desk watermarks match the replay snapshots. Desk still
+  has 580 opportunity rows, 545 execution rows, and zero decisions, theses,
+  paper-trade events or journal events. The only diff-check warning is the
+  pre-existing risk-test blank line; this session's documentation passes.
+- Final session suite: 610 tests in 213.686s, OK, Python exit 0. Full output:
+  `logs/shadow_replay_final_tests_20261003.log` (local, ignored).
+- Historical replay is complete. Remaining policy changes or new research require
+  a new user task; do not tune gates from these results.
+
 ## Round 2 review - 2026-10-01
 
 - Final pre-replay suite: `Ran 610 tests in 98.901s`, `OK`, Python exit 0.
