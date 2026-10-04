@@ -90,6 +90,9 @@ That daily universe table is not part of Phase A.
 13. Drift and edge monitoring.
 14. Paper cockpit, then constrained live use; execution integration last, if ever.
 
+The trading blueprint's phases T0-T10 are mapped onto these steps, with the user-approved
+amendments and the open constitution conflicts, in `docs/desk/TRADING_BLUEPRINT.md`.
+
 ## Excluded
 
 Return-prediction fine-tuning, reinforcement learning for trading, autonomous order placement,

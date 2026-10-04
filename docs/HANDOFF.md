@@ -80,6 +80,13 @@
   Part A complete; Part B (blueprint, automation framework, decision contract,
   Strategy 0 sealed paper engine, daily brief) starts next. Part A final
   suite: 648 tests in 272.586s, OK, exit 0 (logs/part_a_final_suite_20261004.log).
+- B1: docs/desk/TRADING_BLUEPRINT.md extracted from the blueprint PDF (SHA-256
+  92e91128...) with pdfplumber via scripts/extract_trading_blueprint.py
+  (regenerates only the text above the amendments marker). Appended the five
+  user-approved Praman amendments, the T0-T10 to DESIGN.md build-order mapping,
+  and OPEN constitution conflicts needing a user decision before T3 (DESIGN.md
+  3/5 vs model probabilities; 9/Excluded vs A3-A4; state vocabularies). DESIGN.md
+  gains only a pointer. Suite: 651 tests in 400.626s, OK.
 
 ## 2026-10-04 G6 repair checkpoint
 
