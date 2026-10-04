@@ -17,6 +17,23 @@ def read(name):
     return json.loads((ROOT/'docs/desk'/name).read_text(encoding='utf-8'))
 
 
+def flip_attribution(x,y,rb,costs):
+    """Gates whose result changed and caps over limit at each record's own quantity."""
+    gates=sorted(g for g in set(x['gates'])|set(y['gates'])
+                 if x['gates'].get(g,{}).get('result')!=y['gates'].get(g,{}).get('result'))
+    def over(row):
+        try:
+            measures=cap_measurements(row['plan'],row['plan']['decision_price'],row['plan']['quantity'],rb,costs)
+        except ValueError as exc:
+            return ['unmeasurable: '+str(exc)]
+        return sorted(cap for cap,v in measures.items() if v['usage']>v['cap'])
+    return dict(symbol=x['symbol'],event_date=x['event_date'],direction=x['state']+' -> '+y['state'],
+                old_quantity=x['plan']['quantity'],new_quantity=y['plan']['quantity'],changed_gates=gates,
+                old_caps_over=over(x),new_caps_over=over(y),
+                old_reasons={g:x['gates'][g].get('reasons',[]) for g in gates},
+                new_reasons={g:y['gates'][g].get('reasons',[]) for g in gates})
+
+
 def main():
     old,new=read('shadow_replay_results_pre_g6.json'),read('shadow_replay_results.json')
     oldf,newf=read('shadow_replay_followup_results_pre_g6.json'),read('shadow_replay_followup_results.json')
@@ -32,7 +49,8 @@ def main():
         raise AssertionError('Raw artifact hash mismatch.')
     audit={name:dict(transitions=Counter(),quantity_changes=0,old_decision_caps=Counter(),
         new_decision_caps=Counter(),old_filled_decision_caps=Counter(),new_filled_decision_caps=Counter(),
-        corrected_passes=0,unchanged_labels=0,unchanged_adverse20=0) for name,_,_ in PERIODS}
+        corrected_passes=0,unchanged_labels=0,unchanged_adverse20=0,quantity_decreases=0,quantity_increases=0,
+        flip_causes=Counter(),flips=[]) for name,_,_ in PERIODS}
     from itertools import zip_longest
     with paths[0].open(encoding='utf-8') as a,paths[1].open(encoding='utf-8') as b:
         for left,right in zip_longest(a,b):
@@ -46,6 +64,14 @@ def main():
             out=audit[name]
             out['transitions'][x['state']+' -> '+y['state']]+=1
             out['quantity_changes']+=x['plan']['quantity']!=y['plan']['quantity']
+            out['quantity_decreases']+=y['plan']['quantity']<x['plan']['quantity']
+            out['quantity_increases']+=y['plan']['quantity']>x['plan']['quantity']
+            if x['state']!=y['state']:
+                flip=flip_attribution(x,y,rb,costs)
+                out['flips'].append(flip)
+                out['flip_causes'][f"{flip['direction']}; gates {'+'.join(flip['changed_gates'])}; "
+                                   f"caps over at old quantity {'+'.join(flip['old_caps_over']) or 'none'}; "
+                                   f"at new quantity {'+'.join(flip['new_caps_over']) or 'none'}"]+=1
             for key in ('label','adverse20'):
                 if x[key]!=y[key]:
                     raise AssertionError('Unaffected event outcome changed: '+key)
@@ -81,7 +107,16 @@ def main():
         lines += [f'## {name}: decision-cap audit','',
             f"State transitions: `{dict(a['transitions'])}`. Quantity changes: {a['quantity_changes']}. "
             f"Corrected passes checked: {a['corrected_passes']}. Unchanged full labels/adverse20: "
-            f"{a['unchanged_labels']} / {a['unchanged_adverse20']}.",'',
+            f"{a['unchanged_labels']} / {a['unchanged_adverse20']}. Quantity decreases / increases: "
+            f"{a['quantity_decreases']} / {a['quantity_increases']}.",'',
+            f"Net SCREEN_PASS change: {a['transitions']['SCREEN_FAIL -> SCREEN_PASS']-a['transitions']['SCREEN_PASS -> SCREEN_FAIL']:+d} "
+            f"({a['transitions']['SCREEN_FAIL -> SCREEN_PASS']} FAIL->PASS, {a['transitions']['SCREEN_PASS -> SCREEN_FAIL']} PASS->FAIL). "
+            'Each flip is attributed by the gates whose result changed and the caps over limit at the '
+            "record's own frozen quantity (per-event detail in the JSON companion):",'',
+            '| Flip cause | Events |','|---|---:|']
+        for cause,count in sorted(a['flip_causes'].items()):
+            lines.append(f'| {cause} | {count} |')
+        lines += ['',
             '| Cap | Old all passes | Old filled passes | New all passes | New filled passes |',
             '|---|---:|---:|---:|---:|']
         for cap in CAPS:
