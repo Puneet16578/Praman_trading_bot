@@ -1,0 +1,1720 @@
+{
+  "audit": {
+    "Primary 2019-2025": {
+      "transitions": {
+        "SCREEN_FAIL -> SCREEN_FAIL": 14924,
+        "SCREEN_PASS -> SCREEN_PASS": 45707,
+        "SCREEN_FAIL -> SCREEN_PASS": 63
+      },
+      "quantity_changes": 21782,
+      "old_decision_caps": {
+        "per_trade": 12695
+      },
+      "new_decision_caps": {},
+      "old_filled_decision_caps": {
+        "per_trade": 12693
+      },
+      "new_filled_decision_caps": {},
+      "corrected_passes": 45770,
+      "unchanged_labels": 60694,
+      "unchanged_adverse20": 60694,
+      "quantity_decreases": 21782,
+      "quantity_increases": 0,
+      "flip_causes": {
+        "SCREEN_FAIL -> SCREEN_PASS; gates G5; caps over at old quantity order_adv+per_trade; at new quantity none": 63
+      },
+      "flips": [
+        {
+          "symbol": "A2ZINFRA",
+          "event_date": "2022-11-04",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 3968,
+          "new_quantity": 3881,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.00% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "AERONEU",
+          "event_date": "2025-12-12",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 457,
+          "new_quantity": 448,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "AGRITECH",
+          "event_date": "2022-12-28",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 279,
+          "new_quantity": 275,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "AGRITECH",
+          "event_date": "2024-03-27",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 192,
+          "new_quantity": 188,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.02% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "ALPA",
+          "event_date": "2022-12-05",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 676,
+          "new_quantity": 662,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.02% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "ALPHAGEO",
+          "event_date": "2020-02-10",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 158,
+          "new_quantity": 155,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.00% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "AMBICAAGAR",
+          "event_date": "2023-06-16",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 1069,
+          "new_quantity": 1047,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.02% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "APOLLOPIPE",
+          "event_date": "2020-02-10",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 98,
+          "new_quantity": 97,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.00% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "ARCHIDPLY",
+          "event_date": "2021-01-01",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 980,
+          "new_quantity": 960,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.02% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "ARCHIES",
+          "event_date": "2022-02-07",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 1531,
+          "new_quantity": 1503,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.02% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "BANARBEADS",
+          "event_date": "2024-02-06",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 436,
+          "new_quantity": 426,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.00% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "BANARBEADS",
+          "event_date": "2025-09-29",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 271,
+          "new_quantity": 266,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "BEDMUTHA",
+          "event_date": "2023-07-26",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 492,
+          "new_quantity": 483,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.00% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "BIRLAMONEY",
+          "event_date": "2020-01-13",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 1221,
+          "new_quantity": 1192,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.02% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "BSHSL",
+          "event_date": "2024-11-29",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 279,
+          "new_quantity": 272,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.02% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "BYKE",
+          "event_date": "2021-10-07",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 1046,
+          "new_quantity": 1025,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.02% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "CAREERP",
+          "event_date": "2020-02-19",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 341,
+          "new_quantity": 333,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.02% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "CELEBRITY",
+          "event_date": "2022-09-05",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 1386,
+          "new_quantity": 1363,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "CINELINE",
+          "event_date": "2020-10-01",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 1422,
+          "new_quantity": 1392,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "DEEPIND",
+          "event_date": "2020-01-17",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 406,
+          "new_quantity": 398,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.00% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "DIAMINESQ",
+          "event_date": "2025-04-16",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 121,
+          "new_quantity": 118,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.02% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "EMAMIREAL",
+          "event_date": "2023-04-11",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 643,
+          "new_quantity": 629,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "GEECEE",
+          "event_date": "2025-05-22",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 120,
+          "new_quantity": 118,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "GOLDTECH",
+          "event_date": "2025-12-10",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 761,
+          "new_quantity": 748,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "IFCI",
+          "event_date": "2022-12-23",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 2475,
+          "new_quantity": 2437,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.00% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "IVP",
+          "event_date": "2025-02-24",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 189,
+          "new_quantity": 186,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.02% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "JAGSNPHARM",
+          "event_date": "2020-10-08",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 958,
+          "new_quantity": 940,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.02% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "JOCIL",
+          "event_date": "2021-12-20",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 274,
+          "new_quantity": 268,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.02% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "KANPRPLA",
+          "event_date": "2022-04-04",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 280,
+          "new_quantity": 275,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "KMSUGAR",
+          "event_date": "2020-12-21",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 2762,
+          "new_quantity": 2718,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "KOPRAN",
+          "event_date": "2020-03-09",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 1418,
+          "new_quantity": 1396,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "KRITI",
+          "event_date": "2025-12-10",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 388,
+          "new_quantity": 382,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "MADHAV",
+          "event_date": "2021-05-11",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 801,
+          "new_quantity": 784,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.02% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "MAGNUM",
+          "event_date": "2022-11-07",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 1661,
+          "new_quantity": 1633,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "MANORG",
+          "event_date": "2024-04-23",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 123,
+          "new_quantity": 120,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.00% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "MRO-TEK",
+          "event_date": "2022-06-15",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 521,
+          "new_quantity": 512,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "MUKTAARTS",
+          "event_date": "2024-09-25",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 511,
+          "new_quantity": 498,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.00% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "NAHARINDUS",
+          "event_date": "2023-03-22",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 471,
+          "new_quantity": 461,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.00% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "NAHARPOLY",
+          "event_date": "2023-02-06",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 220,
+          "new_quantity": 215,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "NDLVENTURE",
+          "event_date": "2025-03-27",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 375,
+          "new_quantity": 371,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.00% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "NDLVENTURE",
+          "event_date": "2025-04-01",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 378,
+          "new_quantity": 374,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "NOIDATOLL",
+          "event_date": "2023-10-17",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 5102,
+          "new_quantity": 4996,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.02% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "OBCL",
+          "event_date": "2023-06-07",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 803,
+          "new_quantity": 794,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "ORIENTCER",
+          "event_date": "2025-12-08",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 933,
+          "new_quantity": 916,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.00% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "OSWALSEEDS",
+          "event_date": "2024-01-05",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 850,
+          "new_quantity": 830,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "PATELENG",
+          "event_date": "2020-11-18",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 4016,
+          "new_quantity": 3928,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.02% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "PPAP",
+          "event_date": "2025-10-15",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 163,
+          "new_quantity": 160,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "RACE",
+          "event_date": "2024-03-28",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 126,
+          "new_quantity": 123,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "RAMAPHO",
+          "event_date": "2025-04-15",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 397,
+          "new_quantity": 388,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.02% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "REVATHI",
+          "event_date": "2022-01-04",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 60,
+          "new_quantity": 58,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.03% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "SADBHAV",
+          "event_date": "2025-12-22",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 3142,
+          "new_quantity": 3075,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "SAKSOFT",
+          "event_date": "2020-06-26",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 194,
+          "new_quantity": 191,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "SALSTEEL",
+          "event_date": "2025-02-12",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 1383,
+          "new_quantity": 1362,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "SECURKLOUD",
+          "event_date": "2022-12-13",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 688,
+          "new_quantity": 673,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "SIGIND",
+          "event_date": "2022-01-25",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 687,
+          "new_quantity": 673,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.00% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "SILGO",
+          "event_date": "2025-02-03",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 917,
+          "new_quantity": 901,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.00% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "SMSPHARMA",
+          "event_date": "2020-03-12",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 802,
+          "new_quantity": 792,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "SONAMCLOCK",
+          "event_date": "2022-12-27",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 644,
+          "new_quantity": 633,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "TAKE",
+          "event_date": "2023-03-28",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 3267,
+          "new_quantity": 3201,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "TTML",
+          "event_date": "2020-10-19",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 11904,
+          "new_quantity": 11676,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.02% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "UNIVPHOTO",
+          "event_date": "2022-05-27",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 67,
+          "new_quantity": 66,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "VISHNU",
+          "event_date": "2020-08-06",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 261,
+          "new_quantity": 255,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.02% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "VISHWARAJ",
+          "event_date": "2021-02-12",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 289,
+          "new_quantity": 283,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        }
+      ]
+    },
+    "Descriptive 2026": {
+      "transitions": {
+        "SCREEN_PASS -> SCREEN_PASS": 7133,
+        "SCREEN_FAIL -> SCREEN_FAIL": 2526,
+        "SCREEN_FAIL -> SCREEN_PASS": 9
+      },
+      "quantity_changes": 3491,
+      "old_decision_caps": {
+        "per_trade": 1958
+      },
+      "new_decision_caps": {},
+      "old_filled_decision_caps": {
+        "per_trade": 1958
+      },
+      "new_filled_decision_caps": {},
+      "corrected_passes": 7142,
+      "unchanged_labels": 9668,
+      "unchanged_adverse20": 9668,
+      "quantity_decreases": 3491,
+      "quantity_increases": 0,
+      "flip_causes": {
+        "SCREEN_FAIL -> SCREEN_PASS; gates G5; caps over at old quantity order_adv+per_trade; at new quantity none": 8,
+        "SCREEN_FAIL -> SCREEN_PASS; gates G6; caps over at old quantity open_risk+per_trade; at new quantity none": 1
+      },
+      "flips": [
+        {
+          "symbol": "BELLACASA",
+          "event_date": "2026-01-22",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 133,
+          "new_quantity": 130,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.02% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "DHRUV",
+          "event_date": "2026-02-16",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 868,
+          "new_quantity": 858,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "FINKURVE",
+          "event_date": "2026-08-14",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 677,
+          "new_quantity": 661,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "KAYA",
+          "event_date": "2026-06-12",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 187,
+          "new_quantity": 182,
+          "changed_gates": [
+            "G6"
+          ],
+          "old_caps_over": [
+            "open_risk",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G6": [
+              "Adding this trade's stress loss (Rs 25,149) to open risk already used (Rs 0) would exceed the open-risk budget (Rs 25,000)."
+            ]
+          },
+          "new_reasons": {
+            "G6": []
+          }
+        },
+        {
+          "symbol": "NATCAPSUQ",
+          "event_date": "2026-08-27",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 198,
+          "new_quantity": 193,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.02% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "NOVAAGRI",
+          "event_date": "2026-02-12",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 1363,
+          "new_quantity": 1335,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.02% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "OSWALAGRO",
+          "event_date": "2026-03-30",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 915,
+          "new_quantity": 901,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "PRIMO",
+          "event_date": "2026-05-04",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 1748,
+          "new_quantity": 1710,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        },
+        {
+          "symbol": "SOMICONVEY",
+          "event_date": "2026-08-20",
+          "direction": "SCREEN_FAIL -> SCREEN_PASS",
+          "old_quantity": 482,
+          "new_quantity": 471,
+          "changed_gates": [
+            "G5"
+          ],
+          "old_caps_over": [
+            "order_adv",
+            "per_trade"
+          ],
+          "new_caps_over": [],
+          "old_reasons": {
+            "G5": [
+              "Order is 1.01% of average daily turnover, exceeding the 1.0% cap."
+            ]
+          },
+          "new_reasons": {
+            "G5": []
+          }
+        }
+      ]
+    }
+  },
+  "provenance": {
+    "code_commit": "ca56f799ca713e97be4877eba5ab6d594027b246",
+    "old_raw_sha256": "aa619d2e23f113c46e4b4df11307b18bc371837ed5d6bf7069a7d140204acb3d",
+    "new_raw_sha256": "9a71fcf32912a42e69ae207ee3c8ef47d7e84f72f11e00e012198938d6d299a3",
+    "preregistration_addendum_commit": "cb89f96",
+    "repair_commit": "7801550"
+  }
+}
