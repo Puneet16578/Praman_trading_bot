@@ -1375,6 +1375,17 @@ All 52,831 original filled PASS quantities in the two periods were checked for
 variant maximality and agreement with independent affine constraints. Full
 counts and conditional excess distributions are in the follow-up results.
 
+**Resolution, 2026-10-04.** Fixed in `7801550` after preregistration addenda
+`cb89f96`: whole-share sizing uses the same cost-inclusive `planned_loss_inr`
+as the gate, and G6 independently rejects any cost-inclusive per-trade excess.
+Verified by the complete corrected replay (`ed81160`, 70,362 events, decision
+cap assertion on every pass) and the old/new audit (`15024e9`): corrected
+decision-time breaches are zero for all six caps in both periods (old: 12,695
+primary / 1,958 descriptive per-trade); labels and adverse20 unchanged for
+every event; quantities only decreased. Net +72 passes, all FAIL->PASS (71 G5
+order-ADV, 1 G6 open-risk stress), because smaller quantities clear other
+caps. Status: **Fixed and verified.** At-fill breaches remain; see P8-043.
+
 ## P8-037 - rendering test confused provenance with a NaN value
 
 **Root cause.** The new empty-group report test searched for the substring `nan`
@@ -1659,3 +1670,18 @@ store connection) aborted the command after the decision row was already
 appended, so the operator would see a crash for an information-only field. The
 lookup now records UNKNOWN with the exception type and message; a test covers
 it. No durable store was written by the faulty draft outside temporary tests.
+
+## P8-043 - decision-price sizing still breaches the per-trade cap at the fill
+
+2026-10-04, Medium, OPEN (risk-control gap, not a code defect). With P8-038
+fixed, every pass satisfies the per-trade cap at its decision price, but the
+fill is the next session's price while quantity and stop stay frozen. In the
+corrected primary replay 30.38% of filled passes exceed the cost-inclusive
+per-trade cap at the next open (median excess 11.5%, p90 40.7% of cap).
+Follow-up 2's 0.5 x ATR20 limit reduces this to 27.47% (paired difference
+-2.91 pp [-3.14, -2.70]; p90 excess 24.1%). Impact: any automatic or manual
+paper entry that does not re-check the cap at the fill will routinely take
+more than the budgeted per-trade risk. No rule, gate or convention changed.
+Candidate mitigations, each needing its own preregistration before measurement:
+size against the limit price (bounds planned loss for any fill at or below the
+limit by construction), or re-check the cap at the fill and abstain.

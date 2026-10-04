@@ -75,7 +75,11 @@
   Review and recommendation (switch manual convention to the limit; NOT
   applied): docs/desk/shadow_replay_followup2_review.md. Untested stronger
   option (size against the limit price) needs its own preregistration.
-- Next: A5 closeout, then Part B.
+- A5: P8-038 resolution appended (fixed and verified); P8-043 opened for the
+  remaining at-fill per-trade breaches (30.38% baseline / 27.47% limit).
+  Part A complete; Part B (blueprint, automation framework, decision contract,
+  Strategy 0 sealed paper engine, daily brief) starts next. Part A final
+  suite: 648 tests in 272.586s, OK, exit 0 (logs/part_a_final_suite_20261004.log).
 
 ## 2026-10-04 G6 repair checkpoint
 
