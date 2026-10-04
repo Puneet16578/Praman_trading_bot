@@ -169,6 +169,9 @@ def g6_risk(planned_loss_inr: float | None, stress_loss_inr: float | None, open_
 
     capital = rulebook.risk.capital_allocated_inr
     reasons = []
+    max_per_trade = capital * rulebook.risk.risk_per_trade_pct / 100.0
+    if planned_loss_inr > max_per_trade:
+        reasons.append("Planned loss including both-side costs exceeds the per-trade risk cap.")
     max_open_risk = capital * rulebook.risk.max_open_risk_pct / 100.0
     if open_risk_used_inr + stress_loss_inr > max_open_risk:
         reasons.append(f"Adding this trade's stress loss (Rs {stress_loss_inr:,.0f}) to open risk already used "

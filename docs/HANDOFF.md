@@ -1,3 +1,16 @@
+## 2026-10-04 G6 repair checkpoint
+
+Cost-inclusive whole-share sizing and independent G6 per-trade cap enforcement
+implemented. Unknown quantitative gates no longer derive ELIGIBLE. All six caps
+checked in real SCREEN_PASS and ELIGIBLE regressions and asserted in the replay.
+Full suite: 629 tests, 292.674s, OK, Python exit 0; existing ResourceWarnings.
+Old reports copied to *_pre_g6; old raw retained at
+ data/processed/desk_shadow_replay_pre_g6.jsonl (same registered SHA-256).
+Prereg addenda/limit protocol cb89f96 precede this implementation. Corrected full
+replay/follow-up and remaining context/limit work are still pending. P8-039 logs
+new test quantity mismatch and repaired text encoding mistake. User's trailing
+blank line in test_desk_risk.py remains unstaged.
+
 ## 2026-10-04 current session: correction registered, work in progress
 
 Baseline: 626 tests passed in 135.834s (Python exit 0). One agent, foreground.

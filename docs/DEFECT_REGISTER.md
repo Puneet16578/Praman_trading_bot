@@ -6,7 +6,7 @@ honesty rule.
 
 | ID | Found | Severity | What it was | Status |
 |---|---|---|---|---|
-| P8-038 | 2026-10-04 registered follow-up | High | Original decision sizing ignores costs in the per-trade risk bound, and G6 does not enforce that bound including costs. | Open: quantified and reproduced; live policy unchanged during registered research |
+| P8-038 | 2026-10-04 registered follow-up | High | Original decision sizing ignores costs in the per-trade risk bound, and G6 does not enforce that bound including costs. | Repair implemented; regression and full replay verification pending |
 | P8-037 | 2026-10-04 follow-up synthetic tests | Low | New missing-value rendering test matched `nan` inside the word `provenance`. | Fixed: match the standalone NaN token; no analysis affected |
 | P8-036 | 2026-10-04 round-2 confirmation | Low | UTF-16 fragment in `.gitignore` made the scratch exclusion ineffective. | Fixed: UTF-8/LF rule; verified with `git check-ignore` |
 | P2-001 | Ph. 2 (NSE ingestion, pre-flight) | High | `jugaad_data.nse.full_bhavcopy_save()` reports success (no exception) even when NSE returns an HTTP error page instead of real bhavcopy data. | Fixed — mitigated at the store layer |
@@ -1607,3 +1607,23 @@ conversions. Run against the pre-fix code, 4 fail as expected. A first draft of 
 passed an IST-labelled datetime, which hid the bug (`.date()` already returned the IST date); it
 passed against the old code and was corrected to a UTC instant before commit. Full suite:
 `Ran 533 tests in 213.729s`, `OK` (Python exit code 0).
+
+### P8-038 correction work, 2026-10-04
+
+Both-side costs are required by the rulebook and correctly used by the follow-up.
+The sizing bound used gross stop distance and G6 lacked an independent per-trade
+check. Cost-inclusive integer sizing and a G6 check now repair both omissions.
+Unknown quantitative gates cannot derive ELIGIBLE. No rulebook or entry convention
+was changed. Earlier results are preserved as *_pre_g6; preregistration addenda
+and the next experiment were committed first at cb89f96. Real-data regression and
+full replay verification are pending; do not treat this entry as completed evidence.
+
+## P8-039 - regression quantity type and maintenance encoding errors
+
+2026-10-04, Low, fixed. The new real-assessment regression passed the engine's
+integral float quantity to cap_measurements, which requires an integer. Convert
+the assertion input to int. A follow-on documentation command omitted UTF-8 and
+first mangled existing punctuation and a subsequent read stopped on a decode
+error. Restore existing text from Git and reapply only intended additions with
+explicit UTF-8. Diff review confirmed the original punctuation is preserved.
+No historical run or production measurement was affected.

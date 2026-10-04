@@ -25,6 +25,7 @@ from desk.outcome_firewall import require_outcome_access
 from desk.research_snapshot import SnapshotQueries, memoized_snapshot_histories
 from desk.screening_plan import screen_event, execution_observation
 from desk.shadow_analysis import tails, summarize, SEED, REPLICATES
+from desk.shadow_followup import cap_measurements
 from desk.shadow_report import report_markdown
 from shared.sqlite_backup import online_backup
 from shared.sqlite_readonly import open_readonly
@@ -107,6 +108,10 @@ def main():
                         hist = None
                         last_symbol = symbol
                     plan, assessment = screen_event(cached, desk, symbol, day, rb.rulebook, costs.costs)
+                    if assessment.state == 'SCREEN_PASS':
+                        caps = cap_measurements(plan, plan['decision_price'], plan['quantity'], rb.rulebook, costs.costs)
+                        if any(v['usage'] > v['cap'] for v in caps.values()):
+                            raise AssertionError(f'Decision cap breach: {symbol} {day}')
                     if not args.screen_only_limit:
                         require_outcome_access(day)
                         if hist is None:

@@ -98,8 +98,6 @@ def execution_observation(conn, symbol, event_date, as_of, plan, rulebook, costs
                  (loss["locked_circuit_loss_inr"] or 0) * fill/decision)
     risk = g6_risk(planned, stress, 0, fill*quantity, fill*quantity, rulebook)
     result["cap_breach_reasons"].extend(risk.reasons)
-    if planned > rulebook.risk.capital_allocated_inr * rulebook.risk.risk_per_trade_pct / 100:
-        result["cap_breach_reasons"].append("Fill exceeds per-trade planned-risk cap.")
     liquidity = g5_liquidity(order_value_inr=fill*quantity, avg_daily_turnover_inr=plan["adv_turnover"], rulebook=rulebook)
     result["cap_breach_reasons"].extend(liquidity.reasons)
     return result

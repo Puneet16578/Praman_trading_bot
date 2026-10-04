@@ -215,8 +215,6 @@ def assert_original_flags(row, measures, rulebook, costs):
                    fill * plan['quantity'], fill * plan['quantity'], rulebook)
     liquidity = g5_liquidity(fill * plan['quantity'], plan['adv_turnover'], rulebook)
     reasons = list(risk.reasons)
-    if measures['per_trade']['usage'] > measures['per_trade']['cap']:
-        reasons.append('Fill exceeds per-trade planned-risk cap.')
     reasons += liquidity.reasons
     if set(reasons) != set(row['execution']['cap_breach_reasons']):
         raise ValueError('Original fill-cap reconstruction does not match frozen flags.')

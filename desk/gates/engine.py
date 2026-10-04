@@ -110,6 +110,8 @@ def _derive_state(gate_results: dict[str, GateResult], g7_override_reason: str |
         return VETO
     if gate_results["G8"].result == FAIL:
         return WATCH
+    if any(gate_results[g].result != PASS for g in ("G4", "G5", "G6")):
+        return WATCH
     return ELIGIBLE
 
 
@@ -151,7 +153,7 @@ def run_assessment(conn, desk_conn, *, symbol: str, as_of_date: str, sector: str
         capital_at_stock, capital_at_sector = ((0.0, 0.0) if screening else
             _capital_at_stock_and_sector(desk_conn, symbol, sector, symbol_to_sector))
 
-        position_size = compute_position_size(entry, stop, rulebook, open_risk_used, capital_at_stock, capital_at_sector)
+        position_size = compute_position_size(entry, stop, rulebook, open_risk_used, capital_at_stock, capital_at_sector, costs=costs)
 
         if position_size == 0:
             # Fix 1 (post-STOP-3 review): NSE trades in whole shares. compute_position_size already

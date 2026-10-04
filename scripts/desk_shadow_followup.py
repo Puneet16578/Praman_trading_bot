@@ -21,7 +21,7 @@ from desk.shadow_followup_report import report_markdown
 from shared.market_time import market_today
 
 BASE_COMMIT = '64ac2f13a3d419ce63b19b8c9c3b6e3e5b063af5'
-PREREG_COMMIT = 'bbd5268'
+PREREG_COMMIT = 'cb89f96'
 PREREG_PATH = 'docs/desk/shadow_replay_followup_prereg.md'
 SOURCE_PATHS = (PREREG_PATH, 'desk/shadow_followup.py', 'desk/shadow_followup_report.py',
                 'scripts/desk_shadow_followup.py', 'tests/test_shadow_followup.py')
@@ -58,7 +58,7 @@ def main():
     prereg = git('show', f'{PREREG_COMMIT}:{PREREG_PATH}')
     if (ROOT / PREREG_PATH).read_bytes().replace(b'\r\n', b'\n') != prereg:
         raise ValueError('The registered follow-up protocol has changed.')
-    base_bytes = git('show', f'{BASE_COMMIT}:docs/desk/shadow_replay_results.json')
+    base_bytes = (ROOT / 'docs/desk/shadow_replay_results.json').read_bytes()
     original = json.loads(base_bytes)
     original_provenance = original['provenance']
     raw = ROOT / original_provenance['raw_path']
@@ -82,7 +82,7 @@ def main():
     boundaries = quintile_boundaries(rows)
     result = dict(boundaries_pct=boundaries.tolist(), periods={}, provenance=dict(
         code_commit=git('rev-parse', 'HEAD').decode().strip(), preregistration_commit=git('rev-parse', PREREG_COMMIT).decode().strip(),
-        base_results_commit=BASE_COMMIT, run_date=market_today().isoformat(), seed=SEED,
+        base_results_commit=original_provenance['code_commit'], superseded_results_commit=BASE_COMMIT, run_date=market_today().isoformat(), seed=SEED,
         bootstrap_replicates=REPLICATES, decision_cap_fraction=HEADROOM,
         raw_sha256=raw_hash, base_results_git_blob_sha256=hashlib.sha256(base_bytes).hexdigest(),
         preregistration_sha256=hashlib.sha256(prereg).hexdigest(),

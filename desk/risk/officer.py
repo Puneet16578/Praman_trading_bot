@@ -141,18 +141,16 @@ def compute_stress_loss(conn, symbol: str, as_of_date: str, entry: float, stop: 
 
 def compute_position_size(entry: float, stop: float, rulebook: DeskRulebook,
                            open_risk_used_inr: float, capital_at_stock_inr: float,
-                           capital_at_sector_inr: float) -> float:
-    """Size = risk per trade / (entry - stop), then capped by whatever budget is left in the
-    open-risk, per-stock, and per-sector limits (never negative -- a fully-used budget caps size to
-    zero, it does not go negative and it is not the risk officer's job to say VETO; G6 does that).
+                           capital_at_sector_inr: float, *, costs: CostConfig | None = None) -> float:
+    """Largest whole-share size within capital and cost-inclusive planned-loss budgets.
 
-    Floored to a whole share AFTER every cap is applied (Fix 1, post-STOP-3 review) -- NSE equity
-    trades in whole shares, so a raw/capped size of e.g. 66.67 must become 66, never a number the
-    exchange itself would reject. Flooring only at the very end (not on each intermediate cap) means
-    every downstream consumer -- planned loss, stress loss, G5's order value, G6's capital-at-stock
-    addition -- automatically sees the same final integer quantity, with no separate rounding step
-    to keep in sync. If the floored result is 0 (a single share already exceeds the tightest cap),
-    the caller (desk/gates/engine.py) reports this as a G6 FAIL, not a silent size-zero PASS."""
+    Callers pass their recorded cost config. The optional default preserves the public
+    helper API and loads the active config; it never assumes zero fees. Stress and
+    liquidity remain independent gate checks after sizing.
+    """
+    if costs is None:
+        from ..lib.costs import load_active_cost_config
+        costs = load_active_cost_config().costs
     per_share_risk = abs(entry - stop)
     if per_share_risk <= 0:
         raise ValueError("entry and stop must differ -- cannot size a position with zero per-share risk.")
@@ -171,4 +169,12 @@ def compute_position_size(entry: float, stop: float, rulebook: DeskRulebook,
     size_from_sector_cap = sector_room / entry if entry > 0 else 0.0
 
     capped = max(0.0, min(raw_size, size_from_open_risk, size_from_stock_cap, size_from_sector_cap))
-    return float(math.floor(capped))
+    lo, hi = 0, math.floor(capped)
+    budget = min(risk_budget_inr, open_risk_room)
+    while lo < hi:
+        mid = (lo + hi + 1) // 2
+        if planned_loss_inr(entry, stop, mid, costs) <= budget:
+            lo = mid
+        else:
+            hi = mid - 1
+    return float(lo)
