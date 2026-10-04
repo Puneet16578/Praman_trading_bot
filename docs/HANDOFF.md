@@ -102,6 +102,16 @@
   pre-existing) -> OPEN_CRITICAL_DEFECT switch will trip (operational gate only).
   ACTIVE switched to v3 in a separate commit (loader refuses an uncommitted pointer).
   B2 suite (v2 still active): 665 tests in 97.359s, OK.
+- rulebook/ACTIVE -> desk_rulebook_v3.yaml committed alone; suite immediately
+  after: 665 tests in 113.495s, OK. Active: v3, automation_level A1.
+- B3: desk/decision_contract.py implements the blueprint candidate schema; every
+  field KNOWN (value + definition) or UNKNOWN (reason + supplying phase, never a
+  value). Later-phase fields (calibrated probability, interval, uncertainty, EV,
+  expected net return, expected loss if wrong, MAE/MFE, analogue count, market
+  and sector regime, forensic flags) are UNKNOWN. Blueprint-state rule: VETO on a
+  hard veto, NO_TRADE for insufficient/screen-fail, otherwise WATCH (nothing is
+  blueprint-ELIGIBLE before T4). `desk assess` appends a linked decision_contracts
+  row; failure is journalled, never aborts. B3 suite: 671 tests in 121.460s, OK.
 
 ## 2026-10-04 G6 repair checkpoint
 

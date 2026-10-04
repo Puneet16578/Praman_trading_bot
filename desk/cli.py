@@ -92,6 +92,21 @@ def cmd_assess(args):
         print(f"  circuit_band={band_as_of(desk_conn, args.symbol, as_of_date).label()}")
         print("  planned_stop_loss=N/A stress_loss=N/A locked_circuit_loss=N/A (no sized plan)")
 
+    # Blueprint candidate schema, appended after and linked to the decision; never a gate input.
+    from desk.decision_contract import assessment_contract, record_contract
+    try:
+        contract = assessment_contract(result, symbol=args.symbol, thesis=thesis,
+                                       rulebook_version=rulebook.version_file,
+                                       data_as_of=max_recorded_at(praman_conn), commit_hash=current_git_head())
+        record_contract(desk_conn, contract, decision_id=decision_id)
+        desk_conn.commit()
+        print(f"  contract: blueprint state {contract['state']['value']} "
+              f"({sum(v.get('status') == 'UNKNOWN' for v in contract.values() if isinstance(v, dict))} fields UNKNOWN)")
+    except Exception as exc:
+        jstore.record_journal_event(desk_conn, event_type="DECISION_CONTRACT_FAILED", decision_id=decision_id,
+                                    detail={"error": f"{type(exc).__name__}: {exc}"})
+        print(f"  contract: NOT recorded ({type(exc).__name__}: {exc})", file=sys.stderr)
+
     # Information only: appended after the decision, linked to it, never a gate input.
     context = assessment_context(praman_conn, args.symbol, as_of_date)
     record_context(desk_conn, context, symbol=args.symbol, decision_id=decision_id)
