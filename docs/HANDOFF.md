@@ -70,6 +70,14 @@
   the 0.80 ratio applies only where the per-trade budget binds; below ~5% ATR20 the
   10% per-stock position cap binds and the ratio is ~decision/limit (~0.98).
   Suite: 724 tests in 136.616s, OK.
+- Follow-up 3 RUN (bc46648, 7 s, frozen artifacts only): PASS. Primary: 0 per-trade
+  breaches at the fill in 44,442 fills (FU2 frozen size: 27.47%); fill rate 97.10%
+  (unchanged); mean quantity ratio 0.907, median 0.943 (bimodal: ~0.80 where the
+  per-trade budget binds, ~0.98 where the 10% stock cap binds); 1 abstention; p90
+  budget use at fill 95.8% vs 113.2%. 2026 descriptive agrees. Review
+  docs/desk/shadow_replay_followup3_review.md PROPOSES (not applied) Strategy 0 v2
+  (size at the limit price) and the matching manual sizing change; P8-043 stays
+  open until applied. Note: S0 v1 not yet registered in production.
 
 ## 2026-10-04 session end: Part A and Part B complete
 
