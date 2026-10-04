@@ -1,3 +1,31 @@
+## 2026-10-04 session end: Part A and Part B complete
+
+Commits this session (oldest first): 3743fd3, b3a8b22, 62bb1f6, ed81160, 4cdfca3,
+7da7af4, 6a57ce7, ca56f79, 15024e9, 47272e2, 08e6f58, 3372ca3 (Part A);
+aa17772 (B1), 0822c7e (B2), 31d4ac0 (ACTIVE->v3), 0cc95f8 (B3), af8da10 (B4),
+c65ac4f (B5), plus this handoff commit. Final suite: 691 tests in 106.442s, OK,
+exit 0 (logs/session_final_suite_20261004.log). Detailed notes follow below.
+
+Open items needing the user's decision (none blocks the nightly run):
+1. Strategy 0 fill-failure kill-switch threshold 3 is PROPOSED (registry, not
+   rulebook); approve or change (a change needs a new S0 version).
+2. DESIGN.md constitution 3/5 (no model probabilities/scores) conflicts with
+   blueprint T3-T4; decide before T3 (TRADING_BLUEPRINT.md amendments section).
+3. The S0 drawdown/losing-streak brake reads sealed P&L internally; a trip is a
+   visible one-bit disclosure. Keep, or exempt S0 from the brake.
+4. Recommendation (not applied): switch the manual paper convention to the
+   0.5 x ATR20 limit (docs/desk/shadow_replay_followup2_review.md).
+5. P8-043 (open, Medium): ~27-30% of fills breach the per-trade cap at the fill;
+   sizing against the limit price needs its own preregistration.
+6. Operational gate fails on pre-existing P8-007 (open High) and P8-021 (open,
+   unclassified severity); the OPEN_CRITICAL_DEFECT switch reports this.
+7. Open observation: one unexplained >10-minute suite run (see below).
+
+Safest next task: after the next nightly run, read logs/brief_<date>.txt,
+`desk status` and the new Desk tables to verify the first real S0 run
+(registration, candidates, kill-switch rows, contracts) on production; then
+preregister T1 (point-in-time market and sector context features).
+
 ## 2026-10-04 T0 closeout session (Claude, resumed after Codex usage limit)
 
 - Root verified as D:/Agentic_ai_project/praman. Corrected replay found still
