@@ -14,6 +14,14 @@ from tests.desk_fixtures import make_test_rulebook, make_test_costs, COMPLETE_AX
 
 
 class DecisionCapsTest(unittest.TestCase):
+    def test_unknown_quantitative_gate_cannot_be_eligible(self):
+        from desk.gates.checks import GateResult
+        from desk.gates.engine import _derive_state
+        for gate in ('G5', 'G6'):
+            results = {f'G{i}': GateResult(f'G{i}', 'PASS') for i in range(1, 9)}
+            results[gate] = GateResult(gate, 'UNKNOWN')
+            self.assertNotEqual(_derive_state(results, None), 'ELIGIBLE')
+
     def test_g6_independently_rejects_cost_inclusive_excess(self):
         rb, costs = make_test_rulebook(), make_test_costs()
         loss = planned_loss_inr(100, 90, 500, costs)
