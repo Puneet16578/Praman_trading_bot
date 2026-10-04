@@ -44,6 +44,26 @@
   scripts/desk_annotate_p8021.py. docs/OPERATIONS.md records the Amendment 2 sec. 5
   lapse as an operational deviation (recoverable by publication date). P8-021 stays
   OPEN until the first live refresh is verified. Suite: 736 tests in 350.179s, OK.
+- Production annotation (scripts/desk_annotate_p8021.py --until 2026-10-04T15:40:13Z,
+  the fix commit ee4900c): 580 opportunity_log rows annotated
+  INCOMPLETE_DISCLOSURE_EVIDENCE (453 with windows past the 2026-09-17 coverage); no
+  decisions or legacy opportunities exist; every pre-existing table count unchanged;
+  source_freshness empty until the first refresh. Until then any assessment dated after
+  2026-09-18 is INSUFFICIENT on disclosures, by design.
+
+Next nightly run (Monday 2026-10-05 18:00 IST) - verify afterwards:
+- announcements_recent: first refresh (~2,280 symbols from ~2026-09-10; runtime
+  unmeasured), a source_freshness row through 2026-10-05, refresh state COMPLETE, and
+  Sep/Oct per-symbol counts back to normal -> then close P8-021.
+- Strategy 0 v2's first run (2026-10-05 candidates, sized at the limit) and
+  logs/brief_2026-10-05.txt.
+- `desk backup verify`: row_counts must include all seven new tables (kill_switch_events,
+  trading_strategies, strategy_runs, strategy_paper_events, decision_contracts,
+  source_freshness, record_annotations).
+- Round-end full suite: 736 tests in 346.577s, OK, exit 0
+  (logs/evening_round_final_suite_20261004.log). Commits this round: e7d13c4 (CLAUDE.md),
+  b13cc7e (S0 v2 + manual limit sizing), 1d80e0e (P8-043 closed), 2877873 (structural
+  share-basis test), ee4900c (P8-021 additions), plus this handoff commit.
 
 ## 2026-10-04 (afternoon) round end: status of the seven decisions
 
