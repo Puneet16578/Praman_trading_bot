@@ -34,7 +34,9 @@ Idempotent and safe to re-run or run late, by design, inherited from each underl
   - bhavcopy (`scripts/ingest_bhavcopy_full_history.py`) skips every weekday already confirmed in
     the store before making a network call.
   - announcements (`scripts/ingest_announcements_full_history.py`) skips every symbol already
-    fetched.
+    fetched; it is a backfill, not a refresh. `announcements_recent`
+    (`scripts/ingest_announcements_recent.py`, P8-021) re-reads a bounded, overlapping recent window
+    for already-fetched equities weekly (Amendment 2 §5); duplicates are skipped by the table's key.
   - corporate actions (`src/ingestion/nse_market_data/corporate_actions.py`'s `fetch_recent`) is
     called over a deliberately overlapping trailing window (`CORPORATE_ACTIONS_LOOKBACK_DAYS`),
     safe for the same P4-009 duplicate-business-key reason as ASM/GSM below -- same tier logic
@@ -107,6 +109,11 @@ def step_bhavcopy() -> None:
 def step_announcements() -> None:
     from ingest_announcements_full_history import main as announcements_main
     announcements_main()
+
+
+def step_announcements_recent() -> None:
+    from ingest_announcements_recent import main as refresh_main
+    refresh_main()
 
 
 def step_isin_map() -> None:
@@ -293,6 +300,7 @@ STEPS = [
     ("bhavcopy", step_bhavcopy),
     ("announcements", step_announcements),
     ("isin_map", step_isin_map),
+    ("announcements_recent", step_announcements_recent),
     ("corporate_actions", step_corporate_actions),
     ("asm_gsm", step_asm_gsm),
     ("bhavcopy_today", step_bhavcopy_today),

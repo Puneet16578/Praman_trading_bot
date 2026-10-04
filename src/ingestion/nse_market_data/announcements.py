@@ -24,6 +24,11 @@ from ...bitemporal.store import write_facts
 
 NEAR_DUPLICATE_GAP = timedelta(hours=1)
 
+class AnnouncementFetchError(RuntimeError):
+    """A response that is not a usable announcement list. Raised, never returned as an empty list,
+    so a failed fetch cannot be mistaken for a genuinely empty history (P8-021)."""
+
+
 def fetch_symbol_announcements(session: requests.Session, symbol: str, from_date: date, to_date: date, timeout: float = 25.0) -> list[dict]:
     r = session.get(
         "https://www.nseindia.com/api/corporate-announcements",
@@ -31,9 +36,11 @@ def fetch_symbol_announcements(session: requests.Session, symbol: str, from_date
         timeout=timeout,
     )
     if r.status_code != 200:
-        return []
+        raise AnnouncementFetchError(f"HTTP {r.status_code} for {symbol}")
     data = r.json()
-    return data if isinstance(data, list) else []
+    if not isinstance(data, list):
+        raise AnnouncementFetchError(f"Unexpected {type(data).__name__} payload for {symbol}")
+    return data
 
 def build_announcement_rows(symbol: str, raw_announcements: list[dict], source_file: str) -> list[dict]:
     """Pure function: no I/O. One row per real announcement, `seq_id` as the natural per-symbol

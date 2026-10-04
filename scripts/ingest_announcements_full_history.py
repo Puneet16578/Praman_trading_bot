@@ -49,7 +49,8 @@ def main(end_date: date | None = None) -> None:
             total_raw += raw_count
         except Exception as exc:
             failed.append(symbol)
-            print(f"  FAILED {symbol}: {type(exc).__name__}: {exc}")
+            # "WARN " lines make weekly_ingest report this step WARN, not OK (P8-021).
+            print(f"WARN announcements backfill: FAILED {symbol}: {type(exc).__name__}: {exc}")
             continue
         if (i + 1) % 100 == 0:
             elapsed = time.time() - t0
@@ -61,7 +62,7 @@ def main(end_date: date | None = None) -> None:
     elapsed = time.time() - t0
     print(f"\nDone: {len(remaining) - len(failed)}/{len(remaining)} symbols fetched, {total_raw} new rows, {elapsed:.0f}s")
     if failed:
-        print(f"FAILED symbols ({len(failed)}): {failed}")
+        print(f"WARN announcements backfill: {len(failed)} symbols FAILED: {failed}")
 
     total_rows = conn.execute("SELECT COUNT(*) FROM corporate_announcements").fetchone()[0]
     total_symbols = len(already_fetched_symbols(conn))

@@ -39,6 +39,16 @@
   moves). desk/readiness.open_defects now honours an explicit closure marker
   (**CLOSED in the table row, or a "**Status.** Closed" line) so history is kept.
   Suite: 700 tests in 117.553s, OK.
+- Item 5b, P8-021 severity HIGH (measured: announcements essentially stopped after the
+  2026-09-18/19 backfill; Sep 8,847 rows, Oct 18; breaches the intent of Amendment 2
+  sec. 5 weekly ingestion; recoverable because knowledge_date = publication date and
+  duplicates are skipped). FIXED IN CODE: src fetch raises AnnouncementFetchError on
+  non-200/non-list (src change under the user's "fix" instruction); backfill
+  failures print WARN; new weekly nightly step announcements_recent
+  (scripts/ingest_announcements_recent.py) after isin_map. Status stays OPEN (High)
+  until the first nightly refresh is verified live; the operational gate fails on it
+  meanwhile. First live refresh: ~2,280 symbols, runtime unmeasured. Suite: 706
+  tests in 118.691s, OK.
 
 ## 2026-10-04 session end: Part A and Part B complete
 

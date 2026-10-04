@@ -1563,6 +1563,35 @@ exception handler in the script; `_run_capturing` in `scripts/weekly_ingest.py`.
 No claim about how many symbols failed in the active run can be made from these
 code paths alone. Re-verification remains pending a fix.
 
+**Triage, 2026-10-04 (user decision: give a severity, then fix or close).**
+**Severity.** High.
+Measured, read-only, in the production store: the backfill wrote ~1.02 million rows on
+2026-09-18/19, and every nightly run since added only a few hundred (881, 239, 187, 5 and 13
+rows), because the step skips every symbol with any stored row. Announcements by event month:
+2026-08 20,897 rows / 2,296 symbols; 2026-09 8,847 / 2,065; 2026-10 18 / 4. Disclosures after
+about 2026-09-18 are therefore missing for ~2,280 symbols. Impact: (1) Amendment 2 §5 of the
+frozen pre-registration commits to weekly announcement ingestion through 2027-01-15, explicitly
+not a single backfill; the forward window began 2026-09-16 and `disclosure_tier` is a binding
+input, so the commitment was silently not being met. (2) Every live Desk evidence bundle since
+then reads "no recent disclosure" as a fact when it is missing data. Not Critical because nothing
+stored is wrong and the gap is recoverable: `knowledge_date` is each announcement's own
+publication date and re-fetched rows are skipped by UNIQUE (symbol, seq_id, knowledge_date), so a
+late refresh restores point-in-time-correct rows.
+
+**Fix (code, 2026-10-04).** (1) `fetch_symbol_announcements` raises `AnnouncementFetchError` on a
+non-200 response or a non-list payload instead of returning `[]` (a deliberate `src/` change
+under the user's instruction to fix this defect). (2) The backfill prints its per-symbol failures
+and summary as `WARN ...` lines, so the nightly step reports WARN instead of OK. (3) New nightly
+step `announcements_recent` (`scripts/ingest_announcements_recent.py`), after `isin_map`: a
+weekly (Amendment 2 §5), bounded, overlapping re-read for active equities that already have
+rows, through the same fetch/row/write path as the backfill; marked complete only when no symbol
+failed, so failures are retried the next night. First live run expected to fetch ~2,280 symbols
+from about 2026-09-10; runtime unmeasured (the full backfill took ~87 minutes for 2,958 full
+histories). Tests: 8 new (mocked sessions and fixture stores; no network).
+**Status.** Open — fixed in code; live re-verification pending the first nightly refresh
+(expect 2026-09 and 2026-10 per-symbol announcement counts to return to the normal range and a
+COMPLETE refresh state). Close with that evidence.
+
 ## P8-020 — interrupted ingestion left no durable start or progress
 
 **Root cause.** `weekly_ingest.main()` captured all steps in memory and wrote its
