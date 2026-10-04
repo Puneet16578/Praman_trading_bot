@@ -1,3 +1,25 @@
+## 2026-10-04 (afternoon) user decisions on the seven open items
+
+- Start: root verified; no Python process running; working tree clean at 7dccc19.
+  Production data/desk/desk.sqlite unchanged since 2026-10-03 07:00 (no nightly
+  run since Part B): none of the five new tables exist yet and Strategy 0 has
+  never been registered in any durable store, so its v1 definition could still
+  be amended in code before first registration.
+- Items 1 and 3 (Strategy 0 rules, amended before first registration):
+  fill-failure threshold 3 APPROVED, counting OPERATIONAL failures only: missing
+  or unusable next-session data (ENTRY_FILL_FAILED failure=MISSING_DATA), an
+  engine error while settling an entry (caught, failure=ENGINE_ERROR, run
+  continues), and a crashed nightly run (journalled S0_RUN_FAILED by the nightly
+  wrapper, re-raised). An untouched limit (NO_FILL) is ATTEMPT_OK: never counted
+  and it ends a failure streak; a cancelled entry is NOT_ATTEMPTED (skipped).
+  P&L brakes (drawdown, losing streak) EXEMPT for S0 until 2027-06-01: not
+  evaluated, no P&L read (seal.brake_inputs now refuses sealed decisions like
+  every other reader); status/brief show EXEMPT. They apply from 2027-06-01 and
+  to any other strategy; manual trades keep the existing G7 brakes. Tests cover
+  both failure cases, engine and crashed-run errors, the exemption, and a
+  synthetic June 2027 run that exercises the brake end to end. Suite: 697 tests
+  in 133.469s, OK.
+
 ## 2026-10-04 session end: Part A and Part B complete
 
 Commits this session (oldest first): 3743fd3, b3a8b22, 62bb1f6, ed81160, 4cdfca3,

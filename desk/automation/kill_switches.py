@@ -7,8 +7,11 @@ reason. Nothing is ever updated or deleted.
 
 Effects, strongest first:
 - NO_NEW_TRADES: stale or inconsistent data, or risk state unavailable. Re-evaluated every run.
-- FREEZE_ENTRIES: drawdown or losing-streak brake; exits are still managed. Latched.
-- DISABLE_AUTO_ENTRIES: repeated paper-fill failures. Latched.
+- FREEZE_ENTRIES: drawdown or losing-streak brake; exits are still managed. Latched. Strategy 0
+  is EXEMPT until outcomes open (user decision 2026-10-04): evaluating it would read sealed P&L,
+  and even a visible freeze is information about the forward window. Its paper book protects no
+  real capital. Manual trades keep the G7 brakes; any other strategy gets this switch.
+- DISABLE_AUTO_ENTRIES: repeated OPERATIONAL fill failures (missing data, engine errors). Latched.
 - OPERATIONAL_GATE_FAIL: an open high-severity or critical defect (the readiness gate also fails).
 - REVERT_TO_PAPER_ONLY: calibration/edge degradation. Defined, INACTIVE until T4: it never trips.
 """
@@ -21,6 +24,7 @@ from desk.outcome_firewall import OUTCOMES_OPEN
 
 BLOCKS_ENTRIES = {'NO_NEW_TRADES', 'FREEZE_ENTRIES', 'DISABLE_AUTO_ENTRIES'}
 LATCHED = {'DRAWDOWN_OR_LOSING_STREAK', 'REPEATED_FILL_FAILURES'}
+P_AND_L_BRAKES = {'DRAWDOWN_OR_LOSING_STREAK'}   # the only switch that reads realized P&L
 
 SWITCHES = {
     'DATA_STALE_OR_INCONSISTENT': 'NO_NEW_TRADES',
@@ -97,16 +101,24 @@ def drawdown_or_streak(closed_pnl_by_exit_date, run_date, capital_inr, drawdown_
     return Trip('DRAWDOWN_OR_LOSING_STREAK', triggered, detail, sealed=sealed)
 
 
+OPERATIONAL_FAILURE, ATTEMPT_OK, NOT_ATTEMPTED = 'OPERATIONAL_FAILURE', 'ATTEMPT_OK', 'NOT_ATTEMPTED'
+
+
 def fill_failures(entry_outcomes, threshold):
-    """Disable automatic entries after `threshold` consecutive fill failures (unusable price data,
-    not an untouched limit). `entry_outcomes` lists entry event types in chronological order."""
+    """Disable automatic entries after `threshold` consecutive OPERATIONAL failures (user decision
+    2026-10-04): missing or unusable next-session data, or an engine error. `entry_outcomes` lists
+    classified outcomes in chronological order. A limit that is not reached is a normal NO_FILL:
+    the data were present and the engine worked, so it is ATTEMPT_OK, never a failure, and it ends
+    a failure streak exactly as a fill does. A cancelled entry was NOT_ATTEMPTED and is skipped."""
     run = 0
     for outcome in entry_outcomes:
-        if outcome == 'ENTRY_FILL_FAILED':
+        if outcome == OPERATIONAL_FAILURE:
             run += 1
-        elif outcome == 'ENTRY_FILLED':
+        elif outcome == ATTEMPT_OK:
             run = 0
-    return Trip('REPEATED_FILL_FAILURES', run >= threshold, dict(consecutive_failures=run, threshold=threshold))
+        elif outcome != NOT_ATTEMPTED:
+            raise ValueError(f'Unclassified entry outcome {outcome!r}.')
+    return Trip('REPEATED_FILL_FAILURES', run >= threshold, dict(consecutive_operational_failures=run, threshold=threshold))
 
 
 def open_critical_defect(high, unclassified):
@@ -176,14 +188,19 @@ def _append(conn, trip, state, scope, run_date):
                   int(trip.sealed), None, _now()))
 
 
-def display_lines(conn, scope, *, sealed_display=lambda row: bool(row['sealed'])):
+def display_lines(conn, scope, *, today=None, sealed_display=lambda row: bool(row['sealed'])):
     """Status lines for every defined switch; sealed detail is replaced, never shown early."""
+    from desk.automation.seal import pnl_brake_exemption
     states = latest_states(conn, scope)
+    exempt = pnl_brake_exemption(scope, today)
     lines = []
     for switch, effect in SWITCHES.items():
         row = states.get(switch)
         if switch in INACTIVE:
             lines.append(f'  {switch}: INACTIVE ({INACTIVE[switch]})')
+            continue
+        if switch in P_AND_L_BRAKES and exempt:
+            lines.append(f'  {switch}: EXEMPT ({exempt})')
             continue
         if row is None:
             lines.append(f'  {switch}: clear (never triggered)')

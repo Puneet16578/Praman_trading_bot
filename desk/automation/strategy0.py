@@ -143,14 +143,18 @@ def run(praman_conn, desk_conn, run_date, *, rulebook, costs, rulebook_file, rul
         ks.data_health(run_date, latest, today, isin_status or _isin_status(praman_conn, run_date),
                        [(c['symbol'], c['plan']) for c in candidates], STALE_AFTER_DAYS),
         ks.risk_state(holding_stress, budget),
-        ks.drawdown_or_streak(seal.brake_inputs(positions, _last_reset(desk_conn, 'DRAWDOWN_OR_LOSING_STREAK')), run_date,
-                              rulebook.risk.capital_allocated_inr, rulebook.risk.monthly_drawdown_brake_pct,
-                              rulebook.behavioural_brakes.consecutive_loss_brake_count, sealed=True),
         ks.fill_failures(_entry_outcomes_since(desk_conn, version, _last_reset(desk_conn, 'REPEATED_FILL_FAILURES')),
                          params['fill_failure_threshold']),
         ks.open_critical_defect(high, unclassified),
         ks.calibration_degradation(),
     ]
+    exemption = seal.pnl_brake_exemption(STRATEGY_ID, today)
+    if exemption is None:
+        # Only once outcomes are open: the brake reads realized P&L through the seal's checked path.
+        trips.append(ks.drawdown_or_streak(
+            seal.brake_inputs(positions, STRATEGY_ID, today, _last_reset(desk_conn, 'DRAWDOWN_OR_LOSING_STREAK')),
+            run_date, rulebook.risk.capital_allocated_inr, rulebook.risk.monthly_drawdown_brake_pct,
+            rulebook.behavioural_brakes.consecutive_loss_brake_count, sealed=False))
     active = ks.evaluate_and_log(desk_conn, trips, scope=STRATEGY_ID, run_date=run_date)
     blocking = sorted(s for s, on in active.items() if on and ks.SWITCHES[s] in ks.BLOCKS_ENTRIES)
     exiting = sorted(s for s, on in active.items() if on and ks.SWITCHES[s] == 'EXIT_POSITIONS')
@@ -158,7 +162,8 @@ def run(praman_conn, desk_conn, run_date, *, rulebook, costs, rulebook_file, rul
     ops = dict(run_date=run_date, candidates=len(candidates), accepted=0, rejected={}, entries_filled=0,
                entries_no_fill=0, entries_failed=0, entries_cancelled=0, cap_breaches_at_fill=0,
                monitored=0, missing_bars=0, kill_switches_active=sorted(s for s, on in active.items() if on),
-               entry_blocked_by=blocking, entry_policy=definition['entry']['policy'])
+               entry_blocked_by=blocking, entry_policy=definition['entry']['policy'],
+               exempt_switches={s: exemption for s in ks.P_AND_L_BRAKES} if exemption else {})
 
     # 2. Settle entry orders on the first session after their decision date.
     for pid, p in sorted(positions.items()):
@@ -173,33 +178,20 @@ def run(praman_conn, desk_conn, run_date, *, rulebook, costs, rulebook_file, rul
                                 session=day), position_id=pid), None))
             ops['entries_cancelled'] += 1
             continue
-        bar = session_bar(praman_conn, p['symbol'], day, run_date)
-        opening, low = (bar or {}).get('open_price'), (bar or {}).get('low_price')
-        if use_limit:
-            fill = limit_fill(dict(decision_price=acc['decision_price'], atr20=acc['atr20']), opening, low)
-        else:
-            usable = _finite(opening) and opening > 0
-            fill = dict(limit=None, fill=opening if usable else None, status='FILL_OPEN' if usable else 'UNKNOWN',
-                        reason='' if usable else 'Opening price unavailable')
-        evidence = dict(session=day, open=opening, low=low, series=(bar or {}).get('series'),
-                        knowledge_date=(bar or {}).get('knowledge_date'), row_id=(bar or {}).get('row_id'),
-                        limit=fill['limit'], status=fill['status'], reason=fill['reason'])
-        if fill['fill'] is not None:
-            price, qty = fill['fill'], acc['quantity']
-            loss = planned_loss_inr(price, min(acc['stop_level'], price), qty, costs)
-            breach = loss > per_trade
+        try:
+            event = _settle_entry(praman_conn, p, pid, acc, day, run_date, use_limit, costs, per_trade)
+        except Exception as exc:  # an engine error is an operational failure, never a crash of the whole run
+            event = _event('ENTRY_FILL_FAILED', p, day, dict(session=day, failure='ENGINE_ERROR',
+                           error_type=type(exc).__name__, reason='Engine error while settling the entry.'),
+                           position_id=pid)
+        if event['event_type'] == 'ENTRY_FILLED':
             ops['entries_filled'] += 1
-            ops['cap_breaches_at_fill'] += breach
-            plan.events.append((_event('ENTRY_FILLED', p, day, evidence | dict(
-                price=price, quantity=qty, buy_cost_inr=round_trip_cost_inr(price, qty, costs, 'buy'),
-                planned_loss_at_fill_inr=loss, per_trade_cap_inr=per_trade, per_trade_cap_breach_at_fill=breach),
-                position_id=pid), None))
-        elif fill['status'] == 'NO_FILL':
+            ops['cap_breaches_at_fill'] += event['detail']['per_trade_cap_breach_at_fill']
+        elif event['event_type'] == 'ENTRY_NO_FILL':
             ops['entries_no_fill'] += 1
-            plan.events.append((_event('ENTRY_NO_FILL', p, day, evidence, position_id=pid), None))
         else:
             ops['entries_failed'] += 1
-            plan.events.append((_event('ENTRY_FILL_FAILED', p, day, evidence, position_id=pid), None))
+        plan.events.append((event, None))
 
     # 3. Monitor positions filled before today; settle exit orders.
     for pid, p in sorted(positions.items()):
@@ -299,6 +291,32 @@ def run(praman_conn, desk_conn, run_date, *, rulebook, costs, rulebook_file, rul
     return ops
 
 
+def _settle_entry(praman_conn, p, pid, acc, day, run_date, use_limit, costs, per_trade):
+    """One entry attempt on its single eligible session. Missing or unusable data is an operational
+    failure (MISSING_DATA); an untouched limit is a normal NO_FILL."""
+    bar = session_bar(praman_conn, p['symbol'], day, run_date)
+    opening, low = (bar or {}).get('open_price'), (bar or {}).get('low_price')
+    if use_limit:
+        fill = limit_fill(dict(decision_price=acc['decision_price'], atr20=acc['atr20']), opening, low)
+    else:
+        usable = _finite(opening) and opening > 0
+        fill = dict(limit=None, fill=opening if usable else None, status='FILL_OPEN' if usable else 'UNKNOWN',
+                    reason='' if usable else 'Opening price unavailable')
+    evidence = dict(session=day, open=opening, low=low, series=(bar or {}).get('series'),
+                    knowledge_date=(bar or {}).get('knowledge_date'), row_id=(bar or {}).get('row_id'),
+                    limit=fill['limit'], status=fill['status'], reason=fill['reason'])
+    if fill['fill'] is not None:
+        price, qty = fill['fill'], acc['quantity']
+        loss = planned_loss_inr(price, min(acc['stop_level'], price), qty, costs)
+        return _event('ENTRY_FILLED', p, day, evidence | dict(
+            price=price, quantity=qty, buy_cost_inr=round_trip_cost_inr(price, qty, costs, 'buy'),
+            planned_loss_at_fill_inr=loss, per_trade_cap_inr=per_trade, per_trade_cap_breach_at_fill=loss > per_trade),
+            position_id=pid)
+    if fill['status'] == 'NO_FILL':
+        return _event('ENTRY_NO_FILL', p, day, evidence, position_id=pid)
+    return _event('ENTRY_FILL_FAILED', p, day, evidence | dict(failure='MISSING_DATA'), position_id=pid)
+
+
 def _quantity_now(conn, p, day):
     try:
         return p['entry']['quantity'] * compute_adjustment_factor(conn, p['symbol'], p['entry']['event_date'], day)
@@ -312,11 +330,32 @@ def _valid_plan(plan):
             and isinstance(plan.get('quantity'), int) and plan['quantity'] > 0 and _finite(stress) and stress >= 0)
 
 
+RUN_FAILED_EVENT = 'S0_RUN_FAILED'
+
+
+def classify_entry(event_type, detail):
+    """Operational classification for the fill-failure switch (user decision 2026-10-04)."""
+    if event_type == 'ENTRY_FILL_FAILED':
+        return ks.OPERATIONAL_FAILURE
+    if event_type == 'ENTRY_FILLED':
+        return ks.ATTEMPT_OK
+    if event_type == 'ENTRY_NO_FILL':
+        return ks.NOT_ATTEMPTED if str(detail.get('reason', '')).startswith('CANCELLED') else ks.ATTEMPT_OK
+    raise ValueError(f'{event_type} is not an entry outcome.')
+
+
 def _entry_outcomes_since(conn, version, since):
-    rows = conn.execute("SELECT event_type, recorded_at FROM strategy_paper_events WHERE strategy_id=? AND strategy_version=? "
-                        "AND event_type IN ('ENTRY_FILLED','ENTRY_FILL_FAILED','ENTRY_NO_FILL') ORDER BY event_id",
-                        (STRATEGY_ID, version)).fetchall()
-    return [r[0] for r in rows if since is None or r[1] > since]
+    """Entry outcomes and whole-run engine failures (journalled by the nightly wrapper), in the order
+    they were recorded, after the latest human reset."""
+    rows = [(r['recorded_at'], classify_entry(r['event_type'], json.loads(r['detail'])))
+            for r in conn.execute("SELECT event_type, detail, recorded_at FROM strategy_paper_events WHERE strategy_id=? "
+                                  "AND strategy_version=? AND event_type IN ('ENTRY_FILLED','ENTRY_FILL_FAILED','ENTRY_NO_FILL') "
+                                  'ORDER BY event_id', (STRATEGY_ID, version))]
+    rows += [(r['recorded_at'], ks.OPERATIONAL_FAILURE)
+             for r in conn.execute('SELECT recorded_at FROM journal_events WHERE event_type=? ORDER BY journal_event_id',
+                                   (RUN_FAILED_EVENT,))]
+    rows.sort(key=lambda r: r[0])
+    return [outcome for recorded, outcome in rows if since is None or recorded > since]
 
 
 def _contract(c, reasons, definition, rulebook_file, watermark, commit, stress):

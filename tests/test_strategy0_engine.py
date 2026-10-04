@@ -210,27 +210,93 @@ class EngineTest(EngineFixture):
         self.assertIn('OPEN_CRITICAL_DEFECT', ops['kill_switches_active'])
         self.assertEqual(ops['accepted'], 1)
 
-    def test_drawdown_brake_freezes_entries_with_sealed_detail(self):
-        self.store.market(DAYS[0])
+    def _two_large_losses_then_candidate(self, days):
+        self.store.market(days[0])
         for s in ('AAA', 'BBB'):
-            opportunity(self.desk, s, DAYS[0], plan(qty=2000, stress=12000))
-        self.run_day(DAYS[0])
-        self.store.market(DAYS[1])
+            opportunity(self.desk, s, days[0], plan(qty=2000, stress=12000))
+        self.run_day(days[0])
+        self.store.market(days[1])
         for s in ('AAA', 'BBB'):
-            self.store.bar(s, DAYS[1], 100, 101, 99, 100)
-        self.run_day(DAYS[1])
-        self.store.market(DAYS[2])
+            self.store.bar(s, days[1], 100, 101, 99, 100)
+        self.run_day(days[1])
+        self.store.market(days[2])
         for s in ('AAA', 'BBB'):
-            self.store.bar(s, DAYS[2], 80, 81, 79, 80)    # both gap through: about -Rs 40,000 each
-        self.run_day(DAYS[2])
-        self.store.market(DAYS[3])
-        opportunity(self.desk, 'CCC', DAYS[3], plan())
-        ops = self.run_day(DAYS[3])
+            self.store.bar(s, days[2], 80, 81, 79, 80)    # both gap through: about -Rs 40,000 each
+        self.run_day(days[2])
+        self.store.market(days[3])
+        opportunity(self.desk, 'CCC', days[3], plan())
+        return self.run_day(days[3])
+
+    def test_strategy0_exempt_from_pnl_brakes_while_sealed(self):
+        with patch('desk.automation.seal.realized_pnl', side_effect=AssertionError('sealed P&L read')):
+            ops = self._two_large_losses_then_candidate(DAYS)
+        self.assertEqual(len(self.events('EXIT_FILLED')), 2)
+        self.assertNotIn('DRAWDOWN_OR_LOSING_STREAK', ops['kill_switches_active'])
+        self.assertIn('exempt until 2027-06-01', ops['exempt_switches']['DRAWDOWN_OR_LOSING_STREAK'])
+        self.assertEqual((ops['accepted'], ops['rejected']), (1, {}))
+        self.assertIsNone(self.desk.execute("SELECT 1 FROM kill_switch_events WHERE switch='DRAWDOWN_OR_LOSING_STREAK'").fetchone())
+        with self.assertRaises(seal.SealedOutcome):
+            seal.brake_inputs(strategy0.load_book(self.desk, 1), 'S0', today=DAYS[3])
+
+    def test_brake_code_exercised_after_seal_lifts_synthetic(self):
+        june = ['2027-06-01', '2027-06-02', '2027-06-03', '2027-06-04']   # synthetic post-seal dates
+        ops = self._two_large_losses_then_candidate(june)
+        self.assertEqual(ops['exempt_switches'], {})
         self.assertIn('DRAWDOWN_OR_LOSING_STREAK', ops['entry_blocked_by'])
         self.assertEqual(ops['rejected'], {'KILL_SWITCH': 1})
         row = self.desk.execute("SELECT * FROM kill_switch_events WHERE switch='DRAWDOWN_OR_LOSING_STREAK'").fetchone()
-        self.assertEqual(row['sealed'], 1)
-        self.assertNotIn('pnl', json.dumps(ops))
+        self.assertEqual((row['state'], row['sealed']), ('TRIGGERED', 0))
+        self.assertLess(json.loads(row['detail'])['month_realized_pnl_inr'], -30000)
+
+    def test_engine_errors_are_operational_failures(self):
+        real = strategy0.limit_fill
+        def broken(plan_, opening, low):
+            raise ZeroDivisionError('fixture')
+        for i in range(4):
+            self.store.market(DAYS[i])
+            if i:
+                self.store.bar(f'E{i - 1}', DAYS[i], 100, 101, 99, 100)  # data present: the engine fails
+            opportunity(self.desk, f'E{i}', DAYS[i], plan())
+            with patch('desk.automation.strategy0.limit_fill', side_effect=broken):
+                self.run_day(DAYS[i])
+        self.store.market(DAYS[4])
+        self.store.bar('E3', DAYS[4], 100, 101, 99, 100)
+        with patch('desk.automation.strategy0.limit_fill', side_effect=real):
+            ops = self.run_day(DAYS[4])
+        failed = self.events('ENTRY_FILL_FAILED')
+        self.assertEqual([e['detail']['failure'] for e in failed], ['ENGINE_ERROR'] * 3)
+        self.assertEqual(failed[0]['detail']['error_type'], 'ZeroDivisionError')
+        self.assertIn('REPEATED_FILL_FAILURES', ops['kill_switches_active'])
+
+    def test_untouched_limits_never_disable_entries(self):
+        for i in range(6):
+            self.store.market(DAYS[i])
+            if i:
+                self.store.bar(f'N{i - 1}', DAYS[i], 110, 112, 109, 111)  # open and low above the 102 limit
+            opportunity(self.desk, f'N{i}', DAYS[i], plan())
+            ops = self.run_day(DAYS[i])
+        self.assertEqual(len(self.events('ENTRY_NO_FILL')), 5)
+        self.assertEqual(len(self.events('ENTRY_FILL_FAILED')), 0)
+        self.assertNotIn('REPEATED_FILL_FAILURES', ops['kill_switches_active'])
+        self.assertEqual(ops['accepted'], 1)
+
+    def test_crashed_nightly_run_counts_as_operational_failure(self):
+        from desk.automation import nightly
+        path = Path(self.temp.name)/'nightly.sqlite'
+        own = Store()                      # run_auto_paper closes the connection it is given
+        own.market(DAYS[0])
+        with patch('desk.automation.nightly.get_live_connection', return_value=own.conn), \
+             patch('desk.automation.nightly.max_recorded_at', return_value='w'), \
+             patch('desk.automation.strategy0.run', side_effect=RuntimeError('fixture crash')):
+            with self.assertRaises(RuntimeError):
+                nightly.run_auto_paper(DAYS[0], desk_db_path=path)
+        conn = get_desk_connection(path)
+        try:
+            row = conn.execute('SELECT * FROM journal_events WHERE event_type=?', (strategy0.RUN_FAILED_EVENT,)).fetchone()
+            self.assertEqual(json.loads(row['detail']), dict(run_date=DAYS[0], error_type='RuntimeError'))
+            self.assertEqual(strategy0._entry_outcomes_since(conn, 1, None), ['OPERATIONAL_FAILURE'])
+        finally:
+            conn.close()
 
     def test_refused_above_automation_level(self):
         with self.assertRaises(AutomationRefused):

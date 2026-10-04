@@ -99,13 +99,23 @@ class KillSwitchTest(unittest.TestCase):
         self.assertTrue(streak.triggered)
         self.assertTrue(streak.detail['losing_streak'])
 
-    def test_repeated_fill_failures_disable_entries(self):
-        self.assertFalse(ks.fill_failures(['ENTRY_FILL_FAILED', 'ENTRY_FILL_FAILED', 'ENTRY_FILLED'], 2).triggered)
-        trip = ks.fill_failures(['ENTRY_FILLED', 'ENTRY_NO_FILL', 'ENTRY_FILL_FAILED', 'ENTRY_FILL_FAILED'], 2)
+    def test_operational_failures_disable_entries_at_three(self):
+        fail, ok, skip = ks.OPERATIONAL_FAILURE, ks.ATTEMPT_OK, ks.NOT_ATTEMPTED
+        self.assertFalse(ks.fill_failures([fail, fail], 3).triggered)
+        trip = ks.fill_failures([ok, fail, fail, fail], 3)
         self.assertTrue(trip.triggered)
         self.assertEqual(trip.effect, 'DISABLE_AUTO_ENTRIES')
-        # An untouched limit is an observed market outcome, not a failure.
-        self.assertFalse(ks.fill_failures(['ENTRY_NO_FILL'] * 5, 2).triggered)
+        self.assertEqual(trip.detail['consecutive_operational_failures'], 3)
+        # A cancelled entry was never attempted: it neither counts nor ends the streak.
+        self.assertTrue(ks.fill_failures([fail, skip, fail, skip, fail], 3).triggered)
+
+    def test_untouched_limit_never_counts_toward_disabling(self):
+        fail, ok = ks.OPERATIONAL_FAILURE, ks.ATTEMPT_OK
+        self.assertFalse(ks.fill_failures([ok] * 50, 3).triggered)            # 50 NO_FILLs
+        # A NO_FILL is a successful operation, so it ends a failure streak like a fill does.
+        self.assertFalse(ks.fill_failures([fail, fail, ok, fail, fail], 3).triggered)
+        with self.assertRaises(ValueError):
+            ks.fill_failures(['ENTRY_NO_FILL'], 3)                             # raw types are refused
 
     def test_open_critical_defect_fails_operational_gate(self):
         self.assertFalse(ks.open_critical_defect([], []).triggered)
@@ -150,10 +160,18 @@ class KillSwitchTest(unittest.TestCase):
         ks.reset(self.conn, 'REPEATED_FILL_FAILURES', scope='S0', run_date='2026-10-06', reason='data repaired')
         self.assertFalse(ks.evaluate_and_log(self.conn, [trip(False)], scope='S0', run_date='2026-10-07')['REPEATED_FILL_FAILURES'])
 
+    def test_strategy0_brake_displayed_as_exempt_until_seal_lifts(self):
+        before = '\n'.join(ks.display_lines(self.conn, 'S0', today='2027-05-31'))
+        self.assertIn('DRAWDOWN_OR_LOSING_STREAK: EXEMPT (P&L brakes exempt until 2027-06-01', before)
+        after = '\n'.join(ks.display_lines(self.conn, 'S0', today='2027-06-01'))
+        self.assertIn('DRAWDOWN_OR_LOSING_STREAK: clear (never triggered)', after)
+        for scope in ('S1', 'manual'):     # any future strategy keeps the brake
+            self.assertNotIn('EXEMPT', '\n'.join(ks.display_lines(self.conn, scope, today='2026-10-05')))
+
     def test_sealed_detail_is_not_displayed(self):
         trip = ks.Trip('DRAWDOWN_OR_LOSING_STREAK', True, dict(month_realized_pnl_inr=-31234.5), sealed=True)
-        ks.evaluate_and_log(self.conn, [trip], scope='S0', run_date='2026-10-05')
-        text = '\n'.join(ks.display_lines(self.conn, 'S0'))
+        ks.evaluate_and_log(self.conn, [trip], scope='S1', run_date='2026-10-05')
+        text = '\n'.join(ks.display_lines(self.conn, 'S1'))
         self.assertIn('DRAWDOWN_OR_LOSING_STREAK: ACTIVE -> FREEZE_ENTRIES', text)
         self.assertIn('detail sealed until 2027-06-01', text)
         self.assertNotIn('31234', text)

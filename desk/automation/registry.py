@@ -71,8 +71,16 @@ def strategy0_definition(path=FOLLOWUP2):
                   '(capital x max_open_risk_pct). Candidates over the budget are rejected with the reason logged.',
         kill_switch_parameters=dict(
             fill_failure_threshold=3,
-            fill_failure_threshold_status='PROPOSED by Claude (not a rulebook value; not yet user-approved).',
-            drawdown_and_streak='Rulebook risk.monthly_drawdown_brake_pct and behavioural_brakes.consecutive_loss_brake_count.',
+            fill_failure_threshold_status=(
+                'APPROVED by the user on 2026-10-04: 3 consecutive OPERATIONAL failures (missing or unusable '
+                'next-session data, or an engine error, including a crashed nightly run). An untouched limit is '
+                'a normal NO_FILL: never a failure, and it ends a failure streak; a cancelled entry is not counted.'),
+            drawdown_and_streak=(
+                f'EXEMPT for Strategy 0 until {OUTCOMES_OPEN.isoformat()} (user decision 2026-10-04): the brakes '
+                'would read sealed P&L, and even a visible freeze discloses forward-window information; the '
+                'paper book protects no real capital. From that date the rulebook values apply '
+                '(risk.monthly_drawdown_brake_pct, behavioural_brakes.consecutive_loss_brake_count). '
+                'All data and operational kill switches stay active.'),
             stale_after_days='desk.ingestion_health.STALE_AFTER_DAYS (existing PROPOSED value).'),
         seal=(f'P&L and outcome metrics for decisions dated on or after {FORWARD_START.isoformat()} are stored but '
               f'never computed into reports or displayed before {OUTCOMES_OPEN.isoformat()}; operational metrics '
