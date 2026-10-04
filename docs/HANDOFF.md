@@ -1,3 +1,22 @@
+## 2026-10-04 T0 closeout session (Claude, resumed after Codex usage limit)
+
+- Root verified as D:/Agentic_ai_project/praman. Corrected replay found still
+  running (PID 103240, `python -u scripts/desk_shadow_replay.py`, started
+  08:19:24 IST from HEAD 7801550); not touched. 47,691/70,362 records at 09:17.
+- User authorised reviewing/committing new files outside the replay's hashed set
+  while it runs; no full suite and no edits to hashed files (desk/*.py present at
+  08:19, replay script, label/catalogue scripts, prereg, inputs) until it ends.
+  desk/volatility_context.py and desk/shadow_followup2.py postdate the start and
+  are not in its recorded source hashes.
+- Reviewed the unfinished Codex files. P8-040 cutoff fix is present (bars queried
+  as of the replay run_date). Review fixes (P8-041): explicit retrospective label
+  on volatility context; two-sided baseline-opening consistency guard plus
+  positive-quantity check in the limit runner; added the prereg-required
+  shared-date paired-draw test. Targeted tests only (17 OK); full suite deferred.
+- Wiring test tests/test_volatility_context_wiring.py is held uncommitted: it
+  needs desk/cli.py and desk/scan.py edits, which wait for the replay to finish.
+- Pre-existing trailing blank line in tests/test_desk_risk.py left unstaged.
+
 ## 2026-10-04 G6 repair checkpoint
 
 Cost-inclusive whole-share sizing and independent G6 per-trade cap enforcement
