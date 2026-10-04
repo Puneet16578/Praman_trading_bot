@@ -1790,3 +1790,17 @@ there; the fix records 101.5), a split between decision and fill, a split during
 false stop on the decision basis; the raw comparison would have stopped out), the decision-basis
 exit price and P&L, and demergers. Existing paper, hindsight, monitor and risk tests pass unchanged.
 
+**Structural guard, 2026-10-04 (user request).** Lineage: P8-044 is the second CONFIRMED
+share-basis defect, after P8-024 (stress loss scaled by BAJFINANCE's history-wide factor 10: 9,190
+instead of 919). The suspected P7-001 (`prev_close` in `close_to_close_60d`) was investigated twice
+and refuted (`docs/RESULTS.md`; guarded by `tests/test_no_raw_prev_close_in_signals.py`), so it is
+not counted. Follow-through in `b13cc7e`: Strategy 0 now records its stop, monitored prices and
+exits on the decision basis too (it had kept exits at raw prices with a re-expressed quantity,
+which was notionally consistent but not one basis). `tests/test_share_basis_structural.py` drives
+one synthetic 10:1 split between decision and exit through every price path -- manual open, the
+monitor and its stop, a pending manual close, Strategy 0 entry, monitoring and stop exit -- and
+asserts that every recorded price stays on the decision basis, that costs equal the costs of the
+real post-split share count at raw prices, and that P&L equals that economic oracle. Mutation
+check: removing the decision basis from the manual close/monitor path, or forcing Strategy 0's
+basis factor to 1, each makes it fail; the unmutated code passes.
+

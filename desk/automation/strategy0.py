@@ -252,7 +252,8 @@ def run(praman_conn, desk_conn, run_date, *, rulebook, costs, rulebook_file, rul
         opening, low = bar['open_price'] * factor, bar['low_price'] * factor
         hit = ('stop_gap', opening) if opening <= stop else (('stop_touch', stop) if low <= stop else None)
         plan.events.append((_event('MONITORED', p, run_date, dict(stop=stop, open=opening, low=low, factor=factor,
-                            sessions_held=held, row_id=bar['row_id']), position_id=pid), None))
+                            raw_open=bar['open_price'], raw_low=bar['low_price'], sessions_held=held,
+                            row_id=bar['row_id']), position_id=pid), None))
         if hit:
             plan.events.append((_event('EXIT_FILLED', p, run_date, dict(
                 price=hit[1], quantity=qty, reason='STOP', kind=hit[0], basis_factor=factor,

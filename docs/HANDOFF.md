@@ -25,6 +25,14 @@
   tables' row counts unchanged (opportunity_log 580, opportunity_executions 545,
   circuit_bands 3,574, decisions/theses/paper trades 0). The burn-in's first run is
   the next nightly (Monday 2026-10-05 18:00). P8-043 CLOSED with follow-up 3 evidence.
+- Item 4: tests/test_share_basis_structural.py (one synthetic 10:1 split through manual
+  open, monitor/stop, pending manual close, and Strategy 0 entry/monitor/stop exit):
+  every recorded price on the decision basis; costs and P&L equal the economic oracle on
+  real post-split shares. Mutation-checked (two injected basis defects both caught).
+  Strategy 0 monitoring now also records raw_open/raw_low as labelled evidence.
+  Correction to the request's premise: P7-001 is not a defect (refuted twice per
+  docs/RESULTS.md); P8-044 is the second confirmed share-basis defect after P8-024.
+  Suite: 725 tests in 138.634s, OK.
 
 ## 2026-10-04 (afternoon) round end: status of the seven decisions
 
