@@ -1627,3 +1627,25 @@ first mangled existing punctuation and a subsequent read stopped on a decode
 error. Restore existing text from Git and reapply only intended additions with
 explicit UTF-8. Diff review confirmed the original punctuation is preserved.
 No historical run or production measurement was affected.
+
+## P8-040 - proposed limit runner confused market and knowledge cutoffs
+
+2026-10-04, Medium, fixed before the first limit run. Static review found the new
+runner queried next-session bars as of the replay's latest market-session date
+rather than its run/knowledge date. That could omit a late-known correction.
+Use the recorded run_date, matching execution_observation's original as_of cutoff.
+The experiment also checks each baseline opening against its frozen replay fill;
+any mismatch aborts. No real limit result was computed with the draft cutoff.
+
+## P8-041 - unfinished volatility/limit work missed three review items
+
+2026-10-04, Low, fixed before any real run of either module. Review of the
+uncommitted Codex files found: (1) volatility context did not explicitly mark
+a historical assessment as retrospective, which A2 requires; it now records and
+displays `retrospective` when the decision predates the reference publication
+date. (2) The limit runner checked the frozen baseline opening only one way; a
+pass with no frozen fill but a usable opening would have produced a limit fill.
+The guard is now two-sided and requires a positive frozen quantity (the replay's
+cap assertion already rejects nonpositive pass quantities). (3) The
+preregistration's required shared-date draw test was absent; added. No result,
+store or registered protocol was affected.
