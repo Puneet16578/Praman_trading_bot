@@ -431,3 +431,17 @@ Size differences compare conditional distributions whose membership can change. 
 `python -u scripts/desk_shadow_followup.py`
 
 Full values, sample warnings and usable bootstrap counts: `shadow_replay_followup_results.json`. Protocol: `shadow_replay_followup_prereg.md`. No gate or the 90% factor was tuned.
+
+## Historical volatility context for assessments
+
+Pooled primary candidate rates, including both screening states. The assessment uses the user-specified rounded boundaries 3.2975 / 4.0429 / 4.7966 / 5.8627; the original controlled comparison above retains its exact unrounded boundaries. This is published retrospective context, never historical gate input.
+
+| Quintile | Candidates / valid / missing | Adverse20 rate % [95% CI] | Date clusters |
+|---|---:|---|---:|
+| Q1 | 12113 / 12066 / 47 | 2.7847 [2.2393, 3.4274]; draws=2000 | 1337 |
+| Q2 | 12110 / 12074 / 36 | 5.9798 [5.2325, 6.8183]; draws=2000 | 1390 |
+| Q3 | 12114 / 12060 / 54 | 9.8010 [8.7955, 10.9540]; draws=2000 | 1426 |
+| Q4 | 12109 / 12028 / 81 | 14.6575 [13.3062, 16.1296]; draws=2000 | 1435 |
+| Q5 | 12112 / 11961 / 151 | 24.2371 [20.3316, 28.8964]; draws=2000 | 1411 |
+
+Reference known on 2026-10-04. Reproduce: `python scripts/desk_volatility_reference.py`.

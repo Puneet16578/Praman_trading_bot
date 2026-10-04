@@ -3135,5 +3135,109 @@
       "raw_sha256": "9a71fcf32912a42e69ae207ee3c8ef47d7e84f72f11e00e012198938d6d299a3"
     },
     "database_access": "None: all measurements reuse immutable frozen replay records."
+  },
+  "assessment_context": {
+    "boundaries_pct": [
+      3.2975,
+      4.0429,
+      4.7966,
+      5.8627
+    ],
+    "known_on": "2026-10-04",
+    "population": "All primary candidates pooled across screening states",
+    "boundary_convention": "User-specified four-decimal frozen primary boundaries; ties go upward.",
+    "quintiles": [
+      {
+        "quintile": 1,
+        "candidates": 12113,
+        "missing_outcomes": 47,
+        "rate": {
+          "estimate": 0.0278468423669816,
+          "n_events": 12066,
+          "date_clusters": 1337,
+          "small_sample_warning": false,
+          "interval95": [
+            0.022392577851494642,
+            0.03427443221863996
+          ],
+          "usable_replicates": 2000
+        }
+      },
+      {
+        "quintile": 2,
+        "candidates": 12110,
+        "missing_outcomes": 36,
+        "rate": {
+          "estimate": 0.05979791287063111,
+          "n_events": 12074,
+          "date_clusters": 1390,
+          "small_sample_warning": false,
+          "interval95": [
+            0.052324931016091224,
+            0.06818302530122271
+          ],
+          "usable_replicates": 2000
+        }
+      },
+      {
+        "quintile": 3,
+        "candidates": 12114,
+        "missing_outcomes": 54,
+        "rate": {
+          "estimate": 0.09800995024875622,
+          "n_events": 12060,
+          "date_clusters": 1426,
+          "small_sample_warning": false,
+          "interval95": [
+            0.08795506028498357,
+            0.10954010273048981
+          ],
+          "usable_replicates": 2000
+        }
+      },
+      {
+        "quintile": 4,
+        "candidates": 12109,
+        "missing_outcomes": 81,
+        "rate": {
+          "estimate": 0.1465746591286997,
+          "n_events": 12028,
+          "date_clusters": 1435,
+          "small_sample_warning": false,
+          "interval95": [
+            0.1330617510685964,
+            0.16129593652770718
+          ],
+          "usable_replicates": 2000
+        }
+      },
+      {
+        "quintile": 5,
+        "candidates": 12112,
+        "missing_outcomes": 151,
+        "rate": {
+          "estimate": 0.24237103921076833,
+          "n_events": 11961,
+          "date_clusters": 1411,
+          "small_sample_warning": false,
+          "interval95": [
+            0.20331598832785946,
+            0.28896426642867307
+          ],
+          "usable_replicates": 2000
+        }
+      }
+    ],
+    "provenance": {
+      "code_commit": "7da7af4d1b5f62caa33770d38ea0d91556dc7bd0",
+      "raw_sha256": "9a71fcf32912a42e69ae207ee3c8ef47d7e84f72f11e00e012198938d6d299a3",
+      "seed": 20261001,
+      "bootstrap_replicates": 2000,
+      "source_hashes": {
+        "scripts/desk_volatility_reference.py": "50c99b5d7f974c3b09af152cbc3637a79cc3ac06a0ffd49001b5d7e6c3072538",
+        "desk/volatility_context.py": "5a02831bb1112598249878879efb84d93dce3aa5d4b01371eedfea811ebdf95f",
+        "tests/test_volatility_context.py": "83c3de474745e6d29b6e0fbd723a2fc8cecda98ba6c98976373f9f2e6184ab8b"
+      }
+    }
   }
 }
