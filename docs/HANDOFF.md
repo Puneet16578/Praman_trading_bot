@@ -65,6 +65,11 @@
   committed alone before implementation or calculation. Pass criteria fixed in it:
   P1 zero per-trade breaches at the fill; P2 primary fill rate >= 60%; size
   reduction reported, not gated.
+- Follow-up 3 implementation (desk/shadow_followup3.py, scripts/desk_shadow_followup3.py,
+  7 synthetic tests) committed before the run. Test finding stated before results:
+  the 0.80 ratio applies only where the per-trade budget binds; below ~5% ATR20 the
+  10% per-stock position cap binds and the ratio is ~decision/limit (~0.98).
+  Suite: 724 tests in 136.616s, OK.
 
 ## 2026-10-04 session end: Part A and Part B complete
 
