@@ -61,6 +61,10 @@
   desk/paper/execution.basis_factor (point-in-time; 1.0 without an intervening
   bonus/split); Strategy 0 entries and monitoring use the decision date as basis.
   Demergers refuse rather than guess. Suite: 717 tests in 147.384s, OK.
+- Item 4b: follow-up 3 preregistered (docs/desk/shadow_replay_followup3_prereg.md),
+  committed alone before implementation or calculation. Pass criteria fixed in it:
+  P1 zero per-trade breaches at the fill; P2 primary fill rate >= 60%; size
+  reduction reported, not gated.
 
 ## 2026-10-04 session end: Part A and Part B complete
 
