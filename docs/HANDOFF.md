@@ -1,3 +1,15 @@
+## 2026-10-04 current session: correction registered, work in progress
+
+Baseline: 626 tests passed in 135.834s (Python exit 0). One agent, foreground.
+All round-2 items remain complete; see round2_completion_20261004.md and its
+commit table (encoding repair b5c9e76). Pre-existing risk-test blank line retained.
+P8-038 root cause: sizing excludes fees and G6 omits the per-trade planned-loss
+cap. No code repair or corrected replay yet. Both replay preregistrations now
+have dated correction addenda; followup2 preregisters the fixed 0.5 ATR entry limit.
+Next: repair/test, corrected full replay and follow-up, volatility FACT context,
+limit variant, comparisons, defect updates, full suite and push. User authorized
+these steps; no active rulebook or paper convention change.
+
 # Handoff
 
 ## Follow-up session - 2026-10-04

@@ -167,3 +167,24 @@ the missing identities and corrected current conflicts. The entire existing
 or selected using outcomes. Recovery hashes and changed mappings are recorded in
 `isin_recovery_round2.json`. No full replay outcome has been computed in this
 review. The runner refuses unresolved or fund identities before reading labels.
+
+## 2026-10-04 addendum: P8-038 decision-time cap correction
+
+Registered before corrected historical replay or follow-up calculations. The first
+follow-up exposed 12,693 primary and 1,958 descriptive filled SCREEN_PASS events
+whose decision-time planned loss exceeded the per-trade cap. Sizing omitted
+round-trip fees and G6 did not independently enforce this cap. The rulebook's
+both-side-cost definition is authoritative; the follow-up calculation is retained.
+
+Correct sizing to the largest whole-share quantity within the existing budgets
+including both-side costs, and enforce the per-trade cap independently in G6.
+Do not change the active rulebook, costs, thresholds or paper entry convention.
+Historical quantities and potentially screening states will change. Rerun the
+original replay and first follow-up on the same catalogue and read-only store
+snapshots, preserving previous raw records/reports under a pre_g6 suffix and
+reporting old/new results and state transitions. All periods, firewall, labels,
+bootstrap settings, volatility boundaries and the fixed 90% variant stay unchanged.
+Corrected records replace the original frozen-input hash for the corrected run;
+record their hash, source hashes and implementation commit explicitly. The original
+hash and commits above remain the provenance of the superseded results. This
+correction is disclosed after seeing the original findings, not a fresh blind test.
