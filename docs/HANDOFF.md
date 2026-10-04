@@ -64,7 +64,18 @@
   `git worktree remove` after the commits above (it deregistered the worktree
   and deleted its files but could not delete the then-in-use empty folder;
   that empty folder was removed with rmdir). `git worktree list` is clean.
-- Next: A4 follow-up 2 (limit entry), then A5, then Part B.
+- A4 follow-up 2 run in-session (user-authorised), foreground, 26 s, from
+  47272e2. Production store opened only via mode=ro for the online backup;
+  SHA-256 ecb36311..., size and mtime identical before/after; temp copy
+  removed. WAL sidecars praman.db-wal (0 B) / -shm appeared (WAL-mode store,
+  read-only connections cannot remove them); left untouched. Snapshot hash
+  equals the corrected replay's. Primary: fill 97.10% vs 99.98%; at-fill
+  per-trade breach 27.47% vs 30.38%, difference -2.91 pp [-3.14, -2.70];
+  p90 excess 24.1% vs 40.7% of cap; adverse20 among fills +0.14 pp.
+  Review and recommendation (switch manual convention to the limit; NOT
+  applied): docs/desk/shadow_replay_followup2_review.md. Untested stronger
+  option (size against the limit price) needs its own preregistration.
+- Next: A5 closeout, then Part B.
 
 ## 2026-10-04 G6 repair checkpoint
 
