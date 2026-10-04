@@ -10,6 +10,12 @@ research AND deterministic conditions. Research conditions (calibrated probabili
 value) are UNKNOWN until T4, so no candidate is blueprint-ELIGIBLE yet. VETO when a hard rule
 blocks the trade; NO_TRADE when evidence is insufficient or the screen failed; otherwise WATCH.
 The Desk's own state is kept beside it, unchanged.
+
+Model estimates (DESIGN.md constitution 3 and 5, amended 2026-10-04): a probability or expected
+value may come only from a statistical model or from the user, never from an LLM and never
+without a source. Until it passes the T4 calibration gate it is UNVALIDATED: displayed with that
+label, display-only, and never able to make a candidate blueprint-ELIGIBLE. KNOWN additionally
+requires a reference to the passed validation.
 """
 import hashlib
 import json
@@ -47,12 +53,33 @@ LATER_PHASES = {
 }
 
 
+MODEL_FIELDS = ('calibrated_probability', 'probability_interval', 'uncertainty_score',
+                'expected_net_return_after_costs', 'expected_loss_if_wrong', 'expected_value',
+                'maximum_adverse_excursion_estimate', 'maximum_favorable_excursion_estimate')
+ALLOWED_SOURCES = ('statistical_model', 'user')
+UNVALIDATED_LABEL = 'UNVALIDATED: display-only until it passes the T4 calibration gate.'
+
+
 def known(value, definition):
     return dict(status='KNOWN', value=value, definition=definition)
 
 
 def unknown(reason, supplied_by):
     return dict(status='UNKNOWN', reason=reason, supplied_by=supplied_by)
+
+
+def unvalidated(value, *, source, definition, model_version=None):
+    """A model or user estimate that has not passed the T4 calibration gate."""
+    return dict(status='UNVALIDATED', value=value, source=source, model_version=model_version,
+                definition=definition, label=UNVALIDATED_LABEL, display_only=True)
+
+
+def _check_source(name, entry):
+    if entry.get('source') not in ALLOWED_SOURCES:
+        raise ValueError(f"{name}: an estimate needs a source in {ALLOWED_SOURCES} (never an LLM, never invented); "
+                         f"got {entry.get('source')!r}.")
+    if entry['source'] == 'statistical_model' and not entry.get('model_version'):
+        raise ValueError(f'{name}: a statistical-model estimate must name its model version.')
 
 
 def blueprint_state(desk_state, hard_veto):
@@ -104,18 +131,28 @@ def validate_contract(contract):
         if entry.get('status') == 'UNKNOWN':
             if 'value' in entry or not entry.get('reason') or not entry.get('supplied_by'):
                 raise ValueError(f'{name}: UNKNOWN needs a reason and supplier, and no value.')
-        elif entry.get('status') == 'KNOWN':
+        elif entry.get('status') in ('KNOWN', 'UNVALIDATED'):
             if 'value' not in entry or not entry.get('definition'):
-                raise ValueError(f'{name}: KNOWN needs a value and its definition.')
+                raise ValueError(f"{name}: {entry['status']} needs a value and its definition.")
             if _non_finite(entry['value']):
                 raise ValueError(f'{name}: non-finite value.')
+            if name in MODEL_FIELDS:
+                _check_source(name, entry)
+                if entry['status'] == 'KNOWN' and not entry.get('validation'):
+                    raise ValueError(f'{name}: a KNOWN estimate must reference its passed T4 validation; '
+                                     'otherwise it is UNVALIDATED.')
+                if entry['status'] == 'UNVALIDATED' and (entry.get('display_only') is not True
+                                                         or entry.get('label') != UNVALIDATED_LABEL):
+                    raise ValueError(f'{name}: an UNVALIDATED estimate must be labelled and display-only.')
+            elif entry['status'] == 'UNVALIDATED':
+                raise ValueError(f'{name}: only model estimates can be UNVALIDATED.')
         else:
-            raise ValueError(f'{name}: status must be KNOWN or UNKNOWN.')
+            raise ValueError(f'{name}: status must be KNOWN, UNVALIDATED or UNKNOWN.')
     if contract['state']['value'] not in BLUEPRINT_STATES:
         raise ValueError('Unknown blueprint state.')
     if contract['state']['value'] == 'ELIGIBLE' and any(
-            contract[f]['status'] == 'UNKNOWN' for f in ('calibrated_probability', 'expected_value')):
-        raise ValueError('Blueprint ELIGIBLE requires a calibrated probability and expected value.')
+            contract[f]['status'] != 'KNOWN' for f in ('calibrated_probability', 'expected_value')):
+        raise ValueError('Blueprint ELIGIBLE requires a validated calibrated probability and expected value.')
     return contract
 
 

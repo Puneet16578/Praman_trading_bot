@@ -19,6 +19,17 @@
   both failure cases, engine and crashed-run errors, the exemption, and a
   synthetic June 2027 run that exercises the brake end to end. Suite: 697 tests
   in 133.469s, OK.
+- Item 2: DESIGN.md constitution 3 and 5 amended as the user approved (validated
+  statistical-model or user probabilities only; never LLM, never invented; model
+  probability/EV display-only and UNVALIDATED until the T4 calibration gate; no
+  numeric trade score for anything unvalidated) with a dated Changelog section
+  giving before/after text. TRADING_BLUEPRINT.md marks the conflict resolved in
+  DESIGN.md. The decision contract enforces it: UNVALIDATED status for the eight
+  model-estimate fields only, source must be statistical_model (with model
+  version) or user, labelled display-only, never ELIGIBLE; KNOWN needs a passed
+  validation reference. NOT changed: CLAUDE.md D3/D5 (same rules, authoritative)
+  need the user's explicit approval; proposed wording is in the session report.
+  Suite: 699 tests in 115.336s, OK.
 
 ## 2026-10-04 session end: Part A and Part B complete
 

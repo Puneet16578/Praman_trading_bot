@@ -25,10 +25,16 @@ manually.
 1. **Point-in-time everything**: every record carries event date, knowledge date, and `recorded_at`.
 2. **The LLM (later phases) reads, challenges, and explains. It never forecasts, calculates, or
    decides.** Enforced in software, not by prompt.
-3. **Gates, not scores.** Abstention is a first-class outcome. No numeric trade score anywhere.
+3. **Gates, not scores.** Abstention is a first-class outcome. No numeric trade score for anything
+   unvalidated: an UNVALIDATED probability or expected value is displayed with that label and never
+   ranks, gates, sizes or changes the state of a trade. (Amended 2026-10-04; see Changelog.)
 4. **Market and sector context change risk limits, never trade direction.**
-5. **Probabilities come from data or from the user, never from a model.** User probabilities do not
-   influence position sizing until the evaluator shows they are calibrated.
+5. **Probabilities come from statistical models or from the user — never from an LLM, and never
+   invented.** A model probability must come from a statistical model fitted and calibrated on
+   point-in-time data and validated out-of-sample. A model probability or expected value is
+   display-only and labelled UNVALIDATED until it passes the T4 calibration gate. User probabilities
+   do not influence position sizing until the evaluator shows they are calibrated. (Amended
+   2026-10-04; see Changelog.)
 6. **Every decision is reproducible**: store watermark, rulebook hash, code commit, model and prompt
    versions.
 7. **Forward-window firewall**: no outcome computation for catalogue events dated 2026-09-16 onward
@@ -104,3 +110,25 @@ model-invented probabilities, any public output.
 Honest calibration; vetoed opportunities measurably underperform passed ones; falling rule
 violations; no loss ever exceeds budget; (later) disclosure extraction above a pre-registered
 accuracy bar and zero unverified numbers in any output. A persistent edge is a bonus, not the goal.
+
+## Changelog
+
+**2026-10-04 — constitution items 3 and 5 amended (approved by the user in their message of
+2026-10-04, resolving the conflict recorded in `docs/desk/TRADING_BLUEPRINT.md`).**
+
+- Item 3, before: "**Gates, not scores.** Abstention is a first-class outcome. No numeric trade
+  score anywhere." After: the "no numeric trade score" rule still applies to anything unvalidated;
+  an UNVALIDATED probability or expected value is displayed with that label and never ranks, gates,
+  sizes or changes the state of a trade.
+- Item 5, before: "**Probabilities come from data or from the user, never from a model.** User
+  probabilities do not influence position sizing until the evaluator shows they are calibrated."
+  After: probabilities may come from statistical models fitted and calibrated on point-in-time data
+  and validated out-of-sample, or from the user — never from an LLM, and never invented. A model
+  probability or expected value is display-only and labelled UNVALIDATED until it passes the T4
+  calibration gate. The user-probability sizing rule is unchanged.
+- Not changed by this amendment: `CLAUDE.md` Desk invariants D3 and D5 still carry the earlier
+  wording and take precedence over this document until they are amended with the user's own
+  explicit approval (CLAUDE.md working procedure, item 6).
+
+**2026-10-04 — Build order gains a pointer** to the blueprint phase mapping in
+`docs/desk/TRADING_BLUEPRINT.md` (session item B1). No rule changed.

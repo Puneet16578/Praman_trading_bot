@@ -55,6 +55,42 @@ class DecisionContractTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             dc.validate_contract(value)
 
+    def test_model_estimates_need_a_permitted_source(self):
+        value = contract()
+        value['calibrated_probability'] = dc.unvalidated(0.62, source='statistical_model', model_version='lr-v1',
+                                                         definition='P(target before stop)')
+        dc.validate_contract(value)
+        self.assertEqual(value['calibrated_probability']['label'], dc.UNVALIDATED_LABEL)
+        for bad in (dict(source='llm', model_version='x'), dict(source=None), dict(source='statistical_model')):
+            value = contract()
+            value['expected_value'] = dc.unvalidated(0.1, definition='EV in R', **(dict(model_version=None) | bad))
+            with self.assertRaises(ValueError, msg=bad):
+                dc.validate_contract(value)
+        value = contract()
+        value['expected_value'] = dc.unvalidated(0.1, source='user', definition='User EV estimate')
+        dc.validate_contract(value)
+
+    def test_unvalidated_estimates_never_make_a_candidate_eligible(self):
+        value = contract()
+        for name in ('calibrated_probability', 'expected_value'):
+            value[name] = dc.unvalidated(0.7, source='statistical_model', model_version='m', definition='d')
+        value['state'] = dc.known('ELIGIBLE', 'x')
+        with self.assertRaises(ValueError):
+            dc.validate_contract(value)
+        # KNOWN requires a passed validation reference; without one it must stay UNVALIDATED.
+        value['calibrated_probability'] = dict(dc.known(0.7, 'd'), source='statistical_model', model_version='m')
+        with self.assertRaises(ValueError):
+            dc.validate_contract(value)
+        # A non-model field can never be UNVALIDATED, and the display-only label cannot be dropped.
+        value = contract()
+        value['liquidity_state'] = dc.unvalidated('PASS', source='user', definition='d')
+        with self.assertRaises(ValueError):
+            dc.validate_contract(value)
+        value = contract()
+        value['expected_value'] = dict(dc.unvalidated(0.1, source='user', definition='d'), display_only=False)
+        with self.assertRaises(ValueError):
+            dc.validate_contract(value)
+
     def test_blueprint_state_rule(self):
         self.assertEqual(contract(hard_veto=True)['state']['value'], 'VETO')
         self.assertEqual(contract(desk_state='SCREEN_FAIL')['state']['value'], 'NO_TRADE')
