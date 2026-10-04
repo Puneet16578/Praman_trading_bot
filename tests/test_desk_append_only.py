@@ -53,6 +53,28 @@ _SAMPLE_INSERT = {
     "monitor_runs": (
         "INSERT INTO monitor_runs (run_date, report, recorded_at) VALUES ('2026-01-01','{}','2026-01-01T00:00:00+00:00')"
     ),
+    "kill_switch_events": (
+        "INSERT INTO kill_switch_events (switch,state,effect,scope,run_date,detail,sealed,recorded_at) "
+        "VALUES ('RISK_STATE_UNAVAILABLE','TRIGGERED','NO_NEW_TRADES','S0','2026-01-01','{}',0,'2026-01-01T00:00:00+00:00')"
+    ),
+    "trading_strategies": (
+        "INSERT INTO trading_strategies (strategy_id,version,revision,name,status,purpose,definition,content_hash,recorded_at) "
+        "VALUES ('S0',1,1,'baseline screen','PAPER_BURN_IN','fixture','{}','h','2026-01-01T00:00:00+00:00')"
+    ),
+    "strategy_runs": (
+        "INSERT INTO strategy_runs (strategy_id,strategy_version,run_date,automation_level,rulebook_hash,cost_config_hash,"
+        "code_commit,praman_watermark,operational,recorded_at) "
+        "VALUES ('S0',1,'2026-01-01','A1','r','k','c','p','{}','2026-01-01T00:00:00+00:00')"
+    ),
+    "strategy_paper_events": (
+        "INSERT INTO strategy_paper_events (strategy_id,strategy_version,run_id,position_id,opportunity_id,symbol,"
+        "decision_date,event_type,event_date,detail,recorded_at) "
+        "VALUES ('S0',1,1,NULL,1,'X','2026-01-01','CANDIDATE_REJECTED','2026-01-01','{}','2026-01-01T00:00:00+00:00')"
+    ),
+    "decision_contracts": (
+        "INSERT INTO decision_contracts (decision_id,strategy_event_id,contract,content_hash,recorded_at) "
+        "VALUES (1,NULL,'{}','h','2026-01-01T00:00:00+00:00')"
+    ),
 }
 
 

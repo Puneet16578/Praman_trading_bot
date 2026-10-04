@@ -118,6 +118,11 @@ def cmd_status(args):
     print(f"Open positions: {jstore.open_trade_ids(desk_conn)}")
     from desk.readiness import print_gate_progress
     print_gate_progress(desk_conn, rulebook.rulebook)
+    from desk.automation import kill_switches
+    print(f"Automation level: {rulebook.rulebook.automation_level} (rulebook {rulebook.version_file})")
+    print("Kill switches (Strategy 0 / automatic paper engine):")
+    for line in kill_switches.display_lines(desk_conn, "S0"):
+        print(line)
     print(ingestion_health_line())
     from desk.backups import status_line
     print(status_line())
@@ -304,6 +309,22 @@ def cmd_backup_verify(args):
         raise SystemExit(1)
 
 
+def cmd_killswitch_reset(args):
+    """Human release of a latched kill switch; appended with the stated reason, never an edit."""
+    from desk.automation import kill_switches
+    desk_conn = get_desk_connection()
+    try:
+        from shared.market_time import market_today
+        kill_switches.reset(desk_conn, args.switch, scope=args.scope, run_date=market_today().isoformat(),
+                            reason=args.reason)
+        print(f"RESET recorded for {args.switch} ({args.scope}): {args.reason}")
+    except ValueError as exc:
+        print(f"REFUSED: {exc}", file=sys.stderr)
+        raise SystemExit(1)
+    finally:
+        desk_conn.close()
+
+
 def cmd_evaluate(args):
     from desk.evaluate import evaluate
     evaluate(args.month)
@@ -330,6 +351,14 @@ def main(argv=None):
     p.add_argument("--thesis")
     p.add_argument("--as-of")
     p.set_defaults(func=cmd_assess)
+
+    ksw = sub.add_parser("killswitch")
+    ksw_sub = ksw.add_subparsers(dest="killswitch_command", required=True)
+    kr = ksw_sub.add_parser("reset")
+    kr.add_argument("switch")
+    kr.add_argument("--reason", required=True)
+    kr.add_argument("--scope", default="S0")
+    kr.set_defaults(func=cmd_killswitch_reset)
 
     p = sub.add_parser("status")
     p.set_defaults(func=cmd_status)

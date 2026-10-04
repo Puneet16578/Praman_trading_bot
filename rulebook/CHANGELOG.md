@@ -1,5 +1,13 @@
 # Rulebook changelog
 
+## v3 (2026-10-04) - automation_level A1, approved in the user's message of 2026-10-04
+
+One change only: `automation_level: A1` (automated candidate generation and paper fills; the human
+reviews all decisions). Every other value is identical to v2. Code refuses any action above the
+active level. Raising the level requires a new rulebook version and the user's explicit approval in
+a message (docs/desk/TRADING_BLUEPRINT.md, amendment 4). Versions v1 and v2 predate the field and
+load as A0. The v1 and v2 files remain unchanged for historical replay.
+
 ## v2 (2026-10-02) - approved in the round 2 user request
 
 Replace paper_to_live_criteria with separate operational and edge-confidence gates.

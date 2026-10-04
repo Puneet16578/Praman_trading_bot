@@ -87,6 +87,21 @@
   and OPEN constitution conflicts needing a user decision before T3 (DESIGN.md
   3/5 vs model probabilities; 9/Excluded vs A3-A4; state vocabularies). DESIGN.md
   gains only a pointer. Suite: 651 tests in 400.626s, OK.
+- B2: rulebook schema gains automation_level (A0-A4; v1/v2 load as A0; v3+ must
+  state it). rulebook/desk_rulebook_v3.yaml = v2 + automation_level A1 only
+  (user-approved). desk/automation/levels.py refuses actions above the level and
+  broker-API orders at every level. desk/automation/kill_switches.py: six
+  deterministic switches (stale/inconsistent data, risk state unavailable,
+  drawdown/losing-streak brake, repeated fill failures, open critical defect,
+  calibration - inactive until T4); state changes appended to kill_switch_events,
+  latched switches need `desk killswitch reset <switch> --reason`; `desk status`
+  shows level and switches with sealed detail hidden. New append-only tables for
+  B2-B4 created additively by init_desk_db. DEFECT_REGISTER: P8-043 made
+  parser-readable (Medium, open); P8-038 status lines relabelled so the parser
+  reads it as fixed. Parser now: open high P8-007, unclassified P8-021 (both
+  pre-existing) -> OPEN_CRITICAL_DEFECT switch will trip (operational gate only).
+  ACTIVE switched to v3 in a separate commit (loader refuses an uncommitted pointer).
+  B2 suite (v2 still active): 665 tests in 97.359s, OK.
 
 ## 2026-10-04 G6 repair checkpoint
 

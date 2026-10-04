@@ -235,9 +235,106 @@ OPPORTUNITY_EXECUTIONS = DeskTable(
     )""",
 )
 
+# Automation framework (TRADING_BLUEPRINT.md; session items B2-B4). Append-only like every other
+# Desk table: a status change or a cleared kill switch is a new row, never an edit.
+KILL_SWITCH_EVENTS = DeskTable(
+    name="kill_switch_events",
+    ddl="""CREATE TABLE kill_switch_events (
+        event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        switch TEXT NOT NULL,
+        state TEXT NOT NULL CHECK(state IN ('TRIGGERED', 'CLEARED', 'RESET')),
+        effect TEXT NOT NULL,
+        scope TEXT NOT NULL,               -- strategy_id, or 'desk'
+        run_date TEXT NOT NULL,
+        detail TEXT NOT NULL,              -- JSON; sealed detail is stored but never displayed early
+        sealed INTEGER NOT NULL CHECK(sealed IN (0, 1)),
+        reason TEXT,                       -- required for a human RESET
+        recorded_at TEXT NOT NULL
+    )""",
+    indices=("CREATE INDEX IF NOT EXISTS idx_kill_switch_events_switch ON kill_switch_events(switch, scope)",),
+)
+
+TRADING_STRATEGIES = DeskTable(
+    name="trading_strategies",
+    ddl="""CREATE TABLE trading_strategies (
+        row_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        strategy_id TEXT NOT NULL,
+        version INTEGER NOT NULL CHECK(version >= 1),
+        revision INTEGER NOT NULL CHECK(revision >= 1),  -- a status change appends a new revision
+        name TEXT NOT NULL,
+        status TEXT NOT NULL,
+        purpose TEXT NOT NULL,
+        definition TEXT NOT NULL,          -- JSON: rules, entry policy and its justification
+        content_hash TEXT NOT NULL,
+        recorded_at TEXT NOT NULL,
+        UNIQUE(strategy_id, version, revision)
+    )""",
+)
+
+STRATEGY_RUNS = DeskTable(
+    name="strategy_runs",
+    ddl="""CREATE TABLE strategy_runs (
+        run_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        strategy_id TEXT NOT NULL,
+        strategy_version INTEGER NOT NULL,
+        run_date TEXT NOT NULL,
+        automation_level TEXT NOT NULL,
+        rulebook_hash TEXT NOT NULL,
+        cost_config_hash TEXT NOT NULL,
+        code_commit TEXT NOT NULL,
+        praman_watermark TEXT NOT NULL,
+        operational TEXT NOT NULL,         -- JSON, operational metrics only (never P&L)
+        recorded_at TEXT NOT NULL,
+        UNIQUE(strategy_id, strategy_version, run_date)
+    )""",
+)
+
+STRATEGY_PAPER_EVENTS = DeskTable(
+    name="strategy_paper_events",
+    ddl="""CREATE TABLE strategy_paper_events (
+        event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        strategy_id TEXT NOT NULL,
+        strategy_version INTEGER NOT NULL,
+        run_id INTEGER NOT NULL REFERENCES strategy_runs(run_id),
+        position_id TEXT,                  -- NULL for a rejected candidate
+        opportunity_id INTEGER REFERENCES opportunity_log(opportunity_id),
+        symbol TEXT NOT NULL,
+        decision_date TEXT NOT NULL,
+        event_type TEXT NOT NULL CHECK(event_type IN (
+            'CANDIDATE_ACCEPTED', 'CANDIDATE_REJECTED', 'ENTRY_FILLED', 'ENTRY_NO_FILL',
+            'ENTRY_FILL_FAILED', 'MONITORED', 'EXIT_ORDERED', 'EXIT_FILLED')),
+        event_date TEXT NOT NULL,
+        detail TEXT NOT NULL,              -- JSON
+        recorded_at TEXT NOT NULL
+    )""",
+    indices=(
+        "CREATE INDEX IF NOT EXISTS idx_strategy_paper_events_position ON strategy_paper_events(strategy_id, position_id)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_strategy_paper_events_candidate "
+        "ON strategy_paper_events(strategy_id, strategy_version, opportunity_id) "
+        "WHERE event_type IN ('CANDIDATE_ACCEPTED', 'CANDIDATE_REJECTED')",
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_strategy_paper_events_once "
+        "ON strategy_paper_events(strategy_id, position_id, event_type) "
+        "WHERE event_type IN ('ENTRY_FILLED', 'ENTRY_NO_FILL', 'ENTRY_FILL_FAILED', 'EXIT_ORDERED', 'EXIT_FILLED')",
+    ),
+)
+
+DECISION_CONTRACTS = DeskTable(
+    name="decision_contracts",
+    ddl="""CREATE TABLE decision_contracts (
+        contract_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        decision_id INTEGER REFERENCES decisions(decision_id),
+        strategy_event_id INTEGER REFERENCES strategy_paper_events(event_id),
+        contract TEXT NOT NULL,            -- JSON, blueprint candidate schema (section 3)
+        content_hash TEXT NOT NULL,
+        recorded_at TEXT NOT NULL,
+        CHECK((decision_id IS NULL) != (strategy_event_id IS NULL))
+    )""",
+)
+
 DESK_TABLES: dict[str, DeskTable] = {
     t.name: t for t in (DECISIONS, THESES, PAPER_TRADE_EVENTS, JOURNAL_EVENTS, OPPORTUNITIES, MONITOR_RUNS, CIRCUIT_BANDS,
-                        OPPORTUNITY_LOG, OPPORTUNITY_EXECUTIONS)
+                        OPPORTUNITY_LOG, OPPORTUNITY_EXECUTIONS, KILL_SWITCH_EVENTS, TRADING_STRATEGIES,
+                        STRATEGY_RUNS, STRATEGY_PAPER_EVENTS, DECISION_CONTRACTS)
 }
 
 

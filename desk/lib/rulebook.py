@@ -10,6 +10,8 @@ this module validates SHAPE and TYPE, never picks or defends a specific number.
 """
 from __future__ import annotations
 from pathlib import Path
+import re
+from typing import Literal
 
 import yaml
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator, AliasChoices
@@ -133,14 +135,21 @@ class DeskRulebook(BaseModel):
     operational_gate: OperationalGate | None = None
     edge_confidence_gate: EdgeConfidenceGate | None = None
     screening: ScreeningConvention = Field(default_factory=ScreeningConvention)
+    automation_level: Literal['A0', 'A1', 'A2', 'A3', 'A4'] = Field(
+        'A0', description="Highest automation the Desk may perform (docs/desk/TRADING_BLUEPRINT.md "
+                          "section 8, amendment 4). Versions before v3 predate the field and mean A0.")
 
     @model_validator(mode='after')
     def validate_gate_versions(self):
-        if self.version == 'v2':
+        found = re.fullmatch(r'v(\d+)', self.version)
+        number = int(found[1]) if found else 0
+        if number >= 2:
             if self.paper_to_live_criteria is not None or self.operational_gate is None or self.edge_confidence_gate is None:
-                raise ValueError('v2 requires the two new gates and forbids paper_to_live_criteria.')
+                raise ValueError(f'{self.version} requires the two new gates and forbids paper_to_live_criteria.')
         elif self.paper_to_live_criteria is None:
             raise ValueError('Legacy versions require paper_to_live_criteria.')
+        if number >= 3 and 'automation_level' not in self.model_fields_set:
+            raise ValueError(f'{self.version} must state automation_level explicitly.')
         return self
 
 

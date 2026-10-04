@@ -1365,7 +1365,7 @@ cap at their decision price. No other decision cap is breached in those filled
 PASS cohorts. Independent affine sizing bounds and direct measurements confirm
 these counts. A synthetic reproduction with active v2/costs: entry 100, stop 90,
 quantity 500, cap Rs 5,000; planned loss including costs Rs 5,121.39357, yet G6 PASS.
-**Status.** Open. No active sizing or gate was changed after inspecting outcomes.
+**Status at discovery (2026-10-04).** Open. No active sizing or gate was changed after inspecting outcomes.
 The pre-registered research variant correctly includes costs and fits each cap
 at 90%; its improvement therefore combines proper cost-aware decision sizing
 with the registered headroom, not headroom alone. A production repair is a
@@ -1384,7 +1384,7 @@ decision-time breaches are zero for all six caps in both periods (old: 12,695
 primary / 1,958 descriptive per-trade); labels and adverse20 unchanged for
 every event; quantities only decreased. Net +72 passes, all FAIL->PASS (71 G5
 order-ADV, 1 G6 open-risk stress), because smaller quantities clear other
-caps. Status: **Fixed and verified.** At-fill breaches remain; see P8-043.
+caps. **Status.** Fixed and verified 2026-10-04. At-fill breaches remain; see P8-043.
 
 ## P8-037 - rendering test confused provenance with a NaN value
 
@@ -1671,7 +1671,9 @@ appended, so the operator would see a crash for an information-only field. The
 lookup now records UNKNOWN with the exception type and message; a test covers
 it. No durable store was written by the faulty draft outside temporary tests.
 
-## P8-043 - decision-price sizing still breaches the per-trade cap at the fill
+## P8-043 - decision-price sizing still breaches the per-trade cap at the fill (open)
+
+**Severity.** Medium. **Status.** Open.
 
 2026-10-04, Medium, OPEN (risk-control gap, not a code defect). With P8-038
 fixed, every pass satisfies the per-trade cap at its decision price, but the
