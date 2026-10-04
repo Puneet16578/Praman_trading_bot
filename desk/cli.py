@@ -324,6 +324,18 @@ def cmd_backup_verify(args):
         raise SystemExit(1)
 
 
+def cmd_auto_paper(args):
+    """Run Strategy 0's automatic paper engine for a date (normally the nightly job does this)."""
+    from desk.automation.levels import AutomationRefused
+    from desk.automation.nightly import run_auto_paper
+    try:
+        ops = run_auto_paper(args.date)
+    except AutomationRefused as exc:
+        print(f"REFUSED: {exc}", file=sys.stderr)
+        raise SystemExit(1)
+    print(json.dumps(ops, indent=2, sort_keys=True))
+
+
 def cmd_killswitch_reset(args):
     """Human release of a latched kill switch; appended with the stated reason, never an edit."""
     from desk.automation import kill_switches
@@ -366,6 +378,10 @@ def main(argv=None):
     p.add_argument("--thesis")
     p.add_argument("--as-of")
     p.set_defaults(func=cmd_assess)
+
+    ap = sub.add_parser("auto-paper")
+    ap.add_argument("--date", help="Session date (default: latest bhavcopy date)")
+    ap.set_defaults(func=cmd_auto_paper)
 
     ksw = sub.add_parser("killswitch")
     ksw_sub = ksw.add_subparsers(dest="killswitch_command", required=True)

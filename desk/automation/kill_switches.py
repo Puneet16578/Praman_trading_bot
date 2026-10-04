@@ -17,6 +17,8 @@ from datetime import date, datetime, timezone
 import json
 import math
 
+from desk.outcome_firewall import OUTCOMES_OPEN
+
 BLOCKS_ENTRIES = {'NO_NEW_TRADES', 'FREEZE_ENTRIES', 'DISABLE_AUTO_ENTRIES'}
 LATCHED = {'DRAWDOWN_OR_LOSING_STREAK', 'REPEATED_FILL_FAILURES'}
 
@@ -61,6 +63,8 @@ def data_health(run_date, latest_store_date, today, isin_status, candidate_plans
         problems.append(f'ISIN map health is {isin_status}.')
     for symbol, plan in candidate_plans:
         missing = [k for k in PLAN_FIELDS if not _present(plan.get(k))]
+        if isinstance(plan.get('stress'), dict) and not _finite(plan['stress'].get('stress_loss_inr')):
+            missing.append('stress.stress_loss_inr')
         if missing:
             problems.append(f'{symbol}: passed plan lacks {missing}.')
     return Trip('DATA_STALE_OR_INCONSISTENT', bool(problems), dict(problems=problems))
@@ -185,7 +189,7 @@ def display_lines(conn, scope, *, sealed_display=lambda row: bool(row['sealed'])
             lines.append(f'  {switch}: clear (never triggered)')
             continue
         active = row['state'] == 'TRIGGERED'
-        detail = 'detail sealed until 2027-06-01' if sealed_display(row) else row['detail']
+        detail = f'detail sealed until {OUTCOMES_OPEN.isoformat()}' if sealed_display(row) else row['detail']
         lines.append(f"  {switch}: {'ACTIVE -> ' + effect if active else 'clear'} "
                      f"(last {row['state']} {row['run_date']}; {detail})")
     return lines

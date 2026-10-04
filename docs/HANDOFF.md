@@ -112,6 +112,22 @@
   hard veto, NO_TRADE for insufficient/screen-fail, otherwise WATCH (nothing is
   blueprint-ELIGIBLE before T4). `desk assess` appends a linked decision_contracts
   row; failure is journalled, never aborts. B3 suite: 671 tests in 121.460s, OK.
+- B4: desk/automation/registry.py (append-only versioned registry; S0 "baseline
+  screen" PAPER_BURN_IN, purpose: exercise the automation, NOT expected to be
+  profitable; `manual` registered as ACTIVE_MANUAL). Entry policy computed by the
+  user's pre-stated rule from committed follow-up 2 results: LIMIT (breach diff
+  -2.91 pp [-3.14, -2.70], fill 97.10%). desk/automation/strategy0.py: nightly
+  engine (kill switches -> settle entries -> monitor/stop/time exits -> candidates
+  vs open-risk budget, alphabetical order), one transaction per run, idempotent,
+  events + linked contracts; own notional book separate from manual trades.
+  desk/automation/seal.py: S0 outcomes for decisions >= 2026-09-16 refused before
+  2027-06-01; brake inputs are the one privileged path (sealed detail; a trip
+  discloses one bit). Nightly: weekly_ingest step auto_paper after desk_scan;
+  `desk auto-paper [--date]`. Fill-failure threshold 3 is PROPOSED (registry,
+  not rulebook). Dry run on a temporary copy of the real Desk store for
+  2026-10-01: 6 candidates, 2 accepted, 4 rejected OPEN_RISK_BUDGET; production
+  Desk store hash unchanged; temp removed. Seal dates derive from
+  desk/outcome_firewall.py (single-boundary test). B4 suite: 685 tests in 108.307s, OK.
 
 ## 2026-10-04 G6 repair checkpoint
 

@@ -265,6 +265,16 @@ def step_desk_scan() -> None:
         print("[DESK_SCAN] No bhavcopy data to scan.")
 
 
+def step_auto_paper() -> None:
+    """Strategy 0 automatic paper decisions, fills, monitoring and exits (A1), after the scan."""
+    from desk.automation.nightly import run_auto_paper
+    ops = run_auto_paper()
+    print(f"[AUTO_PAPER] {ops.get('run_date')}: " + (
+        "already run" if ops.get('status') == 'ALREADY_RUN' else
+        f"{ops['candidates']} candidates, {ops['accepted']} accepted, rejected {ops['rejected']}, "
+        f"kill switches active {ops['kill_switches_active']}"))
+
+
 def step_backups() -> None:
     from desk.backups import run_backups
     for report in run_backups():
@@ -281,6 +291,7 @@ STEPS = [
     ("bhavcopy_today", step_bhavcopy_today),
     ("circuit_bands", step_circuit_bands),
     ("desk_scan", step_desk_scan),
+    ("auto_paper", step_auto_paper),
     ("backups", step_backups),
 ]
 
