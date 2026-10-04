@@ -128,6 +128,18 @@
   2026-10-01: 6 candidates, 2 accepted, 4 rejected OPEN_RISK_BUDGET; production
   Desk store hash unchanged; temp removed. Seal dates derive from
   desk/outcome_firewall.py (single-boundary test). B4 suite: 685 tests in 108.307s, OK.
+- B5: desk/brief.py + `desk brief [--date] [--write]`: blueprint daily-decision-desk
+  layout with today's fields (universe, candidates, passed checks, accepted,
+  fills/no-fills/failures/cancels, at-fill cap breaches, rejected by reason, kill
+  switches, open risk for S0 and the manual book, data health); model fields are
+  UNKNOWN with their phase; NO TRADE printed as a normal outcome; S0 outcomes
+  sealed. Nightly step `brief` after auto_paper writes logs/brief_<date>.txt.
+  Real-data preview on a temporary Desk copy for 2026-10-01 rendered correctly;
+  production Desk store unchanged. B5 suite: 691 tests in 123.603s, OK.
+- NOTE: the next nightly run (or any `desk` command) creates the five new
+  append-only tables in data/desk/desk.sqlite through the existing additive
+  init_desk_db path; no existing row or table is touched. The first nightly
+  auto_paper run registers S0 and starts the sealed burn-in.
 
 ## 2026-10-04 G6 repair checkpoint
 

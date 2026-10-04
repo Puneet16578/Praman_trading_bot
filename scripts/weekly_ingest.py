@@ -275,6 +275,13 @@ def step_auto_paper() -> None:
         f"kill switches active {ops['kill_switches_active']}"))
 
 
+def step_brief() -> None:
+    """Daily decision desk after the automatic paper run; written to logs/brief_<date>.txt."""
+    from desk.brief import write_brief
+    path, _ = write_brief()
+    print(f"[BRIEF] wrote {path}")
+
+
 def step_backups() -> None:
     from desk.backups import run_backups
     for report in run_backups():
@@ -292,6 +299,7 @@ STEPS = [
     ("circuit_bands", step_circuit_bands),
     ("desk_scan", step_desk_scan),
     ("auto_paper", step_auto_paper),
+    ("brief", step_brief),
     ("backups", step_backups),
 ]
 

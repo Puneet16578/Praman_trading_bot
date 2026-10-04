@@ -336,6 +336,24 @@ def cmd_auto_paper(args):
     print(json.dumps(ops, indent=2, sort_keys=True))
 
 
+def cmd_brief(args):
+    """Daily decision desk; --write also saves logs/brief_<date>.txt (the nightly job does this)."""
+    from desk.brief import build_brief, health_lines, write_brief
+    if args.write:
+        path, text = write_brief(args.date)
+        print(text, end="")
+        print(f"(written to {path})")
+        return
+    praman_conn, desk_conn = get_live_connection(), get_desk_connection()
+    try:
+        run_date = args.date or _latest_bhavcopy_date(praman_conn)
+        print(build_brief(praman_conn, desk_conn, run_date, rulebook=load_active_rulebook().rulebook,
+                          health_lines=health_lines(praman_conn, run_date)), end="")
+    finally:
+        praman_conn.close()
+        desk_conn.close()
+
+
 def cmd_killswitch_reset(args):
     """Human release of a latched kill switch; appended with the stated reason, never an edit."""
     from desk.automation import kill_switches
@@ -378,6 +396,11 @@ def main(argv=None):
     p.add_argument("--thesis")
     p.add_argument("--as-of")
     p.set_defaults(func=cmd_assess)
+
+    br = sub.add_parser("brief")
+    br.add_argument("--date", help="Session date (default: latest bhavcopy date)")
+    br.add_argument("--write", action="store_true", help="Also write logs/brief_<date>.txt")
+    br.set_defaults(func=cmd_brief)
 
     ap = sub.add_parser("auto-paper")
     ap.add_argument("--date", help="Session date (default: latest bhavcopy date)")

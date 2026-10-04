@@ -62,7 +62,9 @@ def opportunity(desk, symbol, day, p, state='SCREEN_PASS'):
     desk.commit()
 
 
-class EngineTest(unittest.TestCase):
+class EngineFixture(unittest.TestCase):
+    """Shared setup only; no tests, so subclasses never rerun the engine tests."""
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.desk = get_desk_connection(Path(self.temp.name)/'desk.sqlite')
@@ -86,6 +88,9 @@ class EngineTest(unittest.TestCase):
         rows = self.desk.execute('SELECT * FROM strategy_paper_events ORDER BY event_id').fetchall()
         return [dict(r) | dict(detail=json.loads(r['detail'])) for r in rows if not types or r['event_type'] in types]
 
+
+
+class EngineTest(EngineFixture):
     def test_full_lifecycle_budget_rejection_and_idempotence(self):
         d0 = DAYS[0]
         self.store.market(d0)
