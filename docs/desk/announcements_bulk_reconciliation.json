@@ -1,0 +1,1565 @@
+{
+  "as_of": "2026-10-05",
+  "week": [
+    "2026-09-07",
+    "2026-09-13"
+  ],
+  "requests": {
+    "week": [
+      "2026-09-07",
+      "2026-09-13"
+    ],
+    "requests": [
+      {
+        "label": "cookie",
+        "params": null,
+        "status": 200,
+        "seconds": 0.426,
+        "sha256": "8bf914e0871c329394fb474de03ed334a8a605924c3f3687d43777fd6b308f7c"
+      },
+      {
+        "label": "bulk_week",
+        "params": {
+          "index": "equities",
+          "from_date": "07-09-2026",
+          "to_date": "13-09-2026"
+        },
+        "status": 200,
+        "seconds": 2.387,
+        "sha256": "9d6374ca4a1b49f83e689e0351cf0da575ef381b453e6c29656f4fae9470ea10",
+        "rows": 3132
+      },
+      {
+        "label": "bulk_first",
+        "params": {
+          "index": "equities",
+          "from_date": "07-09-2026",
+          "to_date": "10-09-2026"
+        },
+        "status": 200,
+        "seconds": 1.949,
+        "sha256": "11d6270c8534c6b7f62daabf87f8bae95ed33c0b4f5ab82525eb1294a187cb46",
+        "rows": 2492
+      },
+      {
+        "label": "bulk_last",
+        "params": {
+          "index": "equities",
+          "from_date": "11-09-2026",
+          "to_date": "13-09-2026"
+        },
+        "status": 200,
+        "seconds": 1.635,
+        "sha256": "d7b5086ce99310c9616f51e21b20ab0d26decd8437e37d30985e0deb76d64fe5",
+        "rows": 640
+      },
+      {
+        "label": "HEG",
+        "params": {
+          "index": "equities",
+          "from_date": "07-09-2026",
+          "to_date": "13-09-2026",
+          "symbol": "HEG"
+        },
+        "status": 200,
+        "seconds": 0.78,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "rows": 0
+      },
+      {
+        "label": "SANGINITA",
+        "params": {
+          "index": "equities",
+          "from_date": "07-09-2026",
+          "to_date": "13-09-2026",
+          "symbol": "SANGINITA"
+        },
+        "status": 200,
+        "seconds": 0.797,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "rows": 0
+      },
+      {
+        "label": "HMT",
+        "params": {
+          "index": "equities",
+          "from_date": "07-09-2026",
+          "to_date": "13-09-2026",
+          "symbol": "HMT"
+        },
+        "status": 200,
+        "seconds": 0.828,
+        "sha256": "a76154d72bbba33296ae582b87901be8e1b541e1134eb8b0f1bfbad0155b0345",
+        "rows": 6
+      },
+      {
+        "label": "MELSTAR",
+        "params": {
+          "index": "equities",
+          "from_date": "07-09-2026",
+          "to_date": "13-09-2026",
+          "symbol": "MELSTAR"
+        },
+        "status": 200,
+        "seconds": 0.858,
+        "sha256": "fe25e4e4012b072e9db22cc53132d139b0ddd0f37883a096bbfc87830a181631",
+        "rows": 9
+      }
+    ],
+    "status": "COMPLETE"
+  },
+  "stored_rows": 3093,
+  "stored_unique_keys": 3093,
+  "bulk_rows": 3132,
+  "bulk_unique_keys": 3132,
+  "exact_shared_keys": 3088,
+  "changed_shared_keys": [],
+  "missing_from_bulk": 5,
+  "missing_from_store": 44,
+  "classifications": {
+    "symbol_rename": 8,
+    "backfill_universe_exclusion": 41
+  },
+  "split_windows": {
+    "first": 2492,
+    "last": 640,
+    "identical_persisted_fields": true
+  },
+  "original_capture_identical_persisted_fields": true,
+  "sample_parity": {
+    "HMT": {
+      "bulk": 6,
+      "per_symbol": 6,
+      "only_bulk": 0,
+      "only_per_symbol": 0,
+      "equal": true
+    },
+    "MELSTAR": {
+      "bulk": 9,
+      "per_symbol": 9,
+      "only_bulk": 0,
+      "only_per_symbol": 0,
+      "equal": true
+    }
+  },
+  "old_symbol_responses": {
+    "HEG": 0,
+    "SANGINITA": 0
+  },
+  "daily_counts": {
+    "2026-09-07": 734,
+    "2026-09-08": 746,
+    "2026-09-09": 583,
+    "2026-09-10": 429,
+    "2026-09-11": 473,
+    "2026-09-12": 140,
+    "2026-09-13": 27
+  },
+  "all_response_dates_within_week": true,
+  "publication_text_matches_sort_timestamp": true,
+  "store_comparison_sha256": "4c4bccc0328a46fa07169485647e7296840342eeace3eef1ed6d43ac8da031ac",
+  "isin_map_sha256": "2b33925b6b589d46f721a98eb0fb96a1bebba0b31a893e0b733de4137981dc0e",
+  "ledger": [
+    {
+      "direction": "missing_from_bulk_by_symbol_key",
+      "row": {
+        "symbol": "HEG",
+        "seq_id": "106775414",
+        "event_date": "2026-09-08",
+        "knowledge_date": "2026-09-08",
+        "category": "Updates",
+        "description": "HEG Limited has informed the Exchange regarding 'Re-lodgement of Transfer Requests of Physical Shares for the month of August, 2026'.",
+        "sort_timestamp": "2026-09-08 20:29:51"
+      },
+      "classification": "symbol_rename",
+      "stored_recorded_at": "2026-09-18T11:33:41.175337+00:00",
+      "evidence": {
+        "bulk_symbol": "HEGAM",
+        "bulk_isin": "INE545A01024",
+        "old_symbol_isin": "INE545A01024",
+        "identical_non_symbol_fields": true,
+        "attachment": "https://nsearchives.nseindia.com/corporate/HEG_08092026202937_STEXRElodgement08092026.pdf",
+        "bulk_company_name": "HEG Advanced Materials Limited",
+        "counterpart": {
+          "symbol": "HEGAM",
+          "event_date": "2026-09-08",
+          "knowledge_date": "2026-09-08",
+          "seq_id": "106775414",
+          "category": "Updates",
+          "description": "HEG Limited has informed the Exchange regarding 'Re-lodgement of Transfer Requests of Physical Shares for the month of August, 2026'.",
+          "sort_timestamp": "2026-09-08 20:29:51",
+          "source_file": "probe"
+        }
+      }
+    },
+    {
+      "direction": "missing_from_bulk_by_symbol_key",
+      "row": {
+        "symbol": "HEG",
+        "seq_id": "106778188",
+        "event_date": "2026-09-10",
+        "knowledge_date": "2026-09-10",
+        "category": "Analysts/Institutional Investor Meet/Con. Call Updates",
+        "description": "HEG Limited has informed the Exchange about Schedule of meet",
+        "sort_timestamp": "2026-09-10 22:03:12"
+      },
+      "classification": "symbol_rename",
+      "stored_recorded_at": "2026-09-18T11:33:41.175324+00:00",
+      "evidence": {
+        "bulk_symbol": "HEGAM",
+        "bulk_isin": "INE545A01024",
+        "old_symbol_isin": "INE545A01024",
+        "identical_non_symbol_fields": true,
+        "attachment": "https://nsearchives.nseindia.com/corporate/HEG_10092026220227_STEXInvestorCall10092026.pdf",
+        "bulk_company_name": "HEG Advanced Materials Limited",
+        "counterpart": {
+          "symbol": "HEGAM",
+          "event_date": "2026-09-10",
+          "knowledge_date": "2026-09-10",
+          "seq_id": "106778188",
+          "category": "Analysts/Institutional Investor Meet/Con. Call Updates",
+          "description": "HEG Limited has informed the Exchange about Schedule of meet",
+          "sort_timestamp": "2026-09-10 22:03:12",
+          "source_file": "probe"
+        }
+      }
+    },
+    {
+      "direction": "missing_from_bulk_by_symbol_key",
+      "row": {
+        "symbol": "SANGINITA",
+        "seq_id": "106774556",
+        "event_date": "2026-09-08",
+        "knowledge_date": "2026-09-08",
+        "category": "General Updates",
+        "description": "Sanginita Chemicals Limited has informed the Exchange about General Updates",
+        "sort_timestamp": "2026-09-08 14:38:33"
+      },
+      "classification": "symbol_rename",
+      "stored_recorded_at": "2026-09-19T03:46:57.234951+00:00",
+      "evidence": {
+        "bulk_symbol": "AGASTYAEN",
+        "bulk_isin": "INE753W01010",
+        "old_symbol_isin": "INE753W01010",
+        "identical_non_symbol_fields": true,
+        "attachment": "https://nsearchives.nseindia.com/corporate/SANGINITA_08092026143815_Intimation_under_Regulation_30.pdf",
+        "bulk_company_name": "Agastya Energy and Infrastructure Limited",
+        "counterpart": {
+          "symbol": "AGASTYAEN",
+          "event_date": "2026-09-08",
+          "knowledge_date": "2026-09-08",
+          "seq_id": "106774556",
+          "category": "General Updates",
+          "description": "Sanginita Chemicals Limited has informed the Exchange about General Updates",
+          "sort_timestamp": "2026-09-08 14:38:33",
+          "source_file": "probe"
+        }
+      }
+    },
+    {
+      "direction": "missing_from_bulk_by_symbol_key",
+      "row": {
+        "symbol": "SANGINITA",
+        "seq_id": "106776815",
+        "event_date": "2026-09-09",
+        "knowledge_date": "2026-09-09",
+        "category": "Outcome of Board Meeting",
+        "description": "Sanginita Chemicals Limited has informed the Exchange regarding Outcome of Board Meeting held on September 09, 2026.",
+        "sort_timestamp": "2026-09-09 18:37:19"
+      },
+      "classification": "symbol_rename",
+      "stored_recorded_at": "2026-09-19T03:46:57.234938+00:00",
+      "evidence": {
+        "bulk_symbol": "AGASTYAEN",
+        "bulk_isin": "INE753W01010",
+        "old_symbol_isin": "INE753W01010",
+        "identical_non_symbol_fields": true,
+        "attachment": "https://nsearchives.nseindia.com/corporate/SANGINITA_09092026183600_Outcome_of_Board_Meeting-_09092026.pdf",
+        "bulk_company_name": "Agastya Energy and Infrastructure Limited",
+        "counterpart": {
+          "symbol": "AGASTYAEN",
+          "event_date": "2026-09-09",
+          "knowledge_date": "2026-09-09",
+          "seq_id": "106776815",
+          "category": "Outcome of Board Meeting",
+          "description": "Sanginita Chemicals Limited has informed the Exchange regarding Outcome of Board Meeting held on September 09, 2026.",
+          "sort_timestamp": "2026-09-09 18:37:19",
+          "source_file": "probe"
+        }
+      }
+    },
+    {
+      "direction": "missing_from_bulk_by_symbol_key",
+      "row": {
+        "symbol": "SANGINITA",
+        "seq_id": "106779875",
+        "event_date": "2026-09-13",
+        "knowledge_date": "2026-09-13",
+        "category": "Copy of Newspaper Publication",
+        "description": "Sanginita Chemicals Limited has informed the Exchange about Copy of Newspaper Publication",
+        "sort_timestamp": "2026-09-13 16:26:04"
+      },
+      "classification": "symbol_rename",
+      "stored_recorded_at": "2026-09-19T03:46:57.234923+00:00",
+      "evidence": {
+        "bulk_symbol": "AGASTYAEN",
+        "bulk_isin": "INE753W01010",
+        "old_symbol_isin": "INE753W01010",
+        "identical_non_symbol_fields": true,
+        "attachment": "https://nsearchives.nseindia.com/corporate/SANGINITA_13092026162548_Intimation_Newspaper_Pre_Reg_30.pdf",
+        "bulk_company_name": "Agastya Energy and Infrastructure Limited",
+        "counterpart": {
+          "symbol": "AGASTYAEN",
+          "event_date": "2026-09-13",
+          "knowledge_date": "2026-09-13",
+          "seq_id": "106779875",
+          "category": "Copy of Newspaper Publication",
+          "description": "Sanginita Chemicals Limited has informed the Exchange about Copy of Newspaper Publication",
+          "sort_timestamp": "2026-09-13 16:26:04",
+          "source_file": "probe"
+        }
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "ABHISHEK",
+        "seq_id": "106772473",
+        "event_date": "2026-09-07",
+        "knowledge_date": "2026-09-07",
+        "category": "Copy of Newspaper Publication",
+        "description": "Abhishek Corporation Limited has informed the Exchange about Copy of Newspaper Publication",
+        "sort_timestamp": "2026-09-07 12:11:11"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "AGASTYAEN",
+        "seq_id": "106774556",
+        "event_date": "2026-09-08",
+        "knowledge_date": "2026-09-08",
+        "category": "General Updates",
+        "description": "Sanginita Chemicals Limited has informed the Exchange about General Updates",
+        "sort_timestamp": "2026-09-08 14:38:33"
+      },
+      "classification": "symbol_rename",
+      "evidence": {
+        "stored_symbol": "SANGINITA",
+        "bulk_isin": "INE753W01010",
+        "old_symbol_isin": "INE753W01010",
+        "identical_non_symbol_fields": true,
+        "counterpart": {
+          "symbol": "SANGINITA",
+          "seq_id": "106774556",
+          "event_date": "2026-09-08",
+          "knowledge_date": "2026-09-08",
+          "category": "General Updates",
+          "description": "Sanginita Chemicals Limited has informed the Exchange about General Updates",
+          "sort_timestamp": "2026-09-08 14:38:33"
+        }
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "AGASTYAEN",
+        "seq_id": "106776815",
+        "event_date": "2026-09-09",
+        "knowledge_date": "2026-09-09",
+        "category": "Outcome of Board Meeting",
+        "description": "Sanginita Chemicals Limited has informed the Exchange regarding Outcome of Board Meeting held on September 09, 2026.",
+        "sort_timestamp": "2026-09-09 18:37:19"
+      },
+      "classification": "symbol_rename",
+      "evidence": {
+        "stored_symbol": "SANGINITA",
+        "bulk_isin": "INE753W01010",
+        "old_symbol_isin": "INE753W01010",
+        "identical_non_symbol_fields": true,
+        "counterpart": {
+          "symbol": "SANGINITA",
+          "seq_id": "106776815",
+          "event_date": "2026-09-09",
+          "knowledge_date": "2026-09-09",
+          "category": "Outcome of Board Meeting",
+          "description": "Sanginita Chemicals Limited has informed the Exchange regarding Outcome of Board Meeting held on September 09, 2026.",
+          "sort_timestamp": "2026-09-09 18:37:19"
+        }
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "AGASTYAEN",
+        "seq_id": "106779875",
+        "event_date": "2026-09-13",
+        "knowledge_date": "2026-09-13",
+        "category": "Copy of Newspaper Publication",
+        "description": "Sanginita Chemicals Limited has informed the Exchange about Copy of Newspaper Publication",
+        "sort_timestamp": "2026-09-13 16:26:04"
+      },
+      "classification": "symbol_rename",
+      "evidence": {
+        "stored_symbol": "SANGINITA",
+        "bulk_isin": "INE753W01010",
+        "old_symbol_isin": "INE753W01010",
+        "identical_non_symbol_fields": true,
+        "counterpart": {
+          "symbol": "SANGINITA",
+          "seq_id": "106779875",
+          "event_date": "2026-09-13",
+          "knowledge_date": "2026-09-13",
+          "category": "Copy of Newspaper Publication",
+          "description": "Sanginita Chemicals Limited has informed the Exchange about Copy of Newspaper Publication",
+          "sort_timestamp": "2026-09-13 16:26:04"
+        }
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "AIFL",
+        "seq_id": "106774448",
+        "event_date": "2026-09-08",
+        "knowledge_date": "2026-09-08",
+        "category": "Shareholders meeting",
+        "description": "Ashapura Intimates Fashion Limited has informed the Exchange regarding Notice of Annual General Meeting to be held on September 30, 2026",
+        "sort_timestamp": "2026-09-08 13:13:01"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BZ",
+            "rows": 17,
+            "first_date": "2019-10-07",
+            "last_date": "2020-01-27"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "ASIL",
+        "seq_id": "106776647",
+        "event_date": "2026-09-09",
+        "knowledge_date": "2026-09-09",
+        "category": "Outcome of Board Meeting",
+        "description": "Amit Spinning Industries Limited has informed the Exchange regarding Outcome of Board Meeting held on September 09, 2026: Notice of the AGM could not be dispatched to the Members within the requisite timeline. Accordingly, after taking into consideration the circumstances and with a view to obtaining extension of time for holding the AGM, the Board of Directors has decided to cancel the AGM earlier scheduled to be held on September 30, 2026 .",
+        "sort_timestamp": "2026-09-09 17:34:46"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "ATNINTER",
+        "seq_id": "106776119",
+        "event_date": "2026-09-09",
+        "knowledge_date": "2026-09-09",
+        "category": "Copy of Newspaper Publication",
+        "description": "Newspaper Publication informing the members of the Company about the 42nd Annual General Meeting scheduled to be held on Monday, 28th September, 2026 at 11:00 A.M. through Video Conferencing/ Other Audio Visual Means",
+        "sort_timestamp": "2026-09-09 12:13:39"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BE",
+            "rows": 80,
+            "first_date": "2019-10-07",
+            "last_date": "2022-05-02"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "BGLOBAL",
+        "seq_id": "106772809",
+        "event_date": "2026-09-07",
+        "knowledge_date": "2026-09-07",
+        "category": "Outcome of Board Meeting",
+        "description": "Bharatiya Global Infomedia Limited has informed the Exchange regarding Outcome of Board Meeting held on September 07, 2026.",
+        "sort_timestamp": "2026-09-07 16:15:15"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BE",
+            "rows": 191,
+            "first_date": "2019-10-01",
+            "last_date": "2022-09-26"
+          },
+          {
+            "series": "BZ",
+            "rows": 209,
+            "first_date": "2022-10-03",
+            "last_date": "2026-09-28"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "BLUEBLENDS",
+        "seq_id": "106774929",
+        "event_date": "2026-09-08",
+        "knowledge_date": "2026-09-08",
+        "category": "Outcome of Board Meeting",
+        "description": "Blue Blends (I) Limited has informed the Exchange regarding Outcome of Board Meeting held on September 08, 2026.",
+        "sort_timestamp": "2026-09-08 17:30:42"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BE",
+            "rows": 94,
+            "first_date": "2019-10-01",
+            "last_date": "2020-02-26"
+          },
+          {
+            "series": "BZ",
+            "rows": 34,
+            "first_date": "2020-02-27",
+            "last_date": "2020-10-26"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "CANDC",
+        "seq_id": "106776208",
+        "event_date": "2026-09-09",
+        "knowledge_date": "2026-09-09",
+        "category": "Clarification - Financial Results",
+        "description": "The Exchange has sought clarification from C & C Constructions Limited for the quarter ended 30-Jun-2026 with respect to Regulation 33 of the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015. On basis of above the Company is required to clarify the following:  The response of the Company is awaited.",
+        "sort_timestamp": "2026-09-09 13:06:14"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BZ",
+            "rows": 735,
+            "first_date": "2019-10-01",
+            "last_date": "2022-10-27"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "CLCIND",
+        "seq_id": "106778770",
+        "event_date": "2026-09-11",
+        "knowledge_date": "2026-09-11",
+        "category": "Shareholders meeting",
+        "description": "Outcome of AGM",
+        "sort_timestamp": "2026-09-11 13:28:38"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BE",
+            "rows": 61,
+            "first_date": "2026-01-30",
+            "last_date": "2026-09-28"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "DSKULKARNI",
+        "seq_id": "106777967",
+        "event_date": "2026-09-10",
+        "knowledge_date": "2026-09-10",
+        "category": "Shareholders meeting",
+        "description": "DS Kulkarni Developers Limited has informed the Exchange regarding Proceedings of 35th Annual General Meeting held on September 10, 2026",
+        "sort_timestamp": "2026-09-10 18:05:02"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BE",
+            "rows": 36,
+            "first_date": "2026-08-03",
+            "last_date": "2026-10-01"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "GAMMONIND",
+        "seq_id": "106776243",
+        "event_date": "2026-09-09",
+        "knowledge_date": "2026-09-09",
+        "category": "Clarification - Financial Results",
+        "description": "The Exchange has sought clarification from Gammon India Limited for the quarter ended 30-Jun-2026 with respect to Regulation 33 of the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015. On basis of above the Company is required to clarify the following:  The response of the Company is awaited.",
+        "sort_timestamp": "2026-09-09 13:25:18"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "GAMMONIND",
+        "seq_id": "106777706",
+        "event_date": "2026-09-10",
+        "knowledge_date": "2026-09-10",
+        "category": "Resignation",
+        "description": "Gammon India Limited informs the Exchange regarding Resignation of Mr. Vishwas Madhusudan Joglekar as Non- Executive Independent Director of the company w.e.f. September 09, 2026.",
+        "sort_timestamp": "2026-09-10 15:49:16"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "HMT",
+        "seq_id": "106774633",
+        "event_date": "2026-09-08",
+        "knowledge_date": "2026-09-08",
+        "category": "Copy of Newspaper Publication",
+        "description": "HMT Limited has informed the Exchange about Copy of Newspaper Publication",
+        "sort_timestamp": "2026-09-08 15:27:22"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BZ",
+            "rows": 1731,
+            "first_date": "2019-10-01",
+            "last_date": "2026-10-01"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "HMT",
+        "seq_id": "106775390",
+        "event_date": "2026-09-08",
+        "knowledge_date": "2026-09-08",
+        "category": "General Updates",
+        "description": "HMT Limited has informed the Exchange about Book Closure Date from September 24, 2026 to September 30, 2026",
+        "sort_timestamp": "2026-09-08 20:06:24"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BZ",
+            "rows": 1731,
+            "first_date": "2019-10-01",
+            "last_date": "2026-10-01"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "HMT",
+        "seq_id": "106775757",
+        "event_date": "2026-09-08",
+        "knowledge_date": "2026-09-08",
+        "category": "Shareholders meeting",
+        "description": "HMT Limited has informed the Exchange regarding Notice of Annual General Meeting to be held on September 30, 2026",
+        "sort_timestamp": "2026-09-08 23:42:05"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BZ",
+            "rows": 1731,
+            "first_date": "2019-10-01",
+            "last_date": "2026-10-01"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "HMT",
+        "seq_id": "106775760",
+        "event_date": "2026-09-08",
+        "knowledge_date": "2026-09-08",
+        "category": "Record Date",
+        "description": "HMT Limited has informed the Exchange that Record date for the purpose of Meeting  is 23-Sep-2026.",
+        "sort_timestamp": "2026-09-08 23:52:00"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BZ",
+            "rows": 1731,
+            "first_date": "2019-10-01",
+            "last_date": "2026-10-01"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "HMT",
+        "seq_id": "106776271",
+        "event_date": "2026-09-09",
+        "knowledge_date": "2026-09-09",
+        "category": "Copy of Newspaper Publication",
+        "description": "Published Notice of 73rd AGM & E-voting information",
+        "sort_timestamp": "2026-09-09 13:48:29"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BZ",
+            "rows": 1731,
+            "first_date": "2019-10-01",
+            "last_date": "2026-10-01"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "HMT",
+        "seq_id": "106778002",
+        "event_date": "2026-09-10",
+        "knowledge_date": "2026-09-10",
+        "category": "Change in Auditors",
+        "description": "HMT Limited has informed the Exchange regarding Change in Auditors of the company.",
+        "sort_timestamp": "2026-09-10 18:22:07"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BZ",
+            "rows": 1731,
+            "first_date": "2019-10-01",
+            "last_date": "2026-10-01"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "KALYANI",
+        "seq_id": "106775389",
+        "event_date": "2026-09-08",
+        "knowledge_date": "2026-09-08",
+        "category": "Shareholders meeting",
+        "description": "Kalyani Commercials Limited has informed the Exchange regarding Proceedings of Annual General Meeting held on September 08, 2026",
+        "sort_timestamp": "2026-09-08 20:06:16"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BE",
+            "rows": 5,
+            "first_date": "2022-03-02",
+            "last_date": "2026-08-28"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "KALYANI",
+        "seq_id": "106778048",
+        "event_date": "2026-09-10",
+        "knowledge_date": "2026-09-10",
+        "category": "Shareholders meeting",
+        "description": "Kalyani Commercials Limited has submitted the Exchange a copy Srutinizers report of  Annual General Meeting held on September 08, 2026. Further, the company has informed the Exchange regarding voting results.",
+        "sort_timestamp": "2026-09-10 18:53:45"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BE",
+            "rows": 5,
+            "first_date": "2022-03-02",
+            "last_date": "2026-08-28"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "LEEL",
+        "seq_id": "106777476",
+        "event_date": "2026-09-10",
+        "knowledge_date": "2026-09-10",
+        "category": "Outcome of Board Meeting",
+        "description": "LEEL Electricals Limited has informed the Exchange regarding Outcome of Board Meeting held on September 10, 2026.",
+        "sort_timestamp": "2026-09-10 11:33:17"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BZ",
+            "rows": 23,
+            "first_date": "2019-10-07",
+            "last_date": "2020-03-09"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "LEEL",
+        "seq_id": "106777488",
+        "event_date": "2026-09-10",
+        "knowledge_date": "2026-09-10",
+        "category": "Updates",
+        "description": "LEEL Electricals Limited has informed the Exchange regarding 'Application for Extension of time of holding Annual General Meeting of LEEL Electricals Limited for FY 2025-26'.",
+        "sort_timestamp": "2026-09-10 11:47:42"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BZ",
+            "rows": 23,
+            "first_date": "2019-10-07",
+            "last_date": "2020-03-09"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "MELSTAR",
+        "seq_id": "106774925",
+        "event_date": "2026-09-08",
+        "knowledge_date": "2026-09-08",
+        "category": "Shareholders meeting",
+        "description": "Melstar Information Technologies Limited has informed the Exchange regarding Proceedings of Annual General Meeting held on September 08, 2026",
+        "sort_timestamp": "2026-09-08 17:29:37"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BE",
+            "rows": 78,
+            "first_date": "2019-10-01",
+            "last_date": "2020-03-02"
+          },
+          {
+            "series": "BZ",
+            "rows": 945,
+            "first_date": "2020-03-09",
+            "last_date": "2024-09-02"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "MELSTAR",
+        "seq_id": "106774931",
+        "event_date": "2026-09-08",
+        "knowledge_date": "2026-09-08",
+        "category": "Shareholders meeting",
+        "description": "Melstar Information Technologies Limited has submitted the Exchange a copy Srutinizers report of  Annual General Meeting held on September 08, 2026. Further, the company has informed the Exchange regarding voting results.",
+        "sort_timestamp": "2026-09-08 17:30:58"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BE",
+            "rows": 78,
+            "first_date": "2019-10-01",
+            "last_date": "2020-03-02"
+          },
+          {
+            "series": "BZ",
+            "rows": 945,
+            "first_date": "2020-03-09",
+            "last_date": "2024-09-02"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "MELSTAR",
+        "seq_id": "106775137",
+        "event_date": "2026-09-08",
+        "knowledge_date": "2026-09-08",
+        "category": "Outcome of Board Meeting",
+        "description": "Melstar Information Technologies Limited has informed the Exchange regarding Outcome of Board Meeting held on September 08, 2026.",
+        "sort_timestamp": "2026-09-08 18:39:16"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BE",
+            "rows": 78,
+            "first_date": "2019-10-01",
+            "last_date": "2020-03-02"
+          },
+          {
+            "series": "BZ",
+            "rows": 945,
+            "first_date": "2020-03-09",
+            "last_date": "2024-09-02"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "MELSTAR",
+        "seq_id": "106775144",
+        "event_date": "2026-09-08",
+        "knowledge_date": "2026-09-08",
+        "category": "Record Date",
+        "description": "Melstar Information Technologies Limited has informed the Exchange that Record date for the purpose of Meeting  is 18-Sep-2026.",
+        "sort_timestamp": "2026-09-08 18:41:08"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BE",
+            "rows": 78,
+            "first_date": "2019-10-01",
+            "last_date": "2020-03-02"
+          },
+          {
+            "series": "BZ",
+            "rows": 945,
+            "first_date": "2020-03-09",
+            "last_date": "2024-09-02"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "MELSTAR",
+        "seq_id": "106775149",
+        "event_date": "2026-09-08",
+        "knowledge_date": "2026-09-08",
+        "category": "Updates",
+        "description": "Melstar Information Technologies Limited has informed the Exchange regarding 'Book Closure Date And Cut Off Date For The Purpose Of AGM'.",
+        "sort_timestamp": "2026-09-08 18:42:31"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BE",
+            "rows": 78,
+            "first_date": "2019-10-01",
+            "last_date": "2020-03-02"
+          },
+          {
+            "series": "BZ",
+            "rows": 945,
+            "first_date": "2020-03-09",
+            "last_date": "2024-09-02"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "MELSTAR",
+        "seq_id": "106775153",
+        "event_date": "2026-09-08",
+        "knowledge_date": "2026-09-08",
+        "category": "Updates",
+        "description": "Melstar Information Technologies Limited has informed the Exchange regarding 'Details Of E-Voting At The 39Th Annual General Meeting Of The Company'.",
+        "sort_timestamp": "2026-09-08 18:43:37"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BE",
+            "rows": 78,
+            "first_date": "2019-10-01",
+            "last_date": "2020-03-02"
+          },
+          {
+            "series": "BZ",
+            "rows": 945,
+            "first_date": "2020-03-09",
+            "last_date": "2024-09-02"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "MELSTAR",
+        "seq_id": "106775159",
+        "event_date": "2026-09-08",
+        "knowledge_date": "2026-09-08",
+        "category": "Shareholders meeting",
+        "description": "Melstar Information Technologies Limited has informed the Exchange regarding Notice of Annual General Meeting to be held on September 30, 2026",
+        "sort_timestamp": "2026-09-08 18:44:57"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BE",
+            "rows": 78,
+            "first_date": "2019-10-01",
+            "last_date": "2020-03-02"
+          },
+          {
+            "series": "BZ",
+            "rows": 945,
+            "first_date": "2020-03-09",
+            "last_date": "2024-09-02"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "MELSTAR",
+        "seq_id": "106775267",
+        "event_date": "2026-09-08",
+        "knowledge_date": "2026-09-08",
+        "category": "Updates",
+        "description": "Melstar Information Technologies Limited has informed the Exchange regarding 'Annual Report for FY 2025-26'.",
+        "sort_timestamp": "2026-09-08 19:18:58"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BE",
+            "rows": 78,
+            "first_date": "2019-10-01",
+            "last_date": "2020-03-02"
+          },
+          {
+            "series": "BZ",
+            "rows": 945,
+            "first_date": "2020-03-09",
+            "last_date": "2024-09-02"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "MELSTAR",
+        "seq_id": "106778720",
+        "event_date": "2026-09-11",
+        "knowledge_date": "2026-09-11",
+        "category": "Copy of Newspaper Publication",
+        "description": "Melstar Information Technologies Limited has informed the Exchange about Copy of Newspaper Publication for notice of 39th Annual General Meeting.",
+        "sort_timestamp": "2026-09-11 12:30:42"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BE",
+            "rows": 78,
+            "first_date": "2019-10-01",
+            "last_date": "2020-03-02"
+          },
+          {
+            "series": "BZ",
+            "rows": 945,
+            "first_date": "2020-03-09",
+            "last_date": "2024-09-02"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "NEUEON",
+        "seq_id": "106774846",
+        "event_date": "2026-09-08",
+        "knowledge_date": "2026-09-08",
+        "category": "Address Change",
+        "description": "The registered office address of the Company has been changed from Survey No. 321, Turkala Khanapur Village, Hathnoora Mandal, Sangareddy District, Telangana - 502296, India to 204, Second Floor, Ashoka Capitol, Road No. 2, Banjara Hills, Hyderabad   500034, Telangana, India (outside local limit) and company has filed necessary filling with Registrar of Companies.",
+        "sort_timestamp": "2026-09-08 17:07:00"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BE",
+            "rows": 98,
+            "first_date": "2025-12-23",
+            "last_date": "2026-10-01"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "NEUEON",
+        "seq_id": "106776639",
+        "event_date": "2026-09-09",
+        "knowledge_date": "2026-09-09",
+        "category": "General Updates",
+        "description": "Disclosure of Termination of Procurement Partnership/ MOU with Elcom Innovations Private Limited in compliance with Regulation 30 of SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015.",
+        "sort_timestamp": "2026-09-09 17:31:00"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BE",
+            "rows": 98,
+            "first_date": "2025-12-23",
+            "last_date": "2026-10-01"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "NEUEON",
+        "seq_id": "106776651",
+        "event_date": "2026-09-09",
+        "knowledge_date": "2026-09-09",
+        "category": "General Updates",
+        "description": "Disclosure of Withdrawal of Rights Issue proposal, which was earlier approved by the Board of Directors at their meetings held on July 31, 2026 in compliance with Regulation 30 of SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015",
+        "sort_timestamp": "2026-09-09 17:36:24"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BE",
+            "rows": 98,
+            "first_date": "2025-12-23",
+            "last_date": "2026-10-01"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "NITINFIRE",
+        "seq_id": "106774184",
+        "event_date": "2026-09-08",
+        "knowledge_date": "2026-09-08",
+        "category": "Clarification - Financial Results",
+        "description": "The Exchange has sought clarification from Nitin Fire Protection Industries Limited for the quarter ended 30-Jun-2026 with respect to Regulation 33 of the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015. On basis of above the Company is required to clarify the following:  The response of the Company is awaited.",
+        "sort_timestamp": "2026-09-08 10:49:07"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BZ",
+            "rows": 586,
+            "first_date": "2019-10-01",
+            "last_date": "2022-02-10"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "RUSHABEAR",
+        "seq_id": "106774401",
+        "event_date": "2026-09-08",
+        "knowledge_date": "2026-09-08",
+        "category": "Copy of Newspaper Publication",
+        "description": "Rushabh Precision Bearings Limited has informed the Exchange about Copy of Newspaper Publication",
+        "sort_timestamp": "2026-09-08 12:52:56"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "SWANDEF",
+        "seq_id": "106779641",
+        "event_date": "2026-09-12",
+        "knowledge_date": "2026-09-12",
+        "category": "Analysts/Institutional Investor Meet/Con. Call Updates",
+        "description": "Swan Defence and Heavy Industries Limited has informed the Exchange about Schedule of Investors meet",
+        "sort_timestamp": "2026-09-12 12:19:02"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BE",
+            "rows": 234,
+            "first_date": "2025-01-21",
+            "last_date": "2026-10-01"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "VHLTD",
+        "seq_id": "106777758",
+        "event_date": "2026-09-10",
+        "knowledge_date": "2026-09-10",
+        "category": "Shareholders meeting",
+        "description": "Viceroy Hotels Limited has informed the Exchange regarding Proceedings of Annual General Meeting held on September 10, 2026. Further, the company has submitted the Exchange a copy of Srutinizers report along with voting results.",
+        "sort_timestamp": "2026-09-10 16:28:48"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BE",
+            "rows": 564,
+            "first_date": "2024-04-03",
+            "last_date": "2026-10-01"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "VHLTD",
+        "seq_id": "106778067",
+        "event_date": "2026-09-10",
+        "knowledge_date": "2026-09-10",
+        "category": "Action(s) taken or orders passed",
+        "description": "Viceroy Hotels Limited has informed the Exchange about Action(s) taken or orders passed",
+        "sort_timestamp": "2026-09-10 19:14:26"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BE",
+            "rows": 564,
+            "first_date": "2024-04-03",
+            "last_date": "2026-10-01"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "XLENERGY",
+        "seq_id": "106774916",
+        "event_date": "2026-09-08",
+        "knowledge_date": "2026-09-08",
+        "category": "Shareholders meeting",
+        "description": "XL Energy Limited has informed the Exchange regarding Notice of 39th Annual General Meeting to be held on September 30, 2026 at 04:00 PM through VC/OAVM.",
+        "sort_timestamp": "2026-09-08 17:25:42"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BE",
+            "rows": 41,
+            "first_date": "2019-10-01",
+            "last_date": "2019-12-02"
+          },
+          {
+            "series": "BZ",
+            "rows": 32,
+            "first_date": "2019-12-03",
+            "last_date": "2020-03-09"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "XLENERGY",
+        "seq_id": "106776018",
+        "event_date": "2026-09-09",
+        "knowledge_date": "2026-09-09",
+        "category": "General Updates",
+        "description": "XL Energy Limited has informed the Exchange about Dispatch of Letter With Web-Link To Annual Report For Financial Year 2025-2026 under Regulation 36 (1)(b).",
+        "sort_timestamp": "2026-09-09 11:23:07"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BE",
+            "rows": 41,
+            "first_date": "2019-10-01",
+            "last_date": "2019-12-02"
+          },
+          {
+            "series": "BZ",
+            "rows": 32,
+            "first_date": "2019-12-03",
+            "last_date": "2020-03-09"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    },
+    {
+      "direction": "missing_from_store_by_symbol_key",
+      "row": {
+        "symbol": "XLENERGY",
+        "seq_id": "106776360",
+        "event_date": "2026-09-09",
+        "knowledge_date": "2026-09-09",
+        "category": "Copy of Newspaper Publication",
+        "description": "XL Energy Limited has informed the Exchange about Copy of Newspaper Publication for Publication of Notice of 39th Annual General Meeting to be held on 30th September, 2026 through Video Conference(VC)/ Other Audio-Visual Means (OAVM) and E-Voting Information.",
+        "sort_timestamp": "2026-09-09 14:59:14"
+      },
+      "classification": "backfill_universe_exclusion",
+      "evidence": {
+        "price_series": [
+          {
+            "series": "BE",
+            "rows": 41,
+            "first_date": "2019-10-01",
+            "last_date": "2019-12-02"
+          },
+          {
+            "series": "BZ",
+            "rows": 32,
+            "first_date": "2019-12-03",
+            "last_date": "2020-03-09"
+          }
+        ],
+        "stored_announcement_rows": 0,
+        "any_eq": false,
+        "same_seq_id_any_stored_symbol_or_date": 0,
+        "selector": "ingest_announcements_full_history.py: distinct bhavcopy symbols with series=EQ"
+      }
+    }
+  ],
+  "all_stored_rows_present_or_explained": true
+}

@@ -1,3 +1,35 @@
+## 2026-10-05: bulk reconciliation and T1 exposure clarification
+
+- Root verified D:/Agentic_ai_project/praman; clean start at 0dbfe6b. Pushed that
+  commit to origin/master with the user's explicit network approval. One agent,
+  foreground only. Part 1 remains deferred to Monday's run; P8-021 stays open.
+- Baseline full suite: 739 tests in 542.379s, OK, Python exit 0; log
+  logs/bulk_reconcile_baseline_20261005.log. Existing SQLite ResourceWarnings.
+- The original September 7-13 probe was already before September 18. Eight of ten
+  newly approved NSE requests used, all HTTP 200, no retries/redirects. No further
+  requests needed; two unused. No production ingestion/store or fetcher changes.
+- All discrepancies reconciled in docs/desk/announcements_bulk_reconciliation.json:
+  3,088 exact stored-key matches, five rename explanations (HEG -> HEGAM two,
+  SANGINITA -> AGASTYAEN three). Of 44 extra bulk keys, three are the SANGINITA
+  aliases and 41 belong to 20 symbols excluded by the EQ-only backfill universe.
+  Two HEGAM counterparts were already stored. Every stored row is present or
+  explained. No pagination, boundary/timezone, revision or withdrawal discrepancy.
+- Whole-week bulk 3,132 = split windows 2,492 + 640, identical persisted fields;
+  both days' bulk contents match. HMT 6/6 and MELSTAR 9/9 match live per-symbol.
+  Old HEG/SANGINITA requests return empty. P8-046 logs the resulting obsolete-symbol
+  freshness risk as OPEN; no production remedy authorized by this investigation.
+  P8-047 records/corrects inconsistent UTF-8 decoding in the draft audit script.
+- Revised proposal in docs/desk/announcements_bulk_proposal.md: bulk dated windows
+  up to a week, dated identity/coverage guards, existing scope retained. Proposal
+  only; await switch approval. Current identity evidence cannot be backdated.
+- T1 preregistration now uses the user's exact partially-exposed 2025 description
+  and requires forward data for decisive out-of-sample trading-model evidence.
+  No variant, period, threshold or metric changed; no T1 implementation.
+- Targeted offline parity/rename mutation tests: 5 passed, exit 0. Final full suite:
+  742 tests in 478.753s, OK, Python exit 0; log
+  logs/bulk_reconcile_final_20261005.log. Existing SQLite ResourceWarnings remain.
+  Staged diff checks clean. No source-fetch switch or T1 implementation performed.
+
 ## 2026-10-04 late session: Parts 2/3 and ingestion-health repair
 
 - Part 1 still waits for Monday 2026-10-05 18:00 IST. Scheduler last run Oct 3

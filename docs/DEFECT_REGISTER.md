@@ -1860,3 +1860,33 @@ runner's successful completion with warnings (scheduler exit 0); ERROR does not
 supersede an interruption. The log is never edited, so history remains intact.
 Tests cover later OK/WARN recovery, ERROR non-recovery, a newer unmatched start,
 and history preservation. Full-suite verification is in HANDOFF.
+
+## P8-046 - obsolete announcement symbols can return a successful empty response
+
+**Status.** Open. Medium. Found 2026-10-05 during the approved bulk parity probe.
+
+NSE returned HTTP 200 with zero rows for HEG and SANGINITA over September 7-13,
+while the bulk endpoint returned the same five stored announcements under HEGAM
+and AGASTYAEN, with matching sequence IDs, ISINs, timestamps and contents. The
+per-symbol row builder uses the requested symbol, and the refresh treats a valid
+empty list as success; it does not distinguish an obsolete symbol from a real
+absence. This can falsely establish freshness when an old symbol is in the plan.
+The scope of missed post-rename disclosures has not been measured; these five
+historical disclosures are already stored and are not claimed lost.
+
+Evidence: docs/desk/announcements_bulk_reconciliation.json and its captured
+responses; all five alias pairs reproduce offline. Tests reject same-ID matches
+with changed content, date or ISIN. The proposed bulk switch must resolve dated
+identities and fail closed on unresolved coverage. No production fix is made in
+this investigation; source/freshness changes await the user's switch review.
+
+## P8-047 - draft bulk audit compared UTF-8 captures with inconsistent decoding
+
+**Status.** Closed. Low. Introduced and corrected 2026-10-05 before commit.
+
+The first draft of the offline reconciliation script decoded the old JSON capture
+with the Windows default encoding but the new capture explicitly as UTF-8. This
+reported a false persisted-content difference for non-ASCII announcement text.
+All JSON text reads in that script now specify UTF-8. Re-running on the real
+captures confirms identical persisted fields across both days and split windows.
+No durable store, source payload, or committed historical result was changed.

@@ -31,13 +31,14 @@ firewall before loading event outcomes. Purge development decisions whose 20th
 forward global session enters 2025; count exclusions. 2025 decisions whose 20th
 session enters 2026 are censored, never silently counted non-adverse.
 
-**Exposure disclosure:** 2025 adverse20 outcomes were already examined in the
-2019-2025 shadow replays and follow-ups. Therefore 2025 is not a previously unseen
-outcome sample for these questions. It stays untouched for NEW T1 selection from
-this registration onward; results must be labelled replication on previously
-exposed outcomes, not a fresh confirmatory hold-out. An unexposed confirmation
-requires a future separately registered sample after its firewall permits access.
-This note does not rewrite the blueprint or claim past exposure can be undone.
+**Exposure disclosure (clarified 2026-10-05):** Calendar 2025 is "partially exposed:
+aggregate adverse-move rates were viewed in the shadow studies; no trading model
+has been fitted or selected on it." It stays untouched for NEW T1 selection from
+this registration onward. Results must disclose this partial exposure; 2025 is
+not a previously unseen outcome sample for these questions. Decisive out-of-sample
+evidence for any trading model must come from forward data, under a separately
+registered evaluation after the firewall permits access. This clarification
+changes no period, variant, metric, threshold or success criterion.
 
 ## Inputs, provenance, timing and availability
 
