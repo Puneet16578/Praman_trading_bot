@@ -32,9 +32,10 @@ manually.
 5. **Probabilities come from statistical models or from the user — never from an LLM, and never
    invented.** A model probability must come from a statistical model fitted and calibrated on
    point-in-time data and validated out-of-sample. A model probability or expected value is
-   display-only and labelled UNVALIDATED until it passes the T4 calibration gate. User probabilities
-   do not influence position sizing until the evaluator shows they are calibrated. (Amended
-   2026-10-04; see Changelog.)
+   display-only and labelled UNVALIDATED until it passes the T4 calibration gate. The T4 calibration
+   gate's pass criteria are pre-registered before any model is evaluated against them. User
+   probabilities do not influence position sizing until the evaluator shows they are calibrated.
+   (Amended 2026-10-04; see Changelog.)
 6. **Every decision is reproducible**: store watermark, rulebook hash, code commit, model and prompt
    versions.
 7. **Forward-window firewall**: no outcome computation for catalogue events dated 2026-09-16 onward
@@ -133,9 +134,9 @@ Quantity unchanged. Implemented in `desk/paper/open.py`; user guide `docs/desk/H
   and validated out-of-sample, or from the user — never from an LLM, and never invented. A model
   probability or expected value is display-only and labelled UNVALIDATED until it passes the T4
   calibration gate. The user-probability sizing rule is unchanged.
-- Not changed by this amendment: `CLAUDE.md` Desk invariants D3 and D5 still carry the earlier
-  wording and take precedence over this document until they are amended with the user's own
-  explicit approval (CLAUDE.md working procedure, item 6).
+- `CLAUDE.md` Desk invariants D3 and D5 were amended to the same wording later on 2026-10-04,
+  with the user's explicit approval, adding to D5 (and here to item 5): "The T4 calibration gate's
+  pass criteria are pre-registered before any model is evaluated against them."
 
 **2026-10-04 — Build order gains a pointer** to the blueprint phase mapping in
 `docs/desk/TRADING_BLUEPRINT.md` (session item B1). No rule changed.

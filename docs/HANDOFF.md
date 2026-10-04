@@ -1,3 +1,14 @@
+## 2026-10-04 (evening) user approvals: CLAUDE.md, Strategy 0 v2, P8-021, share basis
+
+- Start: root verified; tree clean at ae32853; no Python running; production Desk
+  store unchanged since 2026-10-03 07:00. The scheduled task PramanDailyIngest has a
+  weekly trigger at 18:00 IST; next run Monday 2026-10-05 18:00 (none on Sunday), so
+  "tonight's" run is that one.
+- Item 1: CLAUDE.md D3/D5 amended to the approved wording plus the sentence "The T4
+  calibration gate's pass criteria are pre-registered before any model is evaluated
+  against them." DESIGN.md constitution 5 and changelog mirror it; the blueprint
+  conflict note is marked resolved.
+
 ## 2026-10-04 (afternoon) round end: status of the seven decisions
 
 Commits (oldest first): 385ca78 (items 1, 3), e76c0d6 (item 2), c524616 (P8-007),

@@ -529,9 +529,9 @@ Nothing in T1-T2 depends on these.
   point-in-time data and validated out-of-sample, or from the user — never from an LLM, never
   invented. A model probability or expected value is display-only and labelled UNVALIDATED until
   it passes the T4 calibration gate; "no numeric trade score" still applies to anything
-  unvalidated. **Still open: `CLAUDE.md` Desk invariants D3 and D5 carry the earlier wording and
-  take precedence until the user explicitly approves the same change there.** Must be settled
-  before T3.
+  unvalidated. `CLAUDE.md` Desk invariants D3 and D5 were amended to match on 2026-10-04 with the
+  user's explicit approval, adding that the T4 calibration gate's pass criteria are pre-registered
+  before any model is evaluated against them. Resolved.
 - DESIGN.md constitution 9 ("order placement is always manual") and its Excluded list
   ("autonomous order placement") conflict with blueprint automation levels A3-A4 and phase T10.
   Amendments 4 and 5 make any move past A2 a separate, explicitly approved step, so this conflict
@@ -548,7 +548,7 @@ Nothing in T1-T2 depends on these.
 | T0 - Freeze & baseline | 1. Deterministic core | Complete: corrected G6 replay, follow-ups, comparison and A2 context committed; full suite green |
 | T1 - Market context | 2. Market and sector context | Not started (recommended next research phase) |
 | T2 - Trading dataset | New: trading research registry and path-aware LONG labels (amendments 1-2); no DESIGN.md step | Not started |
-| T3 - Baseline alpha | New; DESIGN.md constitution 3/5 amended 2026-10-04 to allow validated statistical-model probabilities. DESIGN.md 10 (Strategy lab) is the nearest step | Not started; CLAUDE.md D3/D5 still need the same approval |
+| T3 - Baseline alpha | New; CLAUDE.md D3/D5 and DESIGN.md constitution 3/5 amended 2026-10-04 to allow validated statistical-model probabilities. DESIGN.md 10 (Strategy lab) is the nearest step | Not started; T4 gate criteria must be preregistered first |
 | T4 - Calibration/meta | 9. Evaluator (calibration); 13. Drift and edge monitoring | Not started; calibration kill switch defined but inactive (B2) |
 | T5 - Analogues/events | 4. LLM foundation and disclosure reader; 5. Event and catalyst intelligence; 6. Analogues and evidence updater; 7. Challenge | Not started |
 | T6 - Fundamentals | 3. Minimal fundamentals slice; 12. Full fundamentals and accounting forensics | Not started |

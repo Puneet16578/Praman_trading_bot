@@ -285,9 +285,14 @@ D1. **Point-in-time everything.** Every Desk record carries event date, knowledg
 D2. **The LLM (later Desk phases) reads, challenges, and explains. It never forecasts, calculates, or
     decides.** Enforced in software, not by prompt.
 D3. **Gates, not scores.** Abstention (`INSUFFICIENT`, `WATCH`, `RESEARCH_REQUIRED`) is a first-class
-    outcome. No numeric trade score anywhere in the Desk.
+    outcome. No numeric trade score for anything unvalidated: an UNVALIDATED probability or expected
+    value is displayed with that label and never ranks, gates, sizes or changes the state of a trade.
 D4. **Market and sector context change risk limits, never trade direction.**
-D5. **Probabilities come from data or from the user, never from a model.** User-supplied
+D5. **Probabilities come from statistical models or from the user — never from an LLM, and never
+    invented.** A model probability must come from a statistical model fitted and calibrated on
+    point-in-time data and validated out-of-sample; it and any expected value are display-only and
+    labelled UNVALIDATED until they pass the T4 calibration gate. The T4 calibration gate's pass
+    criteria are pre-registered before any model is evaluated against them. User-supplied
     probabilities do not influence position sizing until the evaluator (Desk phase 9) shows they are
     calibrated.
 D6. **Every Desk decision is reproducible**: store watermark, rulebook hash, code commit, model and
