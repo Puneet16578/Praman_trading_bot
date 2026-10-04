@@ -19,6 +19,12 @@
   real-data test now expects 65 shares (was 66). Dry run on a temp copy of the real
   store, 2026-10-01: SGIL 81 -> 66 shares, TATASTEEL 280 -> 276; 2 accepted, 4
   rejected OPEN_RISK_BUDGET; production unchanged. Suite: 724 tests in 119.208s, OK.
+- Strategy 0 registered in the PRODUCTION Desk store on 2026-10-04 20:50 IST
+  (ensure_registered): manual v1, S0 v1 SUPERSEDED_NEVER_RUN, S0 v2 PAPER_BURN_IN.
+  Opening the store created the five automation tables additively; all nine existing
+  tables' row counts unchanged (opportunity_log 580, opportunity_executions 545,
+  circuit_bands 3,574, decisions/theses/paper trades 0). The burn-in's first run is
+  the next nightly (Monday 2026-10-05 18:00). P8-043 CLOSED with follow-up 3 evidence.
 
 ## 2026-10-04 (afternoon) round end: status of the seven decisions
 

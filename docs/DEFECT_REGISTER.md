@@ -1741,6 +1741,19 @@ Candidate mitigations, each needing its own preregistration before measurement:
 size against the limit price (bounds planned loss for any fill at or below the
 limit by construction), or re-check the cap at the fill and abstain.
 
+**Closure, 2026-10-04 (user decision: close once Strategy 0 v2 is active).**
+**Status.** Closed — fixed by sizing at the entry limit price in both books.
+Follow-up 3 (prereg `b2df2a2`, implementation `bc46648`, results `72a0a97`) passed both
+preregistered criteria: zero per-trade cap breaches at the fill in 51,414 limit fills across
+both periods (frozen decision-price sizing: 27.47% of primary fills), fill rate unchanged at
+97.10%, mean quantity ratio 0.907. Applied in `b13cc7e`: Strategy 0 v2 (registered PAPER_BURN_IN
+in the production Desk store on 2026-10-04 at 20:50 IST; v1 kept as SUPERSEDED_NEVER_RUN, never
+run) and manual `desk assess`, both sizing with the rulebook function at the day limit order's
+price. For any fill at or below the limit, the planned loss cannot exceed the planned loss at
+the limit, which the sizing keeps within the cap (costs are non-decreasing in price). Engine tests
+assert zero at-fill breaches for limit-sized fills. Research screening and the frozen replays keep
+decision-price sizing, as registered.
+
 ## P8-044 - paper fills used the history-wide split factor, not the decision share basis
 
 **Severity.** High. **Status.** Fixed 2026-10-04, before any record was affected.
