@@ -112,8 +112,22 @@ def step_announcements() -> None:
 
 
 def step_announcements_recent() -> None:
+    """Refresh recent announcements, then record the Desk's freshness watermark (P8-021): the source
+    is complete through the run date except the symbols that failed. Nothing is recorded when the
+    refresh did not run, so the Desk keeps treating later disclosures as UNKNOWN."""
     from ingest_announcements_recent import main as refresh_main
-    refresh_main()
+    summary = refresh_main()
+    if summary.get('status') in ('COMPLETE', 'PARTIAL'):
+        from desk.lib.connection import get_desk_connection
+        from desk.source_freshness import record_refresh
+        desk = get_desk_connection()
+        try:
+            record_refresh(desk, through_date=summary['end_date'], status=summary['status'],
+                           failed_symbols=summary['failed_symbols'], summary=summary)
+        finally:
+            desk.close()
+        print(f"[ANNOUNCEMENTS] freshness recorded through {summary['end_date']} "
+              f"({len(summary['failed_symbols'])} failed symbols stay stale)")
 
 
 def step_isin_map() -> None:

@@ -1,5 +1,39 @@
 # Operations
 
+## Announcement ingestion lapse, ~2026-09-19 to 2026-10-04 (P8-021) — operational deviation, not a pre-registration amendment
+
+**What lapsed.** Amendment 2 §5 of the frozen pre-registration
+(`docs/phase10_preregistration_amendment2.md`) requires corporate announcements to be ingested on a
+regular weekly schedule through the evaluation window's close (2027-01-15), not as a single
+backfill. From about 2026-09-19 — the day after the full-history backfill of 2026-09-18/19 — until
+the P8-021 fix (code `8954d4c`, freshness and annotation follow-up 2026-10-04), the nightly
+`announcements` step only backfilled symbols with no stored announcement at all, so new
+announcements for the ~2,280 already-covered symbols were not ingested. Measured read-only:
+2026-08 had 20,897 rows across 2,296 symbols; 2026-09 had 8,847 across 2,065; 2026-10 had 18
+across 4. The weekly commitment was therefore not met for roughly the first two and a half weeks of
+the forward window, which began 2026-09-16.
+
+**Why the data is recoverable before the June 2027 evaluation.** Each announcement's
+`knowledge_date` is its own publication date (`sort_date`), not the fetch date, and re-fetched rows
+are skipped by `UNIQUE (symbol, seq_id, knowledge_date)`. A late fetch therefore restores
+point-in-time-correct rows. The repair is the nightly `announcements_recent` step
+(`scripts/ingest_announcements_recent.py`): a bounded, overlapping refresh of every active equity
+with stored rows, first run at the next scheduled ingestion (2026-10-05 18:00 IST, reaching back to
+about 2026-09-10), then every night. **Before the June 2027 evaluation, confirm the recovery**:
+per-symbol announcement counts from 2026-09-16 onward back in their normal range, and
+`data/processed/announcements_refresh_state.json` recording a COMPLETE refresh.
+
+**Why this is not an amendment.** No reference query, scoring rule, success criterion, window or
+threshold changes. This records an ingestion failure and its repair, which is exactly what §5's
+schedule exists to surface early. The refresh now runs nightly, a strict superset of the weekly
+requirement (as with the 2026-09-28 note below).
+
+**Desk effect.** Since the fix the Desk treats the disclosure dimension as UNKNOWN unless the
+announcement source is known complete through the day before the decision
+(`desk/source_freshness.py`; the assessment becomes INSUFFICIENT, never ELIGIBLE). Desk records
+made during the lapse are annotated INCOMPLETE_DISCLOSURE_EVIDENCE, append-only and not
+invalidated (`desk/annotations.py`; filter via `opportunity_log_annotated` / `decisions_annotated`).
+
 ## Daily ingestion (2026-09-28) — operational change, not a pre-registration amendment
 
 **Ingestion now runs every trading weekday evening instead of weekly.** The pre-registration

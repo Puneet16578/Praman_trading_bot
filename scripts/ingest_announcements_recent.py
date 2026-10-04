@@ -15,10 +15,12 @@ equities (resolved, non-INF ISIN) with an EQ session in the last ACTIVE_DAYS and
 stored announcement; symbols with none remain the backfill's job.
 
 Window: first run, from (latest stored announcement - OVERLAP_DAYS), but no earlier than
-end - FIRST_RUN_MAX_DAYS; later runs, from (last complete refresh - OVERLAP_DAYS). Weekly cadence:
-skipped when the last COMPLETE refresh is under CADENCE_DAYS old. A refresh is complete only when
-no symbol failed; any failure prints a WARN line (the nightly step then reports WARN) and the next
-nightly run retries.
+end - FIRST_RUN_MAX_DAYS; later runs, from (last complete refresh - OVERLAP_DAYS). Cadence: every
+nightly run (CADENCE_DAYS = 1), because the Desk treats disclosures as UNKNOWN unless the source is
+complete through the day before the decision (desk/source_freshness.py); daily is a strict
+superset of Amendment 2 sec. 5's weekly requirement. A refresh is complete only when no symbol
+failed; any failure prints a WARN line (the nightly step then reports WARN), the failed symbols
+stay stale for the Desk, and the next nightly run retries.
 """
 from __future__ import annotations
 import json
@@ -35,7 +37,7 @@ from shared.market_time import market_today
 STATE_PATH = ROOT / 'data/processed/announcements_refresh_state.json'
 ISIN_MAP_PATH = ROOT / 'data/raw/nse_symbol_isin_current.json'
 START_DATE = date(2019, 10, 1)
-CADENCE_DAYS = 7          # Amendment 2 §5: weekly
+CADENCE_DAYS = 1          # nightly; a strict superset of Amendment 2 sec. 5's weekly schedule
 OVERLAP_DAYS = 7          # re-read a week of overlap; duplicates are skipped by the UNIQUE key
 FIRST_RUN_MAX_DAYS = 120
 ACTIVE_DAYS = 60
@@ -108,7 +110,7 @@ def main(end_date: date | None = None, *, conn=None, session=None, isin_map=None
                 print(f'  ...{i}/{len(plan)} symbols, {inserted} new rows, {time.time() - t0:.0f}s')
         summary = dict(status='COMPLETE' if not failed else 'PARTIAL', end_date=end_date.isoformat(), symbols=len(plan),
                        raw_rows=raw_total, inserted=inserted, skipped_duplicate=skipped, failed=len(failed),
-                       seconds=round(time.time() - t0, 1), universe=universe)
+                       failed_symbols=sorted(failed), seconds=round(time.time() - t0, 1), universe=universe)
         print(f"Refresh {summary['status']}: {len(plan) - len(failed)}/{len(plan)} symbols, {raw_total} rows fetched, "
               f"{inserted} new, {skipped} already stored, {summary['seconds']}s")
         if failed:

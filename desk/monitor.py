@@ -114,7 +114,9 @@ def run_monitor(praman_conn, desk_conn, run_date: str) -> dict:
             report["exits_triggered"].append({"trade_id": trade_id, "reason": stop_fill.kind, "price": stop_fill.price})
             continue
 
-        bundle = assemble_evidence_bundle(praman_conn, symbol, run_date, sector=None)
+        from desk.source_freshness import complete_through
+        bundle = assemble_evidence_bundle(praman_conn, symbol, run_date, sector=None,
+                                          disclosure_source_complete_through=complete_through(desk_conn, symbol))
         report["positions"][trade_id] = {
             "symbol": symbol, "stop": latest["stop"], "target": latest["target"],
             "surveillance": _fact_or_unknown_repr(bundle.surveillance),

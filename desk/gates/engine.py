@@ -133,7 +133,9 @@ def run_assessment(conn, desk_conn, *, symbol: str, as_of_date: str, sector: str
         return AssessmentResult(state=EXPIRED, gate_results={}, evidence_bundle=None, as_of_is_live=as_of_live,
                                 isin_map_built_at=isin_map_built_at)
 
-    bundle = assemble_evidence_bundle(conn, symbol, as_of_date, sector)
+    from desk.source_freshness import complete_through
+    bundle = assemble_evidence_bundle(conn, symbol, as_of_date, sector,
+                                      disclosure_source_complete_through=complete_through(desk_conn, symbol))
     gate_results: dict[str, GateResult] = {}
 
     # Every gate below is evaluated unconditionally -- none of them depend on an EARLIER gate's

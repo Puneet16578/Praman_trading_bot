@@ -139,11 +139,29 @@ def _price_volume_delivery(conn, symbol: str, as_of_date: str, hist) -> tuple[Fa
     return price, volume, delivery
 
 
-def _disclosures(conn, symbol: str, as_of_date: str) -> Fact | Unknown:
+def _disclosures(conn, symbol: str, as_of_date: str, source_complete_through: str | None = None) -> Fact | Unknown:
+    """Missing data never reads as "no disclosure" (P8-021): a stale announcement source, a symbol
+    with no announcement coverage at all, or too little history to check the window is UNKNOWN."""
+    from desk.source_freshness import BACKFILL_COMPLETE_THROUGH, STALENESS_LIMIT_DAYS, required_through
+    through = source_complete_through or BACKFILL_COMPLETE_THROUGH
+    needed = required_through(as_of_date)
+    if through < needed:
+        return Unknown("disclosures", "measurement",
+                       f"Announcement source known complete only through {through}; this window needs {needed} "
+                       f"(staleness limit {STALENESS_LIMIT_DAYS} days). Missing announcements are not 'no disclosure'.")
     try:
         window = get_disclosure_window(conn, symbol, as_of_date)
     except Exception as exc:  # e.g. RecordNotFoundError if as_of_date isn't a real trading day
         return Unknown("disclosures", "execution", f"Could not fetch disclosure window: {exc}")
+    if window.get("coverage") != "checked":
+        return Unknown("disclosures", "measurement",
+                       f"Disclosure window not checked ({window.get('coverage')}); its NONE tier is not evidence.")
+    covered = conn.execute("SELECT 1 FROM corporate_announcements WHERE symbol=? AND knowledge_date<=? LIMIT 1",
+                           (symbol, as_of_date)).fetchone()
+    if covered is None:
+        return Unknown("disclosures", "measurement",
+                       "No announcement has ever been stored for this symbol as of the decision: coverage is "
+                       "unknown, so an empty window is not 'no disclosure'.")
 
     unmapped = sorted({row["category"] for row in window["rows"] if _is_unmapped(row["category"])})
     if unmapped:
@@ -219,7 +237,8 @@ def _corporate_actions_and_structural_breaks(conn, symbol: str, as_of_date: str,
     return _verify_and_wrap(claim, Unknown("corporate_actions", "measurement", "Adversary rejected the recomputed structural-break check."))
 
 
-def assemble_evidence_bundle(conn, symbol: str, as_of_date: str, sector: str | None) -> EvidenceBundle:
+def assemble_evidence_bundle(conn, symbol: str, as_of_date: str, sector: str | None, *,
+                             disclosure_source_complete_through: str | None = None) -> EvidenceBundle:
     """`sector` is user-supplied in Phase 1 (item 5) -- typed as a Fact sourced from the user's own
     input if given, an Unknown otherwise. Never inferred or guessed.
 
@@ -232,11 +251,15 @@ def assemble_evidence_bundle(conn, symbol: str, as_of_date: str, sector: str | N
     produced INSUFFICIENT instead of the expected VETO before this fix, for precisely this reason).
     G4 still independently detects and excludes the BE/BZ series itself via its own direct bhavcopy
     query -- this fix only restores the OTHER dimensions' visibility, it does not weaken G4.
+
+    `disclosure_source_complete_through` is the announcement-source freshness watermark the caller
+    read from its Desk connection (desk/source_freshness.py); omitted, only the backfill baseline
+    applies, so a later decision's disclosures are UNKNOWN rather than silently "none" (P8-021).
     """
     hist = build_symbol_history(conn, symbol, extend_with_series=("BE", "BZ"))
 
     price, volume, delivery = _price_volume_delivery(conn, symbol, as_of_date, hist)
-    disclosures = _disclosures(conn, symbol, as_of_date)
+    disclosures = _disclosures(conn, symbol, as_of_date, disclosure_source_complete_through)
     surveillance = _surveillance(conn, symbol, as_of_date)
     corporate_actions = _corporate_actions_and_structural_breaks(conn, symbol, as_of_date, hist)
 

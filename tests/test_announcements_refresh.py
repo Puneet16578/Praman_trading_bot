@@ -105,17 +105,29 @@ class RefreshTest(unittest.TestCase):
         self.assertFalse(self.state.exists())
         sys.path.insert(0, str(ROOT / 'scripts'))
         import weekly_ingest
-        with patch('ingest_announcements_recent.main', side_effect=lambda: print(out)):
+        from desk.lib.connection import get_desk_connection
+        desk_path = Path(self.temp.name) / 'desk.sqlite'          # never the production Desk store
+        replay_partial = lambda: (print(out), summary)[1]
+        with patch('ingest_announcements_recent.main', side_effect=replay_partial), \
+             patch('desk.lib.connection.get_desk_connection', side_effect=lambda: get_desk_connection(desk_path)):
             self.assertEqual(weekly_ingest._run_capturing('announcements_recent', weekly_ingest.step_announcements_recent)['status'], 'WARN')
+        from desk.source_freshness import BACKFILL_COMPLETE_THROUGH, complete_through
+        desk = get_desk_connection(desk_path)
+        try:
+            self.assertEqual(complete_through(desk, 'EQ1'), BACKFILL_COMPLETE_THROUGH)   # failed symbol stays stale
+        finally:
+            desk.close()
 
-    def test_weekly_cadence_and_later_window(self):
-        self.state.write_text(json.dumps(dict(last_complete='2026-10-01')), encoding='utf-8')
+    def test_nightly_cadence_and_later_window(self):
+        # Daily: a refresh already complete today is not repeated; yesterday's is due again.
+        self.state.write_text(json.dumps(dict(last_complete='2026-10-04')), encoding='utf-8')
         session = Session({'EQ1': (200, [])})
         summary, _ = self.run_refresh(session)
         self.assertEqual((summary['status'], session.calls), ('NOT_DUE', []))
-        summary, _ = self.run_refresh(session, force=True)
-        self.assertEqual(session.calls[0]['from_date'], '24-09-2026')                   # last complete minus 7 days
-        self.assertEqual(summary['status'], 'COMPLETE')
+        self.state.write_text(json.dumps(dict(last_complete='2026-10-03')), encoding='utf-8')
+        summary, _ = self.run_refresh(session)
+        self.assertEqual(session.calls[0]['from_date'], '26-09-2026')                   # last complete minus 7 days
+        self.assertEqual((summary['status'], summary['failed_symbols']), ('COMPLETE', []))
 
     def test_missing_isin_map_refuses(self):
         with patch.object(recent, 'ISIN_MAP_PATH', Path(self.temp.name) / 'absent.json'), self.assertRaises(Exception):

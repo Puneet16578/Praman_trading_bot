@@ -75,6 +75,14 @@ _SAMPLE_INSERT = {
         "INSERT INTO decision_contracts (decision_id,strategy_event_id,contract,content_hash,recorded_at) "
         "VALUES (1,NULL,'{}','h','2026-01-01T00:00:00+00:00')"
     ),
+    "source_freshness": (
+        "INSERT INTO source_freshness (source,through_date,status,detail,recorded_at) "
+        "VALUES ('nse_corporate_announcements','2026-01-01','COMPLETE','{}','2026-01-01T00:00:00+00:00')"
+    ),
+    "record_annotations": (
+        "INSERT INTO record_annotations (target_table,target_id,annotation,detail,recorded_at) "
+        "VALUES ('opportunity_log',1,'INCOMPLETE_DISCLOSURE_EVIDENCE','{}','2026-01-01T00:00:00+00:00')"
+    ),
 }
 
 

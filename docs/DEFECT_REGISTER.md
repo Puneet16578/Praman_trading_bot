@@ -1592,6 +1592,25 @@ histories). Tests: 8 new (mocked sessions and fixture stores; no network).
 (expect 2026-09 and 2026-10 per-symbol announcement counts to return to the normal range and a
 COMPLETE refresh state). Close with that evidence.
 
+**Additions, 2026-10-04 (user decisions; the one-line src change above approved).** (1) Missing
+data never reads as "no disclosure": the Desk's disclosure dimension is a FACT only when the
+announcement source is known complete through the day before the decision (stated limit 0 days,
+`desk/source_freshness.py`). Completeness comes from the 2026-09-17 backfill baseline or a
+`source_freshness` row (new append-only Desk table, read as of the decision's Desk watermark so
+replay is exact) that the nightly `announcements_recent` step writes after each COMPLETE or
+PARTIAL refresh, excluding the failed symbols. Otherwise the dimension is UNKNOWN, G2 fails and
+the assessment is INSUFFICIENT (a screen SCREEN_FAIL), never ELIGIBLE. Two further routes to a
+false "none" are closed the same way: a symbol with no stored announcement at all, and a window
+with fewer than 10 sessions of history. The refresh now runs nightly. (2) Every opportunity and
+decision recorded from 2026-09-19 until the fix is annotated INCOMPLETE_DISCLOSURE_EVIDENCE in the
+new append-only `record_annotations` table, never edited or invalidated; research filters through
+the `opportunity_log_annotated` / `decisions_annotated` views. (3) `docs/OPERATIONS.md` records the
+lapse of Amendment 2 §5's weekly announcement ingestion as an operational deviation, recoverable
+by publication date before the June 2027 evaluation. Tests: `tests/test_disclosure_freshness.py`
+(stale sources never yield a disclosure FACT, across a grid of lags on real AXISBANK sessions; the
+assessment becomes INSUFFICIENT; coverage and history gaps; partial refreshes; replay; the nightly
+step) and `tests/test_record_annotations.py`.
+
 ## P8-020 — interrupted ingestion left no durable start or progress
 
 **Root cause.** `weekly_ingest.main()` captured all steps in memory and wrote its

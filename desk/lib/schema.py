@@ -331,10 +331,55 @@ DECISION_CONTRACTS = DeskTable(
     )""",
 )
 
+# P8-021 additions (user decision 2026-10-04). A refresh row says "this source was complete
+# through `through_date`, except `failed_symbols`, as known at recorded_at" -- read as of the
+# decision's Desk watermark, so a replay sees exactly the freshness its decision saw.
+SOURCE_FRESHNESS = DeskTable(
+    name="source_freshness",
+    ddl="""CREATE TABLE source_freshness (
+        row_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        source TEXT NOT NULL,
+        through_date TEXT NOT NULL,
+        status TEXT NOT NULL CHECK(status IN ('COMPLETE', 'PARTIAL')),
+        detail TEXT NOT NULL,              -- JSON: failed_symbols, refresh summary
+        recorded_at TEXT NOT NULL
+    )""",
+    indices=("CREATE INDEX IF NOT EXISTS idx_source_freshness_source ON source_freshness(source, through_date)",),
+)
+
+# Annotations on earlier records (never edits): e.g. INCOMPLETE_DISCLOSURE_EVIDENCE for records
+# made while announcement ingestion had lapsed. Research filters through the *_annotated views.
+RECORD_ANNOTATIONS = DeskTable(
+    name="record_annotations",
+    ddl="""CREATE TABLE record_annotations (
+        annotation_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        target_table TEXT NOT NULL CHECK(target_table IN ('opportunity_log', 'decisions', 'opportunities')),
+        target_id INTEGER NOT NULL,
+        annotation TEXT NOT NULL,
+        detail TEXT NOT NULL,              -- JSON
+        recorded_at TEXT NOT NULL,
+        UNIQUE(target_table, target_id, annotation)
+    )""",
+)
+
+INCOMPLETE_DISCLOSURE = "INCOMPLETE_DISCLOSURE_EVIDENCE"
+ANNOTATED_VIEWS = (
+    f"""CREATE VIEW IF NOT EXISTS opportunity_log_annotated AS
+        SELECT o.*, EXISTS (SELECT 1 FROM record_annotations a WHERE a.target_table = 'opportunity_log'
+                            AND a.target_id = o.opportunity_id AND a.annotation = '{INCOMPLETE_DISCLOSURE}')
+               AS incomplete_disclosure_evidence
+        FROM opportunity_log o""",
+    f"""CREATE VIEW IF NOT EXISTS decisions_annotated AS
+        SELECT d.*, EXISTS (SELECT 1 FROM record_annotations a WHERE a.target_table = 'decisions'
+                            AND a.target_id = d.decision_id AND a.annotation = '{INCOMPLETE_DISCLOSURE}')
+               AS incomplete_disclosure_evidence
+        FROM decisions d""",
+)
+
 DESK_TABLES: dict[str, DeskTable] = {
     t.name: t for t in (DECISIONS, THESES, PAPER_TRADE_EVENTS, JOURNAL_EVENTS, OPPORTUNITIES, MONITOR_RUNS, CIRCUIT_BANDS,
                         OPPORTUNITY_LOG, OPPORTUNITY_EXECUTIONS, KILL_SWITCH_EVENTS, TRADING_STRATEGIES,
-                        STRATEGY_RUNS, STRATEGY_PAPER_EVENTS, DECISION_CONTRACTS)
+                        STRATEGY_RUNS, STRATEGY_PAPER_EVENTS, DECISION_CONTRACTS, SOURCE_FRESHNESS, RECORD_ANNOTATIONS)
 }
 
 
@@ -440,4 +485,6 @@ def init_desk_db(conn: sqlite3.Connection) -> None:
     migrate_decisions_isin_map(conn)
     for trigger_sql in _paper_trade_events_insert_validation_triggers():
         conn.execute(trigger_sql)
+    for view_sql in ANNOTATED_VIEWS:
+        conn.execute(view_sql)
     conn.commit()

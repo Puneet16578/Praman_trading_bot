@@ -33,6 +33,17 @@
   Correction to the request's premise: P7-001 is not a defect (refuted twice per
   docs/RESULTS.md); P8-044 is the second confirmed share-basis defect after P8-024.
   Suite: 725 tests in 138.634s, OK.
+- Item 3 (P8-021 additions): desk/source_freshness.py + append-only Desk table
+  source_freshness: the disclosure dimension is a FACT only if the announcement source
+  is complete through the day before the decision (limit 0 days; baseline 2026-09-17
+  from the backfill; otherwise a nightly refresh row, failed symbols excluded; read
+  via the Desk connection so replay is exact). Stale, never-covered or short-history
+  windows are UNKNOWN -> INSUFFICIENT / SCREEN_FAIL. Refresh cadence now nightly; the
+  nightly step records the watermark. desk/annotations.py + append-only
+  record_annotations + views opportunity_log_annotated / decisions_annotated;
+  scripts/desk_annotate_p8021.py. docs/OPERATIONS.md records the Amendment 2 sec. 5
+  lapse as an operational deviation (recoverable by publication date). P8-021 stays
+  OPEN until the first live refresh is verified. Suite: 736 tests in 350.179s, OK.
 
 ## 2026-10-04 (afternoon) round end: status of the seven decisions
 
