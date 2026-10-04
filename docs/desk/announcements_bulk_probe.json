@@ -1,0 +1,223 @@
+{
+  "week": [
+    "2026-09-07",
+    "2026-09-13"
+  ],
+  "requests": [
+    {
+      "label": "cookie",
+      "params": null,
+      "status": 200,
+      "seconds": 0.823
+    },
+    {
+      "label": "bulk",
+      "params": {
+        "index": "equities",
+        "from_date": "07-09-2026",
+        "to_date": "13-09-2026"
+      },
+      "status": 200,
+      "seconds": 1.881
+    },
+    {
+      "label": "RELIANCE",
+      "params": {
+        "index": "equities",
+        "from_date": "07-09-2026",
+        "to_date": "13-09-2026",
+        "symbol": "RELIANCE"
+      },
+      "status": 200,
+      "seconds": 0.8
+    },
+    {
+      "label": "TCS",
+      "params": {
+        "index": "equities",
+        "from_date": "07-09-2026",
+        "to_date": "13-09-2026",
+        "symbol": "TCS"
+      },
+      "status": 200,
+      "seconds": 0.86
+    },
+    {
+      "label": "KOTAKBANK",
+      "params": {
+        "index": "equities",
+        "from_date": "07-09-2026",
+        "to_date": "13-09-2026",
+        "symbol": "KOTAKBANK"
+      },
+      "status": 200,
+      "seconds": 1.059
+    }
+  ],
+  "status": "COMPLETE",
+  "bulk_rows": 3132,
+  "bulk_symbols": 1357,
+  "parity": {
+    "RELIANCE": {
+      "bulk": 4,
+      "per_symbol": 4,
+      "only_bulk": 0,
+      "only_per_symbol": 0,
+      "equal": true
+    },
+    "TCS": {
+      "bulk": 3,
+      "per_symbol": 3,
+      "only_bulk": 0,
+      "only_per_symbol": 0,
+      "equal": true
+    },
+    "KOTAKBANK": {
+      "bulk": 4,
+      "per_symbol": 4,
+      "only_bulk": 0,
+      "only_per_symbol": 0,
+      "equal": true
+    }
+  },
+  "store_comparison": {
+    "stored_rows": 3093,
+    "stored_unique": 3093,
+    "bulk_unique": 3132,
+    "exact_overlap": 3088,
+    "only_bulk": 44,
+    "only_stored": 5,
+    "only_stored_examples": [
+      {
+        "category": "Analysts/Institutional Investor Meet/Con. Call Updates",
+        "description": "HEG Limited has informed the Exchange about Schedule of meet",
+        "event_date": "2026-09-10",
+        "knowledge_date": "2026-09-10",
+        "seq_id": "106778188",
+        "sort_timestamp": "2026-09-10 22:03:12",
+        "symbol": "HEG"
+      },
+      {
+        "category": "Copy of Newspaper Publication",
+        "description": "Sanginita Chemicals Limited has informed the Exchange about Copy of Newspaper Publication",
+        "event_date": "2026-09-13",
+        "knowledge_date": "2026-09-13",
+        "seq_id": "106779875",
+        "sort_timestamp": "2026-09-13 16:26:04",
+        "symbol": "SANGINITA"
+      },
+      {
+        "category": "General Updates",
+        "description": "Sanginita Chemicals Limited has informed the Exchange about General Updates",
+        "event_date": "2026-09-08",
+        "knowledge_date": "2026-09-08",
+        "seq_id": "106774556",
+        "sort_timestamp": "2026-09-08 14:38:33",
+        "symbol": "SANGINITA"
+      },
+      {
+        "category": "Outcome of Board Meeting",
+        "description": "Sanginita Chemicals Limited has informed the Exchange regarding Outcome of Board Meeting held on September 09, 2026.",
+        "event_date": "2026-09-09",
+        "knowledge_date": "2026-09-09",
+        "seq_id": "106776815",
+        "sort_timestamp": "2026-09-09 18:37:19",
+        "symbol": "SANGINITA"
+      },
+      {
+        "category": "Updates",
+        "description": "HEG Limited has informed the Exchange regarding 'Re-lodgement of Transfer Requests of Physical Shares for the month of August, 2026'.",
+        "event_date": "2026-09-08",
+        "knowledge_date": "2026-09-08",
+        "seq_id": "106775414",
+        "sort_timestamp": "2026-09-08 20:29:51",
+        "symbol": "HEG"
+      }
+    ],
+    "only_bulk_examples": [
+      {
+        "category": "Action(s) taken or orders passed",
+        "description": "Viceroy Hotels Limited has informed the Exchange about Action(s) taken or orders passed",
+        "event_date": "2026-09-10",
+        "knowledge_date": "2026-09-10",
+        "seq_id": "106778067",
+        "sort_timestamp": "2026-09-10 19:14:26",
+        "symbol": "VHLTD"
+      },
+      {
+        "category": "Address Change",
+        "description": "The registered office address of the Company has been changed from Survey No. 321, Turkala Khanapur Village, Hathnoora Mandal, Sangareddy District, Telangana - 502296, India to 204, Second Floor, Ashoka Capitol, Road No. 2, Banjara Hills, Hyderabad   500034, Telangana, India (outside local limit) and company has filed necessary filling with Registrar of Companies.",
+        "event_date": "2026-09-08",
+        "knowledge_date": "2026-09-08",
+        "seq_id": "106774846",
+        "sort_timestamp": "2026-09-08 17:07:00",
+        "symbol": "NEUEON"
+      },
+      {
+        "category": "Analysts/Institutional Investor Meet/Con. Call Updates",
+        "description": "Swan Defence and Heavy Industries Limited has informed the Exchange about Schedule of Investors meet",
+        "event_date": "2026-09-12",
+        "knowledge_date": "2026-09-12",
+        "seq_id": "106779641",
+        "sort_timestamp": "2026-09-12 12:19:02",
+        "symbol": "SWANDEF"
+      },
+      {
+        "category": "Change in Auditors",
+        "description": "HMT Limited has informed the Exchange regarding Change in Auditors of the company.",
+        "event_date": "2026-09-10",
+        "knowledge_date": "2026-09-10",
+        "seq_id": "106778002",
+        "sort_timestamp": "2026-09-10 18:22:07",
+        "symbol": "HMT"
+      },
+      {
+        "category": "Clarification - Financial Results",
+        "description": "The Exchange has sought clarification from C & C Constructions Limited for the quarter ended 30-Jun-2026 with respect to Regulation 33 of the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015. On basis of above the Company is required to clarify the following:  The response of the Company is awaited.",
+        "event_date": "2026-09-09",
+        "knowledge_date": "2026-09-09",
+        "seq_id": "106776208",
+        "sort_timestamp": "2026-09-09 13:06:14",
+        "symbol": "CANDC"
+      }
+    ],
+    "key_audit": {
+      "missing_from_bulk": [
+        [
+          "HEG",
+          "106775414",
+          "2026-09-08"
+        ],
+        [
+          "HEG",
+          "106778188",
+          "2026-09-10"
+        ],
+        [
+          "SANGINITA",
+          "106774556",
+          "2026-09-08"
+        ],
+        [
+          "SANGINITA",
+          "106776815",
+          "2026-09-09"
+        ],
+        [
+          "SANGINITA",
+          "106779875",
+          "2026-09-13"
+        ]
+      ],
+      "extra_bulk_keys": 44,
+      "changed_fields": []
+    }
+  },
+  "raw_hashes": {
+    "bulk.response": "833f7d33117b5a0d8765eec9ff6e2fc316ae646ed04678a29b84ba0798af4809",
+    "cookie.response": "db2df4b92415d6964c23cce72a65a8405feb84811a4151d20d07802b4389341e",
+    "KOTAKBANK.response": "986314d0a57c719ad8aac417ecce2541c74c2cf954405135a35020ebcd708274",
+    "RELIANCE.response": "840ca744e9c5ea432a0380c22f44026fc94c278530ae1bba95f5bcf618f8993b",
+    "TCS.response": "8ad2ab776c504871442433d454ec62f3ae7778a3a253f05958299bd9f7f7a57b"
+  }
+}

@@ -1823,3 +1823,40 @@ real post-split share count at raw prices, and that P&L equals that economic ora
 check: removing the decision basis from the manual close/monitor path, or forcing Strategy 0's
 basis factor to 1, each makes it fail; the unmutated code passes.
 
+
+## 2026-10-04 dated clarification: requested P7-001 recollection
+
+This audit searched DEFECT_REGISTER.md, RESULTS.md, Phase 7 documentation and
+available Git history for P7-001, close_to_close_pct, raw_prev_close_unadjusted,
+and the recalled KOTAKBANK 2026-09-02 / 3.87% versus 0.33% example. No record
+confirming that example or that field rename was found in the available history.
+There is no confirmed defect ID to assign to the recalled case on this evidence.
+P7-001 is referenced as a REFUTED suspicion about close_to_close_60d; there is no
+P7-001 defect-table entry describing a different confirmed bug.
+
+The guard test first appears at 7b3de51, already explicitly labelled preventive,
+not a fix. RESULTS.md's correction was introduced at 1c3f655. The schema still
+stores the original raw previous-close column for provenance; the signal path
+uses the adjusted return function. The literal raw_prev_close_unadjusted appears
+in later Desk material (b279ec9/a90db35), not as evidence of a schema rename or
+of the recalled Phase 7 bug. Confirmed later price-basis defects P8-024 and P8-044
+are separate cases and do not establish the recalled example. Historical entries
+above are preserved. This is a clarification of the requested identification,
+not a claim that an unlocated incident was fixed.
+
+The Phase 7 derivation module independently recomputes volume_ratio and delivery
+percentiles only. Its documented price-return checks remain transcription-only;
+it does not implement the recalled independent close_to_close_pct check.
+
+## P8-045 - historical interrupted ingestion shown as currently unfinished
+
+**Status.** Closed.
+
+2026-10-04, Low, fixed. ingestion_health_line retained unmatched starts even
+after a later successful run, so the October 1 interruption still appeared
+current after October 3 finished. Current warnings now include only unmatched
+starts later than the latest completed OK/WARN run's start. WARN is the nightly
+runner's successful completion with warnings (scheduler exit 0); ERROR does not
+supersede an interruption. The log is never edited, so history remains intact.
+Tests cover later OK/WARN recovery, ERROR non-recovery, a newer unmatched start,
+and history preservation. Full-suite verification is in HANDOFF.

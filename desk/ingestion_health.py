@@ -53,6 +53,8 @@ def ingestion_health_line() -> str:
         last_summary = None
         last_gaps = None
         unfinished = {}
+        last_successful_start = None
+        from shared.market_time import parse_logged_timestamp
         for line in text.splitlines():
             started = _START_RE.match(line)
             if started:
@@ -62,23 +64,30 @@ def ingestion_health_line() -> str:
             if m:
                 last_summary = m.groupdict()
                 unfinished.pop(last_summary["start"], None)
+                # WARN is a completed, zero-exit run (e.g. a missing ISIN snapshot).
+                # ERROR does not clear an earlier interruption's current warning.
+                if last_summary["overall"] in ("OK", "WARN"):
+                    completed_start = parse_logged_timestamp(last_summary["start"])
+                    if last_successful_start is None or completed_start > last_successful_start:
+                        last_successful_start = completed_start
                 last_gaps = None
                 continue
             gm = _GAPS_RE.match(line)
             if gm and last_summary is not None:
                 last_gaps = int(gm.group("n"))
 
+        current_unfinished = [stamp for stamp in unfinished if last_successful_start is None
+                              or parse_logged_timestamp(stamp) > last_successful_start]
         unfinished_notice = (
-            f"started {next(reversed(unfinished))}, never finished "
+            f"started {max(current_unfinished, key=parse_logged_timestamp)}, never finished "
             "(no matching finish recorded; may still be running)"
-        ) if unfinished else ""
+        ) if current_unfinished else ""
 
         if last_summary is None:
             if unfinished_notice:
                 return f"Ingestion health: {unfinished_notice}."
             return "Ingestion health: UNKNOWN (no run summary found in the log)."
 
-        from shared.market_time import parse_logged_timestamp
         start = parse_logged_timestamp(last_summary["start"])
         age_days = (datetime.now(timezone.utc) - start).days
         staleness = f"STALE ({age_days}d ago)" if age_days > STALE_AFTER_DAYS else f"{age_days}d ago"

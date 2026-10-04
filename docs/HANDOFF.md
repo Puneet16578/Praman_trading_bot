@@ -1,3 +1,39 @@
+## 2026-10-04 late session: Parts 2/3 and ingestion-health repair
+
+- Part 1 still waits for Monday 2026-10-05 18:00 IST. Scheduler last run Oct 3
+  05:54:25, result 0; next Oct 5 18:00. No Oct 5 log/brief exists yet. P8-021 stays
+  open; no source-freshness, first S0 v2 run or seven-table backup closure claimed.
+- Root verified D:/Agentic_ai_project/praman; clean start de08ece. Baseline full
+  suite 736 tests in 340.330s, OK, exit 0. One agent, foreground; no store writes.
+- P8-045: current unfinished-run flags are superseded by later completed OK/WARN
+  runs; ERROR does not supersede. History is unchanged. Real status now shows
+  the completed October 3 run without the October 1 current warning. Targeted
+  progress/parity/raw-field guard tests: 12 passed. Final full suite: 739 tests
+  in 364.627s, OK, Python exit 0 (logs/t1_prereg_session_suite_20261004.log).
+  Existing SQLite ResourceWarnings remain. Diff checks clean.
+- P7-001 audit: no confirmed defect ID, recalled KOTAKBANK numbers or raw-field
+  rename located. Guard was preventive at first commit 7b3de51; RESULTS correction
+  1c3f655. Dated clarification appended to RESULTS and DEFECT_REGISTER; historical
+  entries preserved. P8-024/P8-044 remain distinct confirmed price-basis defects.
+- User explicitly approved at most five NSE requests for Sep 7-13 only. Exactly
+  five made, all 200: cookie, bulk, RELIANCE/TCS/KOTAKBANK. Bulk 3,132 rows / 1,357
+  symbols, three live per-symbol comparisons 4/3/4 exactly equal. Stored backfill
+  comparison: 3,088 exact matches, 44 extra bulk keys, five stored keys absent
+  (HEG 2, SANGINITA 3), no shared-key field differences. Completeness unresolved.
+  docs/desk/announcements_bulk_proposal.md proposes bulk-first only after resolving
+  discrepancies and separate approval. Production fetch remains unchanged. Offline
+  fixture/test committed; raw responses and hashes retained. No more requests are
+  authorized by that spent five-request budget.
+- docs/desk/t1_market_context_prereg.md registers four variants (baseline + three
+  contrasts), fixed coverage/effect/uncertainty criteria, 2,000 paired 20-session
+  moving-block date bootstraps, and all requested bitemporal inputs. No T1 code or
+  outcome analysis. Official-index/VIX archives and sector membership are not yet
+  verified/ingested. Existing market_index.csv uses a retrospective proxy and
+  cannot stand in for official bitemporal indices.
+- 2025 remains excluded from NEW T1 selection, but the protocol explicitly states
+  its adverse20 outcomes were already exposed by shadow studies. It cannot be
+  described as a previously unseen outcome hold-out. Implementation awaits review.
+
 ## 2026-10-04 (evening) user approvals: CLAUDE.md, Strategy 0 v2, P8-021, share basis
 
 - Start: root verified; tree clean at ae32853; no Python running; production Desk

@@ -519,3 +519,27 @@ data. **What surprised me more, from the robustness check: the effect that WAS c
 reason turned out to be a specific, findable mechanical artifact (a shared anchor point) rather
 than a vague "labels are noisy" caveat, which is exactly the kind of thing a pre-registered
 adversarial check is supposed to catch before a headline ships.**
+
+## 2026-10-04 dated clarification: requested P7-001 recollection
+
+This audit searched DEFECT_REGISTER.md, RESULTS.md, Phase 7 documentation and
+available Git history for P7-001, close_to_close_pct, raw_prev_close_unadjusted,
+and the recalled KOTAKBANK 2026-09-02 / 3.87% versus 0.33% example. No record
+confirming that example or that field rename was found in the available history.
+There is no confirmed defect ID to assign to the recalled case on this evidence.
+P7-001 is referenced as a REFUTED suspicion about close_to_close_60d; there is no
+P7-001 defect-table entry describing a different confirmed bug.
+
+The guard test first appears at 7b3de51, already explicitly labelled preventive,
+not a fix. RESULTS.md's correction was introduced at 1c3f655. The schema still
+stores the original raw previous-close column for provenance; the signal path
+uses the adjusted return function. The literal raw_prev_close_unadjusted appears
+in later Desk material (b279ec9/a90db35), not as evidence of a schema rename or
+of the recalled Phase 7 bug. Confirmed later price-basis defects P8-024 and P8-044
+are separate cases and do not establish the recalled example. Historical entries
+above are preserved. This is a clarification of the requested identification,
+not a claim that an unlocated incident was fixed.
+
+The Phase 7 derivation module independently recomputes volume_ratio and delivery
+percentiles only. Its documented price-return checks remain transcription-only;
+it does not implement the recalled independent close_to_close_pct check.
