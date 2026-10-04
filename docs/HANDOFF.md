@@ -1,3 +1,29 @@
+## 2026-10-04 (afternoon) round end: status of the seven decisions
+
+Commits (oldest first): 385ca78 (items 1, 3), e76c0d6 (item 2), c524616 (P8-007),
+8954d4c (P8-021), f5ceec8 (item 4a + P8-044), b2df2a2 (follow-up 3 prereg),
+bc46648 (follow-up 3 implementation), 72a0a97 (follow-up 3 results + review), plus
+this handoff commit. Final suite: 724 tests in 133.397s, OK, exit 0
+(logs/decisions_round_final_suite_20261004.log). Details below.
+
+Waiting on the user:
+- CLAUDE.md Desk invariants D3/D5 still say the old rule (authoritative); the
+  matching amendment needs explicit approval (wording in the session report).
+- Follow-up 3 PASSED; Strategy 0 v2 and the manual sizing change are PROPOSED only.
+  S0 v1 will be registered and start its burn-in on the next nightly run unless the
+  user decides otherwise first.
+
+Waiting on the next nightly run (not yet happened: production desk.sqlite last
+modified 2026-10-03 07:00; last weekly_ingest 2026-10-03):
+- Item 7: run `desk backup verify` and confirm its row_counts list the five new
+  tables (kill_switch_events, trading_strategies, strategy_runs,
+  strategy_paper_events, decision_contracts).
+- P8-021 close-out: confirm announcements_recent reached COMPLETE
+  (data/processed/announcements_refresh_state.json) and 2026-09/10 per-symbol
+  announcement counts recovered; then add the closure marker. The first refresh
+  covers ~2,280 symbols; its runtime is unmeasured and may lengthen that night.
+- First real S0 run: read logs/brief_<date>.txt, `desk status`, strategy_runs.
+
 ## 2026-10-04 (afternoon) user decisions on the seven open items
 
 - Start: root verified; no Python process running; working tree clean at 7dccc19.
