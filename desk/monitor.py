@@ -24,7 +24,7 @@ def complete_pending_paper_opens(praman_conn, desk_conn, loaded_costs=None) -> l
     loaded from the active cost config here (a standalone call, e.g. from a test, doesn't need to
     load it itself); `run_monitor` loads it once and passes it to every function that needs it."""
     from desk.lib.costs import load_active_cost_config
-    from desk.paper.open import PaperOpenRefused, PendingOpen, resume_pending_open
+    from desk.paper.open import NoFill, PaperOpenRefused, PendingOpen, resume_pending_open
 
     loaded_costs = loaded_costs or load_active_cost_config()
 
@@ -38,6 +38,10 @@ def complete_pending_paper_opens(praman_conn, desk_conn, loaded_costs=None) -> l
             continue
         if isinstance(result, PendingOpen):
             continue  # still pending -- the target session's data still isn't in the store
+        if isinstance(result, NoFill):
+            completed.append({"decision_id": decision_id, "status": "NO_FILL", "event_date": result.session,
+                              "limit": result.limit, "detail": result.reason or result.status})
+            continue
         completed.append({"decision_id": decision_id, "status": "FILLED",
                            "event_date": result.event_date, "price": result.price})
     return completed
@@ -85,9 +89,18 @@ def run_monitor(praman_conn, desk_conn, run_date: str) -> dict:
         latest = jstore.latest_trade_event(desk_conn, trade_id)
         symbol = trade_id.split(":")[0]
 
-        stop_fill = check_stop_on_session(praman_conn, symbol, run_date, latest["stop"], run_date)
+        from desk.paper.close import trade_basis_date
+        from src.signals.price_adjustment import UnadjustableWindowError
+        try:
+            stop_fill = check_stop_on_session(praman_conn, symbol, run_date, latest["stop"], run_date,
+                                              basis_date=trade_basis_date(desk_conn, trade_id))
+        except UnadjustableWindowError as exc:
+            # No adjustment factor exists, so the stop cannot be checked: report it, never guess.
+            report["positions"][trade_id] = {"symbol": symbol, "stop": latest["stop"], "target": latest["target"],
+                                             "unadjustable": f"stop not checked: {exc}; review and close by hand"}
+            continue
         if stop_fill is not None:
-            # Raw fill price, exactly like a manual close -- the round-trip SELL-side cost is its
+            # Decision-basis fill price, exactly like a manual close -- the round-trip SELL-side cost is its
             # own explicit field, computed the same way `paper close` computes it, never folded into
             # the price. Two identical trades therefore show identical P&L (desk/risk/officer.py:
             # realized_pnl_inr) whether a stop or a manual close ended them.

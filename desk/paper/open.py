@@ -1,9 +1,18 @@
 """desk paper open -- executes an ALREADY-APPROVED decision exactly as persisted; it never
-re-assesses (integrity fix b). The recorded fill price is ALWAYS the store's raw price -- never
-cost-adjusted (post-STOP-3-plus consistency fix); the round-trip BUY-side cost is computed
-separately, from the caller-supplied active cost config, and recorded in its own field alongside
-the cost config's own hash, so every fill (open or close, manual or automatic) carries the same two
-explicit cost fields rather than folding cost into price for some fills and not others.
+re-assesses (integrity fix b). The recorded fill price is never cost-adjusted (post-STOP-3-plus
+consistency fix); the round-trip BUY-side cost is computed separately, from the caller-supplied
+active cost config, and recorded in its own field alongside the cost config's own hash, so every
+fill (open or close, manual or automatic) carries the same two explicit cost fields rather than
+folding cost into price for some fills and not others. Prices are on the decision's share basis
+(desk/paper/execution.py: basis_factor), which is the raw store price unless a bonus or split
+ex-date falls after the decision (P8-044).
+
+Entry convention (user-approved 2026-10-04, from the follow-up 2 review): a day LIMIT order at the
+decision's sizing price (the thesis `planned_entry`) + 0.5 x ATR20 at the decision date. On the
+fill session: fill at the open if it is at or below the limit, else at the limit if the session low
+reaches it, else NO_FILL -- the order is cancelled, never carried to a later session, and the
+decision needs a fresh assessment. Quantity is the decision's persisted position size, unchanged.
+The rule is the registered follow-up 2 `limit_fill`, applied to the manual book.
 
 Two guards against hindsight (integrity fix a):
 
@@ -48,10 +57,38 @@ class PaperOpenRefused(RuntimeError):
     """A hard refusal -- decision not ELIGIBLE, not a live assessment, or now stale."""
 
 
+LIMIT_ATR_MULTIPLE = 0.5   # user-approved manual entry convention, 2026-10-04
+NO_FILL_EVENT = "PAPER_OPEN_NO_FILL"
+
+
 @dataclass
 class PendingOpen:
     decision_id: int
     not_before_date: str
+
+
+@dataclass
+class NoFill:
+    """Terminal: the day limit order was not filled (or the session's prices were unusable). The
+    decision is not opened and is never retried; reassess for a new decision."""
+    decision_id: int
+    session: str
+    limit: float
+    status: str      # NO_FILL (limit not reached) or UNKNOWN (unusable session prices)
+    reason: str
+
+
+def entry_limit(praman_conn, decision: dict, thesis: dict) -> tuple[float, float]:
+    """(limit, ATR20) on the decision's share basis, from the decision's own persisted inputs:
+    the thesis sizing price and the point-in-time ATR20 at the decision date."""
+    from desk.volatility_context import atr20_and_close
+    if thesis.get("planned_entry") is None:
+        raise PaperOpenRefused("The thesis has no planned_entry, so no entry limit can be set.")
+    try:
+        atr, _ = atr20_and_close(praman_conn, decision["symbol"], decision["as_of_date"])
+    except ValueError as exc:
+        raise PaperOpenRefused(f"ATR20 at the decision date is unavailable ({exc}); no entry limit can be set.") from exc
+    return thesis["planned_entry"] + LIMIT_ATR_MULTIPLE * atr, atr
 
 
 def is_as_of_live(conn, as_of_date: str) -> bool:
@@ -102,11 +139,30 @@ def _attempt_fill(praman_conn, desk_conn, decision: dict, thesis: dict, not_befo
     if fill_date is None:
         return PendingOpen(decision_id=decision["decision_id"], not_before_date=not_before_date)
 
+    from desk.paper.execution import basis_factor
+    from desk.shadow_followup2 import limit_fill
+    from src.signals.price_adjustment import UnadjustableWindowError
+
     hist = build_symbol_history(praman_conn, decision["symbol"])
     row = hist.price_row_as_of(fill_date, fill_date)
     if row is None:
         return PendingOpen(decision_id=decision["decision_id"], not_before_date=not_before_date)
-    fill_price = row["open_price"] * hist.cum_factor_up_to(fill_date)  # raw -- never cost-adjusted
+    try:
+        factor = basis_factor(praman_conn, decision["symbol"], decision["as_of_date"], fill_date)
+    except UnadjustableWindowError as exc:
+        raise PaperOpenRefused(f"An unadjustable corporate action falls between the decision and {fill_date} "
+                               f"({exc}); reassess instead.") from exc
+    limit, atr = entry_limit(praman_conn, decision, thesis)
+    opening = row["open_price"] * factor if row["open_price"] is not None else None
+    low = row["low_price"] * factor if row["low_price"] is not None else None
+    fill = limit_fill(dict(decision_price=thesis["planned_entry"], atr20=atr), opening, low)
+    if fill["fill"] is None:
+        jstore.record_journal_event(desk_conn, event_type=NO_FILL_EVENT, decision_id=decision["decision_id"], detail={
+            "session": fill_date, "limit": limit, "open": opening, "low": low, "basis_factor": factor,
+            "status": fill["status"], "reason": fill["reason"]})
+        return NoFill(decision_id=decision["decision_id"], session=fill_date, limit=limit,
+                      status=fill["status"], reason=fill["reason"])
+    fill_price = fill["fill"]  # decision share basis -- never cost-adjusted
     quantity = decision["position_size"]
     buy_cost_inr = round_trip_cost_inr(fill_price, quantity, costs, "buy")
 
@@ -115,6 +171,7 @@ def _attempt_fill(praman_conn, desk_conn, decision: dict, thesis: dict, not_befo
         desk_conn, trade_id=trade_id, decision_id=decision["decision_id"], event_date=fill_date,
         price=fill_price, quantity=quantity, stop=thesis["planned_stop"],
         target=thesis["planned_target"], buy_cost_inr=buy_cost_inr, cost_config_hash=cost_config_hash,
+        reason=f"entry: {fill['status']} (limit {limit:.2f})",
     )
     return Fill(event_date=fill_date, price=fill_price, kind="entry")
 
@@ -133,8 +190,9 @@ def _get_decision_and_thesis(desk_conn, decision_id: int) -> tuple[dict, dict]:
 
 def open_approved_decision(praman_conn, desk_conn, decision_id: int, *, costs, cost_config_hash: str,
                             now: datetime | None = None):
-    """Returns a `Fill` (desk.paper.execution.Fill) on success, or a `PendingOpen` if the next
-    eligible session's data does not exist in the store yet. Raises PaperOpenRefused on any of the
+    """Returns a `Fill` (desk.paper.execution.Fill) on success, a `NoFill` if the day limit order
+    was not filled (terminal, journalled), or a `PendingOpen` if the next eligible session's data
+    does not exist in the store yet. Raises PaperOpenRefused on any of the
     guards above. Uses ONLY the decision's own persisted `position_size` and the linked thesis's
     `planned_stop`/`planned_target` -- it never calls run_assessment. `costs`/`cost_config_hash` are
     the ACTIVE cost config at fill time (loaded by the caller) -- required, not defaulted, so a

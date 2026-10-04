@@ -42,11 +42,28 @@ policy blocking local scripts). Prices, dates and IDs below are examples to repl
    .\desk paper open 12
    ```
 
+   **Entry convention (since 2026-10-04): a day limit order.** The limit is your
+   thesis `planned_entry` (the price the decision was sized at) plus 0.5 × ATR20 at
+   the decision date. On the first session after your open request: if that
+   session opens at or below the limit, the paper entry fills at the open;
+   otherwise, if the session's low reaches the limit, it fills at the limit;
+   otherwise it is **NO FILL** — the order is cancelled, never carried to a later
+   session, and you reassess for a new decision. Quantity is the approved position
+   size, unchanged. A demerger between the decision and the fill refuses the open.
+   This is the rule tested in follow-up 2 (`docs/desk/shadow_replay_followup2_review.md`):
+   it lowers, but does not remove, the chance that the fill price pushes the
+   planned loss past the per-trade budget (P8-043).
+
    `PENDING` is normal: the next session's data has not arrived. The next evening's
-   monitor completes that approved entry at the first available session open after
-   the original request date (UTC). Let the monitor resume it; a fresh manual open
-   request resets the date boundary. Waiting until tomorrow to first request an
-   open moves the earliest fill forward. Use current assessments without `--as-of`.
+   monitor completes that approved entry at the first available session after the
+   original request date, under the same limit rule (it can also end as NO FILL).
+   Let the monitor resume it; a fresh manual open request resets the date boundary.
+   Waiting until tomorrow to first request an open moves the earliest fill forward.
+   Use current assessments without `--as-of`.
+
+   Prices are kept on the decision's share basis: if a bonus or split goes ex after
+   your decision, the store's adjustment factor converts later prices, so the stop,
+   quantity and P&L stay consistent (P8-044).
    Closing a position later works the same way — see "Exits and review" below.
 
 ## Decision states

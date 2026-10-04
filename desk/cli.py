@@ -156,7 +156,7 @@ def cmd_paper_open(args):
     is logged as a PAPER_OPEN_PENDING journal event (decision_id, the frozen not_before_date) so
     `desk monitor` can complete the fill automatically later (Fix 2c, post-STOP-3 review) without
     requiring the human to remember to re-run this command."""
-    from desk.paper.open import PaperOpenRefused, PendingOpen, open_approved_decision
+    from desk.paper.open import NoFill, PaperOpenRefused, PendingOpen, open_approved_decision
 
     praman_conn = get_live_connection()
     desk_conn = get_desk_connection()
@@ -172,6 +172,10 @@ def cmd_paper_open(args):
             print(f"PENDING: no session with data yet after {result.not_before_date} -- "
                   f"`desk monitor` will complete this automatically once it is ingested "
                   f"(or re-run `desk paper open {args.decision_id}` manually).")
+        elif isinstance(result, NoFill):
+            print(f"NO FILL on {result.session}: limit {result.limit:.2f} ({result.status}"
+                  f"{': ' + result.reason if result.reason else ''}). The day order is cancelled; "
+                  f"reassess for a new decision.")
         else:
             print(f"opened at {result.price} on {result.event_date}")
     except PaperOpenRefused as exc:
@@ -267,8 +271,12 @@ def cmd_evening(args):
         pending_opens = report.get("pending_opens_completed", [])
         opens_filled = [p for p in pending_opens if p["status"] == "FILLED"]
         opens_refused = [p for p in pending_opens if p["status"] == "REFUSED"]
-        opens_still_pending = len(pending_opens) - len(opens_filled) - len(opens_refused)
-        print(f"Pending opens: {len(opens_filled)} filled, {len(opens_refused)} refused, {opens_still_pending} still pending")
+        opens_no_fill = [p for p in pending_opens if p["status"] == "NO_FILL"]
+        opens_still_pending = len(pending_opens) - len(opens_filled) - len(opens_refused) - len(opens_no_fill)
+        print(f"Pending opens: {len(opens_filled)} filled, {len(opens_no_fill)} not filled (limit), "
+              f"{len(opens_refused)} refused, {opens_still_pending} still pending")
+        for n in opens_no_fill:
+            print(f"  NO FILL decision {n['decision_id']}: {n['event_date']} limit {n['limit']:.2f}")
         for f in opens_filled:
             print(f"  FILLED decision {f['decision_id']}: {f['event_date']} @ {f['price']:.2f}")
         for r in opens_refused:

@@ -6,8 +6,12 @@ candidates. Everything is computed in memory first and written as one transactio
 separate append-only events (CANDIDATE_*, ENTRY_*, MONITORED, EXIT_*), each candidate linked to
 its blueprint decision contract. A run date is processed at most once.
 
-Prices are raw store prices. The frozen stop is re-expressed with the store's adjustment factor, as
-the manual paper engine does. Operational metrics are stored in the run row; P&L never is (seal).
+Share basis (P8-044): the frozen decision price, limit, stop and quantity are stated as of the
+decision date. An entry is evaluated and recorded on that basis (raw session price times the
+store's point-in-time adjustment factor since the decision; exactly the raw price when no bonus or
+split intervenes). While held, the stop and quantity are re-expressed from the decision date to
+each session, and exits are recorded at raw prices with the re-expressed quantity, so notional
+and P&L stay consistent. Operational metrics are stored in the run row; P&L never is (seal).
 """
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -21,7 +25,8 @@ from desk.decision_contract import build_contract, known, record_contract, unkno
 from desk.risk.officer import planned_loss_inr, round_trip_cost_inr
 from desk.shadow_followup2 import limit_fill
 from src.bitemporal.guard import latest_as_of
-from src.signals.price_adjustment import UnadjustableWindowError, compute_adjustment_factor
+from desk.paper.execution import basis_factor
+from src.signals.price_adjustment import UnadjustableWindowError
 
 STRATEGY_ID = 'S0'
 SERIES = ('EQ', 'BE', 'BZ')
@@ -215,7 +220,8 @@ def run(praman_conn, desk_conn, run_date, *, rulebook, costs, rulebook_file, rul
             continue
         ops['monitored'] += 1
         try:
-            factor = compute_adjustment_factor(praman_conn, p['symbol'], p['entry']['event_date'], run_date)
+            # Decision share basis (P8-044): stop and quantity are stated as of the decision date.
+            factor = basis_factor(praman_conn, p['symbol'], p['decision_date'], run_date)
         except UnadjustableWindowError as exc:
             # No factor exists, so the stop cannot be monitored: leave at the next open.
             plan.events.append((_event('MONITORED', p, run_date, dict(note=f'Unadjustable corporate action: {exc}'),
@@ -293,18 +299,28 @@ def run(praman_conn, desk_conn, run_date, *, rulebook, costs, rulebook_file, rul
 
 def _settle_entry(praman_conn, p, pid, acc, day, run_date, use_limit, costs, per_trade):
     """One entry attempt on its single eligible session. Missing or unusable data is an operational
-    failure (MISSING_DATA); an untouched limit is a normal NO_FILL."""
+    failure (MISSING_DATA); an untouched limit is a normal NO_FILL. Session prices are put on the
+    decision's share basis first (P8-044), so a bonus or split between decision and fill cannot
+    make a raw post-split open look like a bargain against a pre-split limit."""
     bar = session_bar(praman_conn, p['symbol'], day, run_date)
-    opening, low = (bar or {}).get('open_price'), (bar or {}).get('low_price')
+    raw_open, raw_low = (bar or {}).get('open_price'), (bar or {}).get('low_price')
+    try:
+        factor = basis_factor(praman_conn, p['symbol'], p['decision_date'], day)
+    except UnadjustableWindowError as exc:
+        # Data are present and the engine works: an observed market event, not an operational failure.
+        return _event('ENTRY_NO_FILL', p, day, dict(session=day, open=raw_open, low=raw_low, status='NO_FILL',
+                      reason=f'UNADJUSTABLE_CORPORATE_ACTION between decision and fill: {exc}'), position_id=pid)
+    opening = raw_open * factor if _finite(raw_open) else raw_open
+    low = raw_low * factor if _finite(raw_low) else raw_low
     if use_limit:
         fill = limit_fill(dict(decision_price=acc['decision_price'], atr20=acc['atr20']), opening, low)
     else:
         usable = _finite(opening) and opening > 0
         fill = dict(limit=None, fill=opening if usable else None, status='FILL_OPEN' if usable else 'UNKNOWN',
                     reason='' if usable else 'Opening price unavailable')
-    evidence = dict(session=day, open=opening, low=low, series=(bar or {}).get('series'),
-                    knowledge_date=(bar or {}).get('knowledge_date'), row_id=(bar or {}).get('row_id'),
-                    limit=fill['limit'], status=fill['status'], reason=fill['reason'])
+    evidence = dict(session=day, open=opening, low=low, raw_open=raw_open, raw_low=raw_low, basis_factor=factor,
+                    series=(bar or {}).get('series'), knowledge_date=(bar or {}).get('knowledge_date'),
+                    row_id=(bar or {}).get('row_id'), limit=fill['limit'], status=fill['status'], reason=fill['reason'])
     if fill['fill'] is not None:
         price, qty = fill['fill'], acc['quantity']
         loss = planned_loss_inr(price, min(acc['stop_level'], price), qty, costs)
@@ -319,7 +335,7 @@ def _settle_entry(praman_conn, p, pid, acc, day, run_date, use_limit, costs, per
 
 def _quantity_now(conn, p, day):
     try:
-        return p['entry']['quantity'] * compute_adjustment_factor(conn, p['symbol'], p['entry']['event_date'], day)
+        return p['entry']['quantity'] * basis_factor(conn, p['symbol'], p['decision_date'], day)
     except UnadjustableWindowError:
         return p['entry']['quantity']  # recorded as-is; the exit reason already names the unadjustable action
 

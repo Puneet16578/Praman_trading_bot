@@ -298,6 +298,27 @@ class EngineTest(EngineFixture):
         finally:
             conn.close()
 
+    def test_split_between_decision_and_fill_uses_decision_basis(self):
+        self.store.market(DAYS[0])
+        opportunity(self.desk, 'SPL', DAYS[0], plan())             # decision 100, ATR 4 -> limit 102; stop 92
+        self.run_day(DAYS[0])
+        self.store.conn.execute('INSERT INTO corporate_actions (symbol,action_type,event_date,knowledge_date,ratio_numerator,'
+                                "ratio_denominator,confidence_tier,details,source_file,recorded_at) VALUES "
+                                "('SPL','SPLIT',?,?,10,1,'HIGH','fixture','fixture',?)", (DAYS[1], DAYS[0], DAYS[0]))
+        self.store.market(DAYS[1])
+        self.store.bar('SPL', DAYS[1], 10.15, 10.3, 10.0, 10.2)    # raw post-split prices
+        self.run_day(DAYS[1])
+        fill = self.events('ENTRY_FILLED')[0]['detail']
+        self.assertAlmostEqual(fill['price'], 101.5)                # 10.15 x 10 on the decision basis, not 10.15
+        self.assertEqual((fill['basis_factor'], fill['quantity'], fill['status']), (10.0, 100, 'FILL_OPEN'))
+        self.store.market(DAYS[2])
+        self.store.bar('SPL', DAYS[2], 9.9, 10.0, 9.5, 9.8)        # 99 / 95 on the decision basis: above the stop
+        self.run_day(DAYS[2])
+        monitored = self.events('MONITORED')[-1]['detail']
+        self.assertAlmostEqual(monitored['stop'], 9.2)
+        self.assertEqual(monitored['factor'], 10.0)
+        self.assertEqual(self.events('EXIT_FILLED'), [])
+
     def test_refused_above_automation_level(self):
         with self.assertRaises(AutomationRefused):
             self.run_day(DAYS[0], rb=rulebook('A0'))

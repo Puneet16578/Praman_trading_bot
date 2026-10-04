@@ -37,6 +37,14 @@ class PendingClose:
     reason: str
 
 
+def trade_basis_date(desk_conn, trade_id: str) -> str | None:
+    """The share-basis date of a paper position: its opening decision's as_of_date (P8-044)."""
+    row = desk_conn.execute(
+        "SELECT d.as_of_date FROM paper_trade_events e JOIN decisions d ON d.decision_id = e.decision_id "
+        "WHERE e.trade_id = ? AND e.event_type = 'OPEN'", (trade_id,)).fetchone()
+    return row[0] if row else None
+
+
 def check_can_close(latest_event: dict | None, trade_id: str) -> None:
     if latest_event is None:
         raise PaperCloseRefused(f"No position was ever opened for trade_id {trade_id!r}.")
@@ -58,11 +66,20 @@ def _attempt_close_fill(praman_conn, desk_conn, trade_id: str, quantity: float, 
     if fill_date is None:
         return PendingClose(trade_id=trade_id, not_before_date=not_before_date, reason=reason)
 
+    from desk.paper.execution import basis_factor
+    from src.signals.price_adjustment import UnadjustableWindowError
+
     hist = build_symbol_history(praman_conn, symbol)
     row = hist.price_row_as_of(fill_date, fill_date)
     if row is None:
         return PendingClose(trade_id=trade_id, not_before_date=not_before_date, reason=reason)
-    fill_price = row["open_price"] * hist.cum_factor_up_to(fill_date)  # raw -- never cost-adjusted
+    try:
+        factor = basis_factor(praman_conn, symbol, trade_basis_date(desk_conn, trade_id), fill_date)
+    except UnadjustableWindowError as exc:
+        raise PaperCloseRefused(f"An unadjustable corporate action falls inside this position ({exc}); "
+                                "its exit cannot be priced automatically -- review the entitlement and "
+                                "record the exit by hand.") from exc
+    fill_price = row["open_price"] * factor  # decision share basis -- never cost-adjusted
     sell_cost_inr = round_trip_cost_inr(fill_price, quantity, costs, "sell")
 
     jstore.close_paper_trade(desk_conn, trade_id=trade_id, event_date=fill_date, price=fill_price,

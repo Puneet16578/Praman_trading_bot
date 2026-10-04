@@ -1740,3 +1740,40 @@ more than the budgeted per-trade risk. No rule, gate or convention changed.
 Candidate mitigations, each needing its own preregistration before measurement:
 size against the limit price (bounds planned loss for any fill at or below the
 limit by construction), or re-check the cap at the fill and abstain.
+
+## P8-044 - paper fills used the history-wide split factor, not the decision share basis
+
+**Severity.** High. **Status.** Fixed 2026-10-04, before any record was affected.
+
+**Found.** While implementing the user-approved manual limit entry. `desk/paper/open.py`,
+`desk/paper/close.py` and `desk/paper/execution.py` (`check_stop_on_session`, and the unused
+`fill_entry`/`fill_non_price_exit`) multiplied raw session prices by `cum_factor_up_to(date)`,
+the product of every bonus/split since the symbol's history began. That re-expresses a price in
+the history's EARLIEST share basis, while the thesis stop and the decision quantity are on the
+current raw basis. Verified on the real store, read-only: TATASTEEL (SPLIT 10:1, 2022-07-28) has
+`cum_factor_up_to('2026-10-01') = 10`, so a manual paper entry at the real open of 184.37 would
+have been recorded at 1,843.70, costs and P&L would have been scaled ten-fold, and the stop could
+never trigger. Any symbol with a bonus or split since 2019 was affected. Separately, neither the
+manual path nor Strategy 0 handled a bonus/split ex-date between the decision and the fill
+(Strategy 0 compared a raw post-split open with a pre-split limit), and corporate actions during a
+manual holding were never applied (`adjust_for_corporate_actions` had no caller).
+
+**Impact.** None recorded: the Desk store holds zero manual paper trades, and Strategy 0 has never
+run in production. Research code is unaffected; it only divides prices adjusted the same way.
+
+**Fix.** One rule everywhere: every price of a paper position is kept on its DECISION date's share
+basis. `desk/paper/execution.py:basis_factor` returns the store's point-in-time
+`compute_adjustment_factor` over (decision date, session date] — exactly 1.0 without an
+intervening bonus/split, so the common case records the raw price. Manual entry, close and the
+monitor's stop check use it (the position's basis date is its opening decision's as_of_date);
+Strategy 0 evaluates and records entries on that basis and re-expresses stop and quantity from the
+decision date. An unadjustable action (demerger) refuses the manual open or close and leaves the
+monitor's stop unchecked with an explicit report; for Strategy 0 it is a NO_FILL at entry and an
+exit order while held. Never priced by guesswork.
+
+**Re-verification.** `tests/test_paper_limit_entry.py` (10 tests) and a new Strategy 0 test,
+including a regression fixture whose history-wide factor is 10 (the old code records 1,015.0
+there; the fix records 101.5), a split between decision and fill, a split during a holding (no
+false stop on the decision basis; the raw comparison would have stopped out), the decision-basis
+exit price and P&L, and demergers. Existing paper, hindsight, monitor and risk tests pass unchanged.
+

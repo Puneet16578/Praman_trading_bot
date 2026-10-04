@@ -49,6 +49,18 @@
   until the first nightly refresh is verified live; the operational gate fails on it
   meanwhile. First live refresh: ~2,280 symbols, runtime unmeasured. Suite: 706
   tests in 118.691s, OK.
+- Item 4a: manual paper convention switched to the limit entry (user-approved):
+  day limit = thesis planned_entry + 0.5 x ATR20 at the decision date; fill at the
+  open if at/below the limit, else at the limit if the low reaches it, else NO FILL
+  (terminal, journalled PAPER_OPEN_NO_FILL, never retried by the monitor). Quantity
+  unchanged. HOW_TO_PAPER_TRADE.md and the DESIGN.md changelog updated.
+- P8-044 (High, found and fixed while doing 4a, no records affected): the manual
+  paper path priced fills/stops/exits with the history-wide split factor
+  (cum_factor_up_to), i.e. the earliest share basis (TATASTEEL x10). Now every
+  paper price is on the decision date's share basis via
+  desk/paper/execution.basis_factor (point-in-time; 1.0 without an intervening
+  bonus/split); Strategy 0 entries and monitoring use the decision date as basis.
+  Demergers refuse rather than guess. Suite: 717 tests in 147.384s, OK.
 
 ## 2026-10-04 session end: Part A and Part B complete
 

@@ -222,7 +222,11 @@ def pending_paper_opens(conn: sqlite3.Connection) -> list[tuple[int, str]]:
         already_open = conn.execute(
             "SELECT 1 FROM paper_trade_events WHERE trade_id = ? AND event_type = 'OPEN' LIMIT 1", (trade_id,)
         ).fetchone()
-        if already_open is None:
+        # An unfilled day limit order is terminal (desk/paper/open.py): never retried.
+        no_fill = conn.execute(
+            "SELECT 1 FROM journal_events WHERE event_type = 'PAPER_OPEN_NO_FILL' AND decision_id = ? LIMIT 1",
+            (decision_id,)).fetchone()
+        if already_open is None and no_fill is None:
             pending.append((decision_id, not_before_date))
     return pending
 

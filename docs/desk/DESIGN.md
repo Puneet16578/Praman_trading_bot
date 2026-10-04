@@ -113,6 +113,13 @@ accuracy bar and zero unverified numbers in any output. A persistent edge is a b
 
 ## Changelog
 
+**2026-10-04 — manual paper entry convention switched to the limit entry (approved by the user in
+their message of 2026-10-04, following `docs/desk/shadow_replay_followup2_review.md`).** Before: fill
+at the next eligible session's open. After: a day limit order at the decision's sizing price
+(thesis `planned_entry`) + 0.5 × ATR20 at the decision date; fill at the open if at or below the
+limit, else at the limit if the session low reaches it, else NO FILL (cancelled, not carried).
+Quantity unchanged. Implemented in `desk/paper/open.py`; user guide `docs/desk/HOW_TO_PAPER_TRADE.md`.
+
 **2026-10-04 — constitution items 3 and 5 amended (approved by the user in their message of
 2026-10-04, resolving the conflict recorded in `docs/desk/TRADING_BLUEPRINT.md`).**
 
