@@ -34,8 +34,37 @@
   test 47s); logs/t0_closeout_timed_20261004.log has per-test durations.
 - Trailing blank line in tests/test_desk_risk.py folded into the wiring commit at
   the user's request.
-- Next: user runs the follow-up re-run, volatility reference and G6 comparison
-  in their own terminal (commands in the session report), then A4.
+- User then authorised running the three short jobs in-session, foreground:
+  - Follow-up re-run (7da7af4): run in a temporary detached worktree at ed81160,
+    because its guard requires every replay-hashed source to match and the A2
+    wiring had changed desk/cli.py and desk/scan.py. Data were byte copies;
+    two CRLF-only files were matched to the main checkout's bytes. Provenance
+    verified (raw hash, embedded replay provenance, sources, boundaries). 22 s.
+  - Volatility reference (6a57ce7): additions only; Q1-Q5 pooled adverse20
+    2.78 / 5.98 / 9.80 / 14.66 / 24.24 %. 7 s.
+  - G6 comparison (script ca56f79 adds flip attribution + test; results
+    15024e9). Labels/adverse20 unchanged for all 70,362; corrected decision-cap
+    breaches zero for every cap; quantities only decreased. Net +72 passes, all
+    FAIL->PASS: 71 via G5 (old oversized quantity also over the 1% ADV order
+    cap), 1 via G6 open-risk stress (KAYA 2026-06-12, descriptive). No
+    PASS->FAIL: cost-inclusive sizing makes the per-trade check non-binding.
+- Corrected 2019-2025 headline (all candidates; follow-up and replay agree):
+  SCREEN_PASS 45,770, SCREEN_FAIL 14,924 (14,788 with measurable ATR20).
+  Adverse20: PASS 10.01% [8.71, 11.68] (n=45,564 valid); FAIL 15.99%
+  [14.42, 17.87] (n=14,625 valid); FAIL minus PASS +5.98 pp [5.08, 6.84].
+  Volatility-standardized gap +0.74 pp [-0.28, 1.71]; attenuation 5.24 pp.
+  Pre-G6: 45,707 / 14,987; +6.01 pp [5.11, 6.89]; standardized +0.74.
+- Full suite before the comparison-script commit: 648 tests in 279.529s, OK.
+- OPEN OBSERVATION: one full-suite run (10:06 IST, right after the replay
+  finished) exceeded 10 minutes and was stopped; it had used ~189 CPU-seconds
+  in ~12 minutes of wall time, so it was mostly waiting. Three later runs took
+  242-400 s with no test over 47 s. Cause unidentified. If it recurs, add a
+  per-test timeout (per-test timing runner approach: logs/t0_closeout_timed_20261004.log).
+- Temporary worktree D:/Agentic_ai_project/praman_followup_wt removed with
+  `git worktree remove` after the commits above (it deregistered the worktree
+  and deleted its files but could not delete the then-in-use empty folder;
+  that empty folder was removed with rmdir). `git worktree list` is clean.
+- Next: A4 follow-up 2 (limit entry), then A5, then Part B.
 
 ## 2026-10-04 G6 repair checkpoint
 
