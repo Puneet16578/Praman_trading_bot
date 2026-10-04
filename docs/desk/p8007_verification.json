@@ -1,0 +1,322 @@
+{
+  "as_of": "2026-10-04",
+  "catalogue": {
+    "events": 70638,
+    "symbols_by_class": {
+      "EQUITY": 2549
+    }
+  },
+  "checks": {
+    "catalogue_has_no_fund_unit_or_unresolved": true,
+    "desk_opportunities_have_no_fund_unit_or_unresolved": true,
+    "shape_scan_has_no_fund_unit_hits": true
+  },
+  "decision": "MITIGATED",
+  "desk_opportunity_log": {
+    "symbols_by_class": {
+      "EQUITY": 456
+    }
+  },
+  "eq_universe_on_latest_session": {
+    "symbols_by_class": {
+      "EQUITY": 2313,
+      "FUND_UNIT": 349
+    }
+  },
+  "latest_session": "2026-10-01",
+  "provenance": {
+    "catalogue_sha256": "ab6dbe701b223076824f4430db5139dba8ed2ecdf9a5cdef5db29ed8e2e81908",
+    "isin_map_sha256": "2b33925b6b589d46f721a98eb0fb96a1bebba0b31a893e0b733de4137981dc0e",
+    "script": "scripts/desk_p8007_verification.py",
+    "stores": "opened read-only (mode=ro)"
+  },
+  "shape_scan": {
+    "equity_hits": {
+      "explained_by_exclusion_marker": 0,
+      "explained_by_ratio": 0,
+      "explained_by_sibling": 0,
+      "unexplained": 43
+    },
+    "fund_unit_hits": 0,
+    "target_shapes_pct": [
+      -33.3,
+      -50.0,
+      -66.7,
+      -75.0,
+      -80.0,
+      -83.3,
+      -90.0
+    ],
+    "tolerance_pp": 2.0,
+    "unexplained": [
+      {
+        "event_date": "2022-03-29",
+        "return_1d_pct": -32.774,
+        "shape_pct": -33.3,
+        "symbol": "INCREDIBLE"
+      },
+      {
+        "event_date": "2021-04-27",
+        "return_1d_pct": -33.058,
+        "shape_pct": -33.3,
+        "symbol": "ADROITINFO"
+      },
+      {
+        "event_date": "2021-02-08",
+        "return_1d_pct": -35.135,
+        "shape_pct": -33.3,
+        "symbol": "ANKITMETAL"
+      },
+      {
+        "event_date": "2023-11-20",
+        "return_1d_pct": -34.615,
+        "shape_pct": -33.3,
+        "symbol": "ANTGRAPHIC"
+      },
+      {
+        "event_date": "2025-08-18",
+        "return_1d_pct": -34.084,
+        "shape_pct": -33.3,
+        "symbol": "ASAHISONG"
+      },
+      {
+        "event_date": "2026-01-12",
+        "return_1d_pct": -33.441,
+        "shape_pct": -33.3,
+        "symbol": "ATLANTAA"
+      },
+      {
+        "event_date": "2024-03-04",
+        "return_1d_pct": -33.257,
+        "shape_pct": -33.3,
+        "symbol": "COMPUSOFT"
+      },
+      {
+        "event_date": "2022-06-21",
+        "return_1d_pct": -32.379,
+        "shape_pct": -33.3,
+        "symbol": "DGCONTENT"
+      },
+      {
+        "event_date": "2020-08-18",
+        "return_1d_pct": -32.427,
+        "shape_pct": -33.3,
+        "symbol": "ELGIRUBCO"
+      },
+      {
+        "event_date": "2022-03-29",
+        "return_1d_pct": -33.898,
+        "shape_pct": -33.3,
+        "symbol": "ESSARSHPNG"
+      },
+      {
+        "event_date": "2020-11-10",
+        "return_1d_pct": -34.733,
+        "shape_pct": -33.3,
+        "symbol": "FLEXITUFF"
+      },
+      {
+        "event_date": "2022-06-21",
+        "return_1d_pct": -88.807,
+        "shape_pct": -90.0,
+        "symbol": "GODHA"
+      },
+      {
+        "event_date": "2024-05-06",
+        "return_1d_pct": -50.0,
+        "shape_pct": -50.0,
+        "symbol": "GODHA"
+      },
+      {
+        "event_date": "2020-03-19",
+        "return_1d_pct": -33.739,
+        "shape_pct": -33.3,
+        "symbol": "IBULHSGFIN"
+      },
+      {
+        "event_date": "2020-03-18",
+        "return_1d_pct": -35.052,
+        "shape_pct": -33.3,
+        "symbol": "IDEA"
+      },
+      {
+        "event_date": "2022-09-13",
+        "return_1d_pct": -49.309,
+        "shape_pct": -50.0,
+        "symbol": "IMPEXFERRO"
+      },
+      {
+        "event_date": "2022-03-29",
+        "return_1d_pct": -32.663,
+        "shape_pct": -33.3,
+        "symbol": "JBFIND"
+      },
+      {
+        "event_date": "2020-03-04",
+        "return_1d_pct": -64.762,
+        "shape_pct": -66.7,
+        "symbol": "KANANIIND"
+      },
+      {
+        "event_date": "2021-09-13",
+        "return_1d_pct": -90.948,
+        "shape_pct": -90.0,
+        "symbol": "KARDA"
+      },
+      {
+        "event_date": "2025-05-05",
+        "return_1d_pct": -67.939,
+        "shape_pct": -66.7,
+        "symbol": "KBCGLOBAL"
+      },
+      {
+        "event_date": "2023-10-09",
+        "return_1d_pct": -34.01,
+        "shape_pct": -33.3,
+        "symbol": "KHANDSE"
+      },
+      {
+        "event_date": "2020-08-18",
+        "return_1d_pct": -31.894,
+        "shape_pct": -33.3,
+        "symbol": "LFIC"
+      },
+      {
+        "event_date": "2024-07-15",
+        "return_1d_pct": -31.754,
+        "shape_pct": -33.3,
+        "symbol": "MALUPAPER"
+      },
+      {
+        "event_date": "2020-03-04",
+        "return_1d_pct": -50.567,
+        "shape_pct": -50.0,
+        "symbol": "MCDHOLDING"
+      },
+      {
+        "event_date": "2025-11-03",
+        "return_1d_pct": -32.985,
+        "shape_pct": -33.3,
+        "symbol": "OMAXAUTO"
+      },
+      {
+        "event_date": "2023-05-23",
+        "return_1d_pct": -33.601,
+        "shape_pct": -33.3,
+        "symbol": "PANACHE"
+      },
+      {
+        "event_date": "2024-09-23",
+        "return_1d_pct": -33.945,
+        "shape_pct": -33.3,
+        "symbol": "PREMEXPLN"
+      },
+      {
+        "event_date": "2026-05-19",
+        "return_1d_pct": -82.169,
+        "shape_pct": -83.3,
+        "symbol": "RNBDENIMS"
+      },
+      {
+        "event_date": "2021-10-12",
+        "return_1d_pct": -51.977,
+        "shape_pct": -50.0,
+        "symbol": "RTNPOWER"
+      },
+      {
+        "event_date": "2023-07-03",
+        "return_1d_pct": -67.663,
+        "shape_pct": -66.7,
+        "symbol": "SELMC"
+      },
+      {
+        "event_date": "2024-02-26",
+        "return_1d_pct": -34.611,
+        "shape_pct": -33.3,
+        "symbol": "SELMC"
+      },
+      {
+        "event_date": "2024-12-02",
+        "return_1d_pct": -33.572,
+        "shape_pct": -33.3,
+        "symbol": "SGL"
+      },
+      {
+        "event_date": "2024-08-26",
+        "return_1d_pct": -48.117,
+        "shape_pct": -50.0,
+        "symbol": "SHANTI"
+      },
+      {
+        "event_date": "2025-09-09",
+        "return_1d_pct": -49.3,
+        "shape_pct": -50.0,
+        "symbol": "SHANTI"
+      },
+      {
+        "event_date": "2021-07-20",
+        "return_1d_pct": -34.314,
+        "shape_pct": -33.3,
+        "symbol": "SKIL"
+      },
+      {
+        "event_date": "2025-02-03",
+        "return_1d_pct": -34.431,
+        "shape_pct": -33.3,
+        "symbol": "SONAMLTD"
+      },
+      {
+        "event_date": "2024-07-19",
+        "return_1d_pct": -48.966,
+        "shape_pct": -50.0,
+        "symbol": "SUMEETINDS"
+      },
+      {
+        "event_date": "2020-03-04",
+        "return_1d_pct": -31.638,
+        "shape_pct": -33.3,
+        "symbol": "SURANASOL"
+      },
+      {
+        "event_date": "2026-02-16",
+        "return_1d_pct": -32.184,
+        "shape_pct": -33.3,
+        "symbol": "TICL"
+      },
+      {
+        "event_date": "2025-10-06",
+        "return_1d_pct": -33.889,
+        "shape_pct": -33.3,
+        "symbol": "TNTELE"
+      },
+      {
+        "event_date": "2025-11-24",
+        "return_1d_pct": -32.174,
+        "shape_pct": -33.3,
+        "symbol": "VIJIFIN"
+      },
+      {
+        "event_date": "2025-08-04",
+        "return_1d_pct": -76.975,
+        "shape_pct": -75.0,
+        "symbol": "VINNY"
+      },
+      {
+        "event_date": "2024-01-23",
+        "return_1d_pct": -32.606,
+        "shape_pct": -33.3,
+        "symbol": "ZEEL"
+      }
+    ],
+    "unexplained_by_year": {
+      "2020": 8,
+      "2021": 5,
+      "2022": 6,
+      "2023": 4,
+      "2024": 9,
+      "2025": 8,
+      "2026": 3
+    },
+    "window_days": 10
+  }
+}

@@ -30,6 +30,15 @@
   validation reference. NOT changed: CLAUDE.md D3/D5 (same rules, authoritative)
   need the user's explicit approval; proposed wording is in the session report.
   Suite: 699 tests in 115.336s, OK.
+- Item 5a, P8-007 CLOSED (mitigated): scripts/desk_p8007_verification.py (read-only,
+  decision rule fixed in the script) -> docs/desk/p8007_verification.json. Catalogue
+  70,638 events / 2,549 symbols all equity; Desk opportunity log 456 symbols all
+  equity; 349 of 2,662 EQ-series symbols on 2026-10-01 are fund units, all excluded;
+  zero fund-unit shape hits. Residuals noted in the register (no ETF split source;
+  catalogue build fails open without an ISIN map; 43 unexplained equity split-shaped
+  moves). desk/readiness.open_defects now honours an explicit closure marker
+  (**CLOSED in the table row, or a "**Status.** Closed" line) so history is kept.
+  Suite: 700 tests in 117.553s, OK.
 
 ## 2026-10-04 session end: Part A and Part B complete
 

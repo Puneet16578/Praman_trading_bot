@@ -9,16 +9,23 @@ from shared.market_time import market_today
 
 
 def open_defects(path):
+    """Open high/critical and open-but-unclassified defect IDs. An explicit closure marker, added
+    without rewriting the entry's history, overrides earlier open wording: `**CLOSED` in the
+    summary-table row's status cell, or a line starting `**Status.** Closed` in the entry's section."""
     text = Path(path).read_text(encoding='utf-8')
-    high, unknown = set(), set()
+    high, unknown, closed = set(), set(), set()
     for line in text.splitlines():
         if not re.match(r'\| P\d+-\d+ \|', line):
             continue
         columns = line.split('|')
+        if re.search(r'\*\*CLOSED\b', columns[-2]):
+            closed.add(columns[1].strip())
         if re.search(r'not fixed|\bopen\b|deferred', columns[-2], re.I) and re.search(r'high|critical', columns[3], re.I):
             high.add(columns[1].strip())
     for section in re.split(r'(?m)^## ', text)[1:]:
         found = re.match(r'(P\d+-\d+)', section)
+        if found and re.search(r'(?m)^\*\*Status\.\*\*\s*Closed\b', section):
+            closed.add(found[1])
         if not found or not (re.search(r'\(open\)', section.splitlines()[0], re.I)
                              or re.search(r'\*\*Status\.\*\*\s*Open', section, re.I)):
             continue
@@ -27,7 +34,7 @@ def open_defects(path):
             high.add(found[1])
         elif not severity:
             unknown.add(found[1])
-    return sorted(high), sorted(unknown)
+    return sorted(high - closed), sorted(unknown - closed)
 
 
 def gate_progress(conn, rulebook, *, today=None, defect_path=None):

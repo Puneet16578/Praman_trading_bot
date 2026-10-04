@@ -50,6 +50,15 @@ class ReadinessTest(unittest.TestCase):
         self.defects.write_text('| P1-001 | now | High | description | Open |\n\n## P1-002 - issue (open)\n\n**Status.** Open\n',encoding='utf-8')
         self.assertEqual(open_defects(self.defects),(['P1-001'],['P1-002']))
 
+    def test_explicit_closure_marker_overrides_historical_open_wording(self):
+        text = ('| P1-001 | now | **Critical, found not fixed** | d | Still not fixed. **CLOSED 2026-10-04 (mitigated).** |\n'
+                '| P1-003 | now | High | d | Still open; a later note says closed in prose only. |\n\n'
+                '## P1-002 - issue (open)\n\n**Status.** Open\n\n**Closure.**\n**Status.** Closed - fixed.\n\n'
+                '## P1-004 - other (open)\n\n**Status.** Open\nThis one mentions **Status.** Closed mid-line only.\n')
+        self.defects.write_text(text, encoding='utf-8')
+        # Closure needs the explicit marker: prose or a mid-line mention never closes an entry.
+        self.assertEqual(open_defects(self.defects), (['P1-003'], ['P1-004']))
+
     def test_calendar_boundary_and_recorded_exit_requirements(self):
         # Use real journal writes, with one trade sufficient only in this fixture.
         self.rb.operational_gate.min_closed_paper_trades=1
