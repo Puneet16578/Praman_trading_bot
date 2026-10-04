@@ -39,6 +39,14 @@ class VolatilityContextTest(unittest.TestCase):
             self.assertNotIn('RETROSPECTIVE',current.display())
         self.assertFalse(context_from_values(4,100,'2021-10-27',source=Path('absent_reference_038.json')).retrospective)
 
+    def test_lookup_failure_is_unknown_not_a_crash(self):
+        from unittest.mock import Mock
+        from desk.volatility_context import assessment_context
+        result=assessment_context(Mock(),'EXAMPLE','2020-01-02')
+        self.assertIsInstance(result.historical_rate,Unknown)
+        self.assertIn('Context lookup failed (TypeError)',result.historical_rate.detail)
+        self.assertIsNone(result.quintile)
+
     def test_missing_reference_preserves_measured_volatility(self):
         result=context_from_values(5,100,'2020-01-02',source=Path('absent_reference_038.json'))
         self.assertEqual(result.quintile,4)

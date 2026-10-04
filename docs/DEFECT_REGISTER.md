@@ -1649,3 +1649,13 @@ The guard is now two-sided and requires a positive frozen quantity (the replay's
 cap assertion already rejects nonpositive pass quantities). (3) The
 preregistration's required shared-date draw test was absent; added. No result,
 store or registered protocol was affected.
+
+## P8-042 - first volatility-context wiring could abort assess after recording
+
+2026-10-04, Medium, fixed before commit. The first `desk assess` wiring caught
+only ValueError/UnadjustableWindowError from the context lookup. Any other
+exception (seen as TypeError in the existing zero-share CLI test, which mocks the
+store connection) aborted the command after the decision row was already
+appended, so the operator would see a crash for an information-only field. The
+lookup now records UNKNOWN with the exception type and message; a test covers
+it. No durable store was written by the faulty draft outside temporary tests.

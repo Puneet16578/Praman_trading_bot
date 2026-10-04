@@ -16,6 +16,26 @@
 - Wiring test tests/test_volatility_context_wiring.py is held uncommitted: it
   needs desk/cli.py and desk/scan.py edits, which wait for the replay to finish.
 - Pre-existing trailing blank line in tests/test_desk_risk.py left unstaged.
+- Committed review work: 3743fd3 (volatility context), b3a8b22 (follow-up 2
+  code, P8-040/P8-041), 62bb1f6 (G6 comparison script, UNKNOWN-gate test).
+- Corrected replay finished 09:51:48 IST. Verified: code_commit 7801550; all 49
+  source hashes match committed/disk files; raw SHA-256 9a71fcf3... matches;
+  70,362 unique events (52,912 SCREEN_PASS, 17,450 SCREEN_FAIL); watermarks,
+  rulebook, costs, cutoffs, seed and data-input hashes identical to pre-G6; only
+  repair files and the addended prereg differ. Run completion implies zero
+  decision-time cap assertion failures. Results committed separately.
+- A2 wiring: desk assess and desk scan append a linked VOLATILITY_CONTEXT
+  journal entry after the decision/opportunity is stored and print it; no gate,
+  plan or sizing change. Any lookup failure becomes UNKNOWN (P8-042: the first
+  wiring let an unexpected exception abort assess after recording a decision).
+- Full suite (canonical command): 646 tests in 400.179s, OK, Python exit 0; log
+  logs/t0_closeout_suite_20261004.log. An earlier attempt exceeded 10 minutes and
+  was stopped (cause not identified; per-test timings showed no hang, longest
+  test 47s); logs/t0_closeout_timed_20261004.log has per-test durations.
+- Trailing blank line in tests/test_desk_risk.py folded into the wiring commit at
+  the user's request.
+- Next: user runs the follow-up re-run, volatility reference and G6 comparison
+  in their own terminal (commands in the session report), then A4.
 
 ## 2026-10-04 G6 repair checkpoint
 

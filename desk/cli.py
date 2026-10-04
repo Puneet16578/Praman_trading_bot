@@ -17,6 +17,7 @@ from desk.lib.costs import load_active_cost_config
 from desk.lib.rulebook import load_active_rulebook
 from desk.lib.store import get_live_connection, max_recorded_at
 from desk.replay import current_git_head, replay_decision
+from desk.volatility_context import assessment_context, record_context
 
 
 def cmd_rulebook_validate(args):
@@ -90,6 +91,11 @@ def cmd_assess(args):
         from desk.circuit_bands import band_as_of
         print(f"  circuit_band={band_as_of(desk_conn, args.symbol, as_of_date).label()}")
         print("  planned_stop_loss=N/A stress_loss=N/A locked_circuit_loss=N/A (no sized plan)")
+
+    # Information only: appended after the decision, linked to it, never a gate input.
+    context = assessment_context(praman_conn, args.symbol, as_of_date)
+    record_context(desk_conn, context, symbol=args.symbol, decision_id=decision_id)
+    print(f"  {context.display()}")
 
     praman_conn.close()
     desk_conn.close()

@@ -108,6 +108,9 @@ def assessment_context(conn,symbol,as_of,decision_price=None):
         return context_from_values(atr,close if decision_price is None else decision_price,as_of)
     except (ValueError,UnadjustableWindowError) as exc:
         return unavailable(as_of,str(exc))
+    except Exception as exc:
+        # Information only: a lookup failure must never abort an already-recorded decision.
+        return unavailable(as_of,f'Context lookup failed ({type(exc).__name__}): {exc}')
 
 
 def record_context(desk_conn,context,*,symbol,decision_id=None,opportunity_id=None):

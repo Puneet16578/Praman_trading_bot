@@ -155,3 +155,4 @@ class StressLossScaleBugTest(unittest.TestCase):
                 self.assertAlmostEqual(base_loss, synthetic_loss)
         finally:
             conn.close()
+

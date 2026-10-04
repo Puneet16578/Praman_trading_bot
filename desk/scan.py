@@ -10,6 +10,7 @@ from desk.screening_plan import screen_event, execution_observation
 from desk.opportunity_store import append_opportunity, append_execution
 from desk.journal.store import desk_watermark
 from desk.replay import current_git_head
+from desk.volatility_context import assessment_context, record_context
 from src.signals.event_catalogue import build_symbol_history, compute_daily_stats
 from src.ingestion.nse_market_data.isin_mapping import load_isin_map, build_symbol_groups
 from shared.market_time import market_today
@@ -65,10 +66,16 @@ def run_scan_range(days, *, desk_db_path=None):
                 continue
             plan, assessment = screen_event(conn, desk, event.symbol, event.event_date, rb.rulebook,
                                              costs.costs, isin_map_built_at=built)
-            _, created = append_opportunity(desk, symbol=event.symbol, event_date=event.event_date,
+            opportunity_id, created = append_opportunity(desk, symbol=event.symbol, event_date=event.event_date,
                                             plan=plan, assessment=assessment,
                                             provenance=provenance | {'desk_watermark': desk_watermark(desk)})
             inserted += int(created)
+            if created:
+                # Information only: linked to the stored opportunity after screening.
+                context = assessment_context(conn, event.symbol, event.event_date,
+                                             decision_price=plan.get('decision_price'))
+                record_context(desk, context, symbol=event.symbol, opportunity_id=opportunity_id)
+                print(f'{event.symbol} {event.event_date} {assessment.state}: {context.display()}', flush=True)
             if i % 25 == 0:
                 print(f'Screening inputs: {i}/{len(events)}', flush=True)
         pending = desk.execute('SELECT * FROM opportunity_log WHERE opportunity_id NOT IN '
