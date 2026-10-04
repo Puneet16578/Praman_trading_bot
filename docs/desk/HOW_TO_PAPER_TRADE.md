@@ -50,9 +50,12 @@ policy blocking local scripts). Prices, dates and IDs below are examples to repl
    otherwise it is **NO FILL** — the order is cancelled, never carried to a later
    session, and you reassess for a new decision. Quantity is the approved position
    size, unchanged. A demerger between the decision and the fill refuses the open.
-   This is the rule tested in follow-up 2 (`docs/desk/shadow_replay_followup2_review.md`):
-   it lowers, but does not remove, the chance that the fill price pushes the
-   planned loss past the per-trade budget (P8-043).
+   **Since 2026-10-04 (later the same day) `desk assess` sizes the position at that
+   limit price**, not at `planned_entry`, so a limit fill can never push the planned
+   loss past the per-trade budget (follow-up 3, `docs/desk/shadow_replay_followup3_review.md`;
+   P8-043 closed). Positions are a little smaller: about 2% where the per-stock cap
+   binds, about 20% where the per-trade budget binds. The assessment prints the
+   price it sized at.
 
    `PENDING` is normal: the next session's data has not arrived. The next evening's
    monitor completes that approved entry at the first available session after the

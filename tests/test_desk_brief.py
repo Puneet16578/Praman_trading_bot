@@ -27,7 +27,7 @@ class BriefTest(EngineFixture):
                          'Passed risk/portfolio/execution checks: 2', 'Rejected by reason: OPEN_RISK_BUDGET 1',
                          'Candidate AAA', 'Calibrated P(profitable): UNKNOWN (T4)', 'Expected value: UNKNOWN (T4)',
                          'Execution: limit order at 102.00', 'Final state: WATCH', 'Kill switches:',
-                         'Strategy 0: Rs 24,000.00 of Rs 25,000.00', 'Manual (strategy_id=manual)',
+                         'Strategy 0: Rs 24,480.00 of Rs 25,000.00', 'Manual (strategy_id=manual)',
                          'SEALED until 2027-06-01', 'Data health:'):
             self.assertIn(expected, text)
         self.assertNotIn('NO TRADE', text)

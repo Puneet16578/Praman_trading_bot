@@ -42,6 +42,7 @@ class AssessmentResult:
     stress_loss: StressLossResult | None = None
     as_of_is_live: bool = True
     isin_map_built_at: str | None = None
+    sizing_entry: float | None = None   # price the position was sized at (manual: the entry limit)
 
     def gate_results_json(self) -> dict:
         return {g: {"result": r.result, "reasons": list(r.reasons)} for g, r in self.gate_results.items()}
@@ -147,12 +148,32 @@ def run_assessment(conn, desk_conn, *, symbol: str, as_of_date: str, sector: str
 
     position_size = None
     stress_loss = None
+    sizing_entry = None
     if thesis is not None:
         entry, stop = thesis["planned_entry"], thesis["planned_stop"]
         open_risk_used = 0.0 if screening else _open_risk_used_inr(desk_conn)
         capital_at_stock, capital_at_sector = ((0.0, 0.0) if screening else
             _capital_at_stock_and_sector(desk_conn, symbol, sector, symbol_to_sector))
+        sizing_entry, sizing_problem = entry, None
+        if not screening:
+            # Manual convention (user-approved 2026-10-04, follow-up 3): the paper entry is a day
+            # limit order at planned_entry + 0.5 x ATR20, so the position is sized at that limit
+            # price; then no limit fill can push the planned loss past the per-trade cap (P8-043).
+            # Research screening keeps the registered decision-price sizing.
+            from desk.paper.open import LIMIT_ATR_MULTIPLE
+            from desk.volatility_context import atr20_and_close
+            from src.signals.price_adjustment import UnadjustableWindowError
+            try:
+                atr, _close = atr20_and_close(conn, symbol, as_of_date)
+                sizing_entry = entry + LIMIT_ATR_MULTIPLE * atr
+            except (ValueError, UnadjustableWindowError) as exc:
+                sizing_entry, sizing_problem = None, f"ATR20 unavailable ({exc}); the entry limit cannot be set."
 
+    if thesis is not None and sizing_entry is None:
+        gate_results["G5"] = GateResult("G5", UNKNOWN, (sizing_problem,))
+        gate_results["G6"] = GateResult("G6", UNKNOWN, (sizing_problem,))
+    elif thesis is not None:
+        entry = sizing_entry
         position_size = compute_position_size(entry, stop, rulebook, open_risk_used, capital_at_stock, capital_at_sector, costs=costs)
 
         if position_size == 0:
@@ -205,7 +226,7 @@ def run_assessment(conn, desk_conn, *, symbol: str, as_of_date: str, sector: str
     state = _derive_state(gate_results, g7_override_reason)
     return AssessmentResult(state=state, gate_results=gate_results, evidence_bundle=bundle,
                              position_size=position_size, stress_loss=stress_loss, as_of_is_live=as_of_live,
-                             isin_map_built_at=isin_map_built_at)
+                             isin_map_built_at=isin_map_built_at, sizing_entry=sizing_entry)
 
 
 def _thesis_has_any_trade(desk_conn, thesis: dict) -> bool:

@@ -81,6 +81,8 @@ def cmd_assess(args):
         print(f"  {gate}: {r.result} {list(r.reasons)}")
     if result.position_size is not None:
         print(f"  position_size={result.position_size:.2f}")
+    if result.sizing_entry is not None:
+        print(f"  sized at the entry limit {result.sizing_entry:.2f} (planned_entry + 0.5 x ATR20)")
     if result.stress_loss is not None:
         loss = result.stress_loss
         print(f"  circuit_band={loss.circuit_band.label()}")

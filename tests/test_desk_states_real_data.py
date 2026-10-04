@@ -79,10 +79,12 @@ class DecisionStateRealDataTest(unittest.TestCase):
         self.assertEqual(result.state, "ELIGIBLE")
         for gate, r in result.gate_results.items():
             self.assertEqual(r.result, "PASS", f"{gate} unexpectedly {r.result}: {r.reasons}")
-        # Fix 1 (post-STOP-3 review): NSE trades in whole shares. Raw sizing (risk budget / per-share
-        # risk, capped by open-risk/per-stock/per-sector room) works out to 66.6667 shares here -- the
-        # binding cap is max_per_stock_pct (10% of Rs 500,000 / entry 750 = 66.6667) -- floored to 66.
-        self.assertEqual(result.position_size, 66)
+        # Fix 1 (post-STOP-3 review): NSE trades in whole shares. Since the 2026-10-04 manual
+        # convention change, a manual decision is sized at its entry limit, planned_entry 750 +
+        # 0.5 x ATR20 (20.9025 on 2021-10-27) = 760.45. The binding cap is max_per_stock_pct:
+        # 10% of Rs 500,000 / 760.45 = 65.75, floored to 65 (it was 66 at the 750 entry).
+        self.assertEqual(result.position_size, 65)
+        self.assertAlmostEqual(result.sizing_entry, 760.45125)
         self.assertIsNotNone(result.stress_loss)
 
     def test_single_share_exceeding_the_per_stock_cap_is_vetoed(self):

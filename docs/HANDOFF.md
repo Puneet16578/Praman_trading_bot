@@ -7,7 +7,18 @@
 - Item 1: CLAUDE.md D3/D5 amended to the approved wording plus the sentence "The T4
   calibration gate's pass criteria are pre-registered before any model is evaluated
   against them." DESIGN.md constitution 5 and changelog mirror it; the blueprint
-  conflict note is marked resolved.
+  conflict note is marked resolved. Commit e7d13c4.
+- Item 2: Strategy 0 v2 = v1 with limit-price sizing (registry: v1 kept as
+  SUPERSEDED_NEVER_RUN with its exact reviewed definition; v2 PAPER_BURN_IN; the
+  engine reads sizing_rule from the registered definition). v2 re-sizes each
+  accepted candidate with the rulebook function at decision price + 0.5 x ATR20,
+  never above the screening quantity, re-checks every decision cap at that price,
+  and budgets stress measured at the limit. Exits/monitoring now record every price
+  on the decision share basis (also item 4). Manual: desk assess sizes at
+  planned_entry + 0.5 x ATR20 (screening keeps decision-price sizing); the AXISBANK
+  real-data test now expects 65 shares (was 66). Dry run on a temp copy of the real
+  store, 2026-10-01: SGIL 81 -> 66 shares, TATASTEEL 280 -> 276; 2 accepted, 4
+  rejected OPEN_RISK_BUDGET; production unchanged. Suite: 724 tests in 119.208s, OK.
 
 ## 2026-10-04 (afternoon) round end: status of the seven decisions
 

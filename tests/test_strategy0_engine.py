@@ -18,6 +18,7 @@ from tests.desk_fixtures import make_test_costs
 
 ROOT = Path(__file__).resolve().parents[1]
 DAYS = [f'2026-10-{d:02d}' for d in (5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 19, 20, 21, 22, 23)]
+V = registry.STRATEGY_0['version']   # the live Strategy 0 version the engine runs
 
 
 def rulebook(level='A1'):
@@ -47,8 +48,9 @@ class Store:
 
 
 def plan(price=100.0, atr=4.0, stop=92.0, qty=100, stress=12000.0):
+    # Stress components agree with the stated stress loss: Strategy 0 v2 reprices them at the limit.
     return dict(decision_price=price, atr20=atr, stop_level=stop, quantity=qty, adv_turnover=1e9,
-                stress=dict(stress_loss_inr=stress, floor_component_inr=1, worst_gap_component_inr=None,
+                stress=dict(stress_loss_inr=stress, floor_component_inr=1, worst_gap_component_inr=stress,
                             locked_circuit_loss_inr=None))
 
 
@@ -119,8 +121,15 @@ class EngineTest(EngineFixture):
         self.assertEqual(fills['AAA']['price'], 101)
         self.assertEqual((fills['BBB']['price'], fills['BBB']['status']), (102, 'FILL_LIMIT'))
         self.assertEqual(ops['entries_filled'], 2)
-        self.assertEqual(ops['cap_breaches_at_fill'], 2)   # 600 shares x 9-10 points of stop > Rs 5,000 cap
-        self.assertTrue(fills['AAA']['per_trade_cap_breach_at_fill'])
+        # v2 sizes at the 102 limit: 490 shares (the stock cap), not the screening 600, so no limit
+        # fill can breach the Rs 5,000 per-trade cap (v1 sizing breached it on both fills).
+        self.assertEqual(ops['cap_breaches_at_fill'], 0)
+        self.assertFalse(fills['AAA']['per_trade_cap_breach_at_fill'])
+        from desk.risk.officer import compute_position_size
+        expected = min(int(compute_position_size(102.0, 92.0, rulebook(), 0, 0, 0, costs=self.costs)), 600)
+        self.assertEqual(fills['AAA']['quantity'], expected)
+        accepted = self.events('CANDIDATE_ACCEPTED')[0]['detail']
+        self.assertEqual((accepted['sizing'], accepted['screening_quantity'], accepted['quantity']), ('LIMIT_PRICE', 600, expected))
 
         # AAA hits its stop by gapping below it; BBB is held until the time limit.
         d2 = DAYS[2]
@@ -144,7 +153,7 @@ class EngineTest(EngineFixture):
         self.run_day(exit_day)
         filled = [e for e in self.events('EXIT_FILLED') if e['symbol'] == 'BBB'][0]
         self.assertEqual((filled['event_date'], filled['detail']['price'], filled['detail']['reason']), (exit_day, 99, 'TIME_LIMIT'))
-        book = strategy0.load_book(self.desk, 1)
+        book = strategy0.load_book(self.desk, V)
         self.assertEqual(sorted(p['status'] for p in book.values()), ['CLOSED', 'CLOSED'])
 
     def test_stale_data_blocks_entries_and_cancels_pending(self):
@@ -193,8 +202,8 @@ class EngineTest(EngineFixture):
         run_id = self.desk.execute('SELECT run_id FROM strategy_runs').fetchone()[0]
         self.desk.execute("INSERT INTO strategy_paper_events (strategy_id,strategy_version,run_id,position_id,opportunity_id,"
                           "symbol,decision_date,event_type,event_date,detail,recorded_at) VALUES "
-                          "('S0',1,?,'S0:QQQ:2026-10-05',NULL,'QQQ','2026-10-05','CANDIDATE_ACCEPTED','2026-10-05',?,'t')",
-                          (run_id, json.dumps(dict(stress_loss_inr=None, decision_price=100, atr20=4, stop_level=92, quantity=1))))
+                          "('S0',?,?,'S0:QQQ:2026-10-05',NULL,'QQQ','2026-10-05','CANDIDATE_ACCEPTED','2026-10-05',?,'t')",
+                          (V, run_id, json.dumps(dict(stress_loss_inr=None, decision_price=100, atr20=4, stop_level=92, quantity=1))))
         self.desk.commit()
         self.store.market(d1)
         opportunity(self.desk, 'AAA', d1, plan())
@@ -221,7 +230,7 @@ class EngineTest(EngineFixture):
         self.run_day(days[1])
         self.store.market(days[2])
         for s in ('AAA', 'BBB'):
-            self.store.bar(s, days[2], 80, 81, 79, 80)    # both gap through: about -Rs 40,000 each
+            self.store.bar(s, days[2], 30, 31, 29, 30)    # both gap through: about -Rs 34,000 each (490 shares)
         self.run_day(days[2])
         self.store.market(days[3])
         opportunity(self.desk, 'CCC', days[3], plan())
@@ -236,7 +245,7 @@ class EngineTest(EngineFixture):
         self.assertEqual((ops['accepted'], ops['rejected']), (1, {}))
         self.assertIsNone(self.desk.execute("SELECT 1 FROM kill_switch_events WHERE switch='DRAWDOWN_OR_LOSING_STREAK'").fetchone())
         with self.assertRaises(seal.SealedOutcome):
-            seal.brake_inputs(strategy0.load_book(self.desk, 1), 'S0', today=DAYS[3])
+            seal.brake_inputs(strategy0.load_book(self.desk, V), 'S0', today=DAYS[3])
 
     def test_brake_code_exercised_after_seal_lifts_synthetic(self):
         june = ['2027-06-01', '2027-06-02', '2027-06-03', '2027-06-04']   # synthetic post-seal dates
@@ -294,7 +303,7 @@ class EngineTest(EngineFixture):
         try:
             row = conn.execute('SELECT * FROM journal_events WHERE event_type=?', (strategy0.RUN_FAILED_EVENT,)).fetchone()
             self.assertEqual(json.loads(row['detail']), dict(run_date=DAYS[0], error_type='RuntimeError'))
-            self.assertEqual(strategy0._entry_outcomes_since(conn, 1, None), ['OPERATIONAL_FAILURE'])
+            self.assertEqual(strategy0._entry_outcomes_since(conn, V, None), ['OPERATIONAL_FAILURE'])
         finally:
             conn.close()
 
@@ -315,7 +324,8 @@ class EngineTest(EngineFixture):
         self.store.bar('SPL', DAYS[2], 9.9, 10.0, 9.5, 9.8)        # 99 / 95 on the decision basis: above the stop
         self.run_day(DAYS[2])
         monitored = self.events('MONITORED')[-1]['detail']
-        self.assertAlmostEqual(monitored['stop'], 9.2)
+        self.assertEqual(monitored['stop'], 92.0)                   # decision basis, like every other price
+        self.assertAlmostEqual(monitored['low'], 95.0)
         self.assertEqual(monitored['factor'], 10.0)
         self.assertEqual(self.events('EXIT_FILLED'), [])
 
@@ -346,7 +356,12 @@ class RegistryAndSealTest(unittest.TestCase):
 
     def test_strategy0_registered_with_rule_based_entry_policy(self):
         row = registry.ensure_registered(self.desk)
-        self.assertEqual((row['strategy_id'], row['name'], row['status']), ('S0', 'baseline screen', 'PAPER_BURN_IN'))
+        self.assertEqual((row['strategy_id'], row['version'], row['name'], row['status']),
+                         ('S0', 2, 'baseline screen', 'PAPER_BURN_IN'))
+        self.assertEqual(row['definition']['sizing_rule'], 'LIMIT_PRICE')
+        v1 = self.desk.execute("SELECT status, definition FROM trading_strategies WHERE strategy_id='S0' AND version=1").fetchone()
+        self.assertEqual(v1['status'], 'SUPERSEDED_NEVER_RUN')
+        self.assertNotIn('sizing_rule', json.loads(v1['definition']))
         self.assertIn('NOT expected to be profitable', row['purpose'])
         entry = row['definition']['entry']
         self.assertEqual(entry['policy'], 'LIMIT_DECISION_PLUS_0.5_ATR20')
@@ -354,7 +369,7 @@ class RegistryAndSealTest(unittest.TestCase):
                                                               'fill_rate_at_least_60pct')))
         self.assertEqual(registry.current(self.desk, 'manual')['status'], 'ACTIVE_MANUAL')
         registry.ensure_registered(self.desk)   # idempotent
-        self.assertEqual(self.desk.execute('SELECT COUNT(*) FROM trading_strategies').fetchone()[0], 2)
+        self.assertEqual(self.desk.execute('SELECT COUNT(*) FROM trading_strategies').fetchone()[0], 3)
 
     def test_entry_rule_falls_back_when_conditions_fail(self):
         source = json.loads(registry.FOLLOWUP2.read_text(encoding='utf-8'))
@@ -377,9 +392,9 @@ class RegistryAndSealTest(unittest.TestCase):
         registry.ensure_registered(self.desk)
         with self.assertRaises(registry.RegistryError):
             registry.register(self.desk, **registry.STRATEGY_0, definition=dict(changed=True))
-        registry.set_status(self.desk, 'S0', 1, 'RETIRED')
+        registry.set_status(self.desk, 'S0', 2, 'RETIRED')
         self.assertEqual(registry.current(self.desk, 'S0')['status'], 'RETIRED')
-        self.assertEqual(self.desk.execute("SELECT COUNT(*) FROM trading_strategies WHERE strategy_id='S0'").fetchone()[0], 2)
+        self.assertEqual(self.desk.execute("SELECT COUNT(*) FROM trading_strategies WHERE strategy_id='S0'").fetchone()[0], 3)
         with self.assertRaises(sqlite3.IntegrityError):
             self.desk.execute("DELETE FROM trading_strategies WHERE strategy_id='S0'")
 

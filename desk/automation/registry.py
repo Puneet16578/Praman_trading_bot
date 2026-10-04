@@ -48,7 +48,30 @@ def entry_policy(path=FOLLOWUP2):
     )
 
 
-def strategy0_definition(path=FOLLOWUP2):
+V2_SIZING = ('At acceptance, re-size with the rulebook sizing function (cost-inclusive, G6 fix 7801550) at the '
+             'entry LIMIT price, decision price + 0.5 x ATR20, instead of the screening quantity sized at the '
+             'decision price (follow-up 3: prereg b2df2a2, results 72a0a97 -- zero per-trade breaches at the '
+             'fill in 51,414 fills). Every decision-time cap is re-checked at the limit price; zero shares at '
+             'the limit is a logged rejection. Never above the screening quantity and never resized after acceptance.')
+V2_PORTFOLIO = ('Own notional book, separate from manual paper trades: one position per symbol; open, pending and '
+                'exiting positions count against the rulebook open-risk budget on stress loss measured at the '
+                'limit price for the limit-sized quantity (capital x max_open_risk_pct). Candidates over the '
+                'budget are rejected with the reason logged.')
+
+
+def strategy0_definition(path=FOLLOWUP2, version=2):
+    """Version 1 is kept byte-for-byte as reviewed (registered as superseded, never run); version 2
+    differs only in sizing (and the portfolio note that follows from it), approved 2026-10-04."""
+    if version not in (1, 2):
+        raise RegistryError(f'Strategy 0 v{version} is not defined.')
+    definition = _strategy0_v1_definition(path)
+    if version == 2:
+        definition.update(sizing=V2_SIZING, sizing_rule='LIMIT_PRICE', portfolio=V2_PORTFOLIO,
+                          version_note='v2 = v1 with limit-price sizing (user approval 2026-10-04).')
+    return definition
+
+
+def _strategy0_v1_definition(path):
     policy = entry_policy(path)
     return dict(
         candidates='SCREEN_PASS rows of opportunity_log for the run date (desk scan), ordered by symbol then '
@@ -88,10 +111,12 @@ def strategy0_definition(path=FOLLOWUP2):
     )
 
 
-STRATEGY_0 = dict(strategy_id='S0', version=1, name='baseline screen', status='PAPER_BURN_IN',
-                  purpose='Exercise the automation end to end: candidates, sizing, kill switches, fills, monitoring, '
-                          'exits and the seal. It is NOT expected to be profitable, and its results are not evidence '
-                          'of an edge.')
+S0_PURPOSE = ('Exercise the automation end to end: candidates, sizing, kill switches, fills, monitoring, '
+              'exits and the seal. It is NOT expected to be profitable, and its results are not evidence '
+              'of an edge.')
+STRATEGY_0_V1 = dict(strategy_id='S0', version=1, name='baseline screen', status='SUPERSEDED_NEVER_RUN',
+                     purpose=S0_PURPOSE)
+STRATEGY_0 = dict(strategy_id='S0', version=2, name='baseline screen', status='PAPER_BURN_IN', purpose=S0_PURPOSE)
 MANUAL = dict(strategy_id='manual', version=1, name='manual discretionary paper trades', status='ACTIVE_MANUAL',
               purpose="The user's own discretionary paper trades (desk assess / desk paper open). Kept separate "
                       'from Strategy 0 and fully visible; never sealed.',
@@ -140,6 +165,8 @@ def set_status(conn, strategy_id, version, status):
 
 
 def ensure_registered(conn, path=FOLLOWUP2):
-    """Register Strategy 0 and the manual book if absent; verify Strategy 0's stored definition."""
+    """Register the manual book and Strategy 0 if absent; verify the stored definitions. v1 is kept in
+    the registry as superseded before it ever ran (none is ever deleted); v2 is the live version."""
     register(conn, **MANUAL)
-    return register(conn, **STRATEGY_0, definition=strategy0_definition(path))
+    register(conn, **STRATEGY_0_V1, definition=strategy0_definition(path, version=1))
+    return register(conn, **STRATEGY_0, definition=strategy0_definition(path, version=2))

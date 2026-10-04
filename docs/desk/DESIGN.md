@@ -114,6 +114,14 @@ accuracy bar and zero unverified numbers in any output. A persistent edge is a b
 
 ## Changelog
 
+**2026-10-04 — manual decisions are sized at the entry limit price; Strategy 0 v2 likewise
+(approved by the user in their message of 2026-10-04, after follow-up 3 passed).** Before: `desk
+assess` sized at the thesis `planned_entry`; Strategy 0 used the screening quantity sized at the
+decision price. After: both size with the same rulebook function at the day limit order's price
+(manual: `planned_entry` + 0.5 × ATR20; Strategy 0: decision price + 0.5 × ATR20), so a limit
+fill can never exceed the per-trade cap. Research screening keeps decision-price sizing. Strategy 0
+v1 stays in the registry as superseded before it ever ran.
+
 **2026-10-04 — manual paper entry convention switched to the limit entry (approved by the user in
 their message of 2026-10-04, following `docs/desk/shadow_replay_followup2_review.md`).** Before: fill
 at the next eligible session's open. After: a day limit order at the decision's sizing price

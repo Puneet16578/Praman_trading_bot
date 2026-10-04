@@ -6,12 +6,15 @@ candidates. Everything is computed in memory first and written as one transactio
 separate append-only events (CANDIDATE_*, ENTRY_*, MONITORED, EXIT_*), each candidate linked to
 its blueprint decision contract. A run date is processed at most once.
 
-Share basis (P8-044): the frozen decision price, limit, stop and quantity are stated as of the
-decision date. An entry is evaluated and recorded on that basis (raw session price times the
-store's point-in-time adjustment factor since the decision; exactly the raw price when no bonus or
-split intervenes). While held, the stop and quantity are re-expressed from the decision date to
-each session, and exits are recorded at raw prices with the re-expressed quantity, so notional
-and P&L stay consistent. Operational metrics are stored in the run row; P&L never is (seal).
+Share basis (P8-044): every recorded price -- limit, entry, stop, monitored prices and exits --
+and every quantity is stated on the decision date's share basis: a session's raw price times the
+store's point-in-time adjustment factor since the decision (exactly the raw price when no bonus or
+split intervenes). Notional, costs and P&L therefore stay consistent through a split.
+
+Sizing follows the registered definition: v2 (`sizing_rule` LIMIT_PRICE) re-sizes each accepted
+candidate at its entry limit price, never above the screening quantity, so no limit fill can
+exceed the per-trade cap; v1 kept the screening quantity. Operational metrics are stored in the run
+row; P&L never is (seal).
 """
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -22,8 +25,9 @@ from desk.automation import kill_switches as ks
 from desk.automation import registry, seal
 from desk.automation.levels import require_level
 from desk.decision_contract import build_contract, known, record_contract, unknown
-from desk.risk.officer import planned_loss_inr, round_trip_cost_inr
-from desk.shadow_followup2 import limit_fill
+from desk.risk.officer import compute_position_size, planned_loss_inr, round_trip_cost_inr
+from desk.shadow_followup import cap_measurements
+from desk.shadow_followup2 import LIMIT_ATR, limit_fill
 from src.bitemporal.guard import latest_as_of
 from desk.paper.execution import basis_factor
 from src.signals.price_adjustment import UnadjustableWindowError
@@ -167,7 +171,7 @@ def run(praman_conn, desk_conn, run_date, *, rulebook, costs, rulebook_file, rul
     ops = dict(run_date=run_date, candidates=len(candidates), accepted=0, rejected={}, entries_filled=0,
                entries_no_fill=0, entries_failed=0, entries_cancelled=0, cap_breaches_at_fill=0,
                monitored=0, missing_bars=0, kill_switches_active=sorted(s for s, on in active.items() if on),
-               entry_blocked_by=blocking, entry_policy=definition['entry']['policy'],
+               entry_blocked_by=blocking, entry_policy=definition['entry']['policy'], unpriceable_exits=0,
                exempt_switches={s: exemption for s in ks.P_AND_L_BRAKES} if exemption else {})
 
     # 2. Settle entry orders on the first session after their decision date.
@@ -198,7 +202,8 @@ def run(praman_conn, desk_conn, run_date, *, rulebook, costs, rulebook_file, rul
             ops['entries_failed'] += 1
         plan.events.append((event, None))
 
-    # 3. Monitor positions filled before today; settle exit orders.
+    # 3. Monitor positions filled before today; settle exit orders. Every price is put on the
+    #    decision's share basis (P8-044), so stop, fills and exits share one basis with the entry.
     for pid, p in sorted(positions.items()):
         if p['status'] == 'EXIT_PENDING':
             sessions = sessions_between(praman_conn, p['exit_order']['event_date'], run_date)
@@ -210,17 +215,24 @@ def run(praman_conn, desk_conn, run_date, *, rulebook, costs, rulebook_file, rul
                 plan.events.append((_event('MONITORED', p, run_date, dict(note='Exit pending: no usable bar.',
                                     session=sessions[0]), position_id=pid), None))
                 continue
-            qty = _quantity_now(praman_conn, p, sessions[0])
+            try:
+                factor = basis_factor(praman_conn, p['symbol'], p['decision_date'], sessions[0])
+            except UnadjustableWindowError as exc:
+                ops['unpriceable_exits'] += 1
+                plan.events.append((_event('MONITORED', p, run_date, dict(
+                    note=f'Exit pending: unadjustable corporate action ({exc}); not priced automatically.',
+                    session=sessions[0]), position_id=pid), None))
+                continue
+            price, qty = bar['open_price'] * factor, p['entry']['quantity']
             plan.events.append((_event('EXIT_FILLED', p, sessions[0], dict(
-                price=bar['open_price'], quantity=qty, reason=p['exit_order']['reason'], kind='exit_open',
-                sell_cost_inr=round_trip_cost_inr(bar['open_price'], qty, costs, 'sell'), row_id=bar['row_id']),
-                position_id=pid), None))
+                price=price, quantity=qty, reason=p['exit_order']['reason'], kind='exit_open', basis_factor=factor,
+                raw_open=bar['open_price'], sell_cost_inr=round_trip_cost_inr(price, qty, costs, 'sell'),
+                row_id=bar['row_id']), position_id=pid), None))
             continue
         if p['status'] != 'OPEN' or p['entry']['event_date'] >= run_date:
             continue
         ops['monitored'] += 1
         try:
-            # Decision share basis (P8-044): stop and quantity are stated as of the decision date.
             factor = basis_factor(praman_conn, p['symbol'], p['decision_date'], run_date)
         except UnadjustableWindowError as exc:
             # No factor exists, so the stop cannot be monitored: leave at the next open.
@@ -229,22 +241,21 @@ def run(praman_conn, desk_conn, run_date, *, rulebook, costs, rulebook_file, rul
             plan.events.append((_event('EXIT_ORDERED', p, run_date, dict(reason='UNADJUSTABLE_CORPORATE_ACTION'),
                                        position_id=pid), None))
             continue
-        stop_now = p['accepted']['stop_level'] / factor
-        qty = p['entry']['quantity'] * factor
+        stop, qty = p['accepted']['stop_level'], p['entry']['quantity']
         bar = session_bar(praman_conn, p['symbol'], run_date, run_date)
         held = len(sessions_between(praman_conn, p['entry']['event_date'], run_date))
         if bar is None or not all(_finite(bar[k]) and bar[k] > 0 for k in ('open_price', 'low_price')):
             ops['missing_bars'] += 1
-            plan.events.append((_event('MONITORED', p, run_date, dict(note='No usable bar today.', stop=stop_now,
+            plan.events.append((_event('MONITORED', p, run_date, dict(note='No usable bar today.', stop=stop,
                                 sessions_held=held), position_id=pid), None))
             continue
-        hit = ('stop_gap', bar['open_price']) if bar['open_price'] <= stop_now else (
-               ('stop_touch', stop_now) if bar['low_price'] <= stop_now else None)
-        plan.events.append((_event('MONITORED', p, run_date, dict(stop=stop_now, factor=factor, sessions_held=held,
-                            row_id=bar['row_id']), position_id=pid), None))
+        opening, low = bar['open_price'] * factor, bar['low_price'] * factor
+        hit = ('stop_gap', opening) if opening <= stop else (('stop_touch', stop) if low <= stop else None)
+        plan.events.append((_event('MONITORED', p, run_date, dict(stop=stop, open=opening, low=low, factor=factor,
+                            sessions_held=held, row_id=bar['row_id']), position_id=pid), None))
         if hit:
             plan.events.append((_event('EXIT_FILLED', p, run_date, dict(
-                price=hit[1], quantity=qty, reason='STOP', kind=hit[0],
+                price=hit[1], quantity=qty, reason='STOP', kind=hit[0], basis_factor=factor,
                 sell_cost_inr=round_trip_cost_inr(hit[1], qty, costs, 'sell'), row_id=bar['row_id']),
                 position_id=pid), None))
         elif held >= definition['time_limit_sessions'] or exiting:
@@ -258,17 +269,25 @@ def run(praman_conn, desk_conn, run_date, *, rulebook, costs, rulebook_file, rul
     used = {pid: p['accepted']['stress_loss_inr'] for pid, p in positions.items()
             if _holding(p) and pid not in exited_today and pid not in not_filled_today}
     held_symbols = {positions[pid]['symbol'] for pid in used}
+    limit_sizing = definition.get('sizing_rule') == 'LIMIT_PRICE'
     for c in candidates:
-        stress = (c['plan'].get('stress') or {}).get('stress_loss_inr')
+        p = c['plan']
+        quantity, stress, sizing_price = p.get('quantity'), (p.get('stress') or {}).get('stress_loss_inr'), p.get('decision_price')
         reasons = []
         if blocking:
             reasons.append('KILL_SWITCH: ' + ','.join(blocking))
         if c['symbol'] in held_symbols:
             reasons.append('ALREADY_HOLDING')
-        if not _valid_plan(c['plan']):
+        if not _valid_plan(p):
             reasons.append('INVALID_PLAN')
-        elif sum(used.values()) + stress > budget:
-            reasons.append(f'OPEN_RISK_BUDGET: used {sum(used.values()):.2f} + candidate {stress:.2f} > budget {budget:.2f}')
+        else:
+            problem = None
+            if limit_sizing:
+                quantity, stress, sizing_price, problem = _size_at_limit(p, rulebook, costs)
+                if problem:
+                    reasons.append(problem)
+            if problem is None and sum(used.values()) + stress > budget:
+                reasons.append(f'OPEN_RISK_BUDGET: used {sum(used.values()):.2f} + candidate {stress:.2f} > budget {budget:.2f}')
         pid = f"{STRATEGY_ID}:{c['symbol']}:{run_date}"
         contract = _contract(c, reasons, definition, rulebook_file, praman_watermark, code_commit, stress)
         if reasons:
@@ -277,12 +296,12 @@ def run(praman_conn, desk_conn, run_date, *, rulebook, costs, rulebook_file, rul
             plan.events.append((_event('CANDIDATE_REJECTED', c['symbol'], run_date, dict(reasons=reasons),
                                        opportunity_id=c['opportunity_id'], decision_date=run_date), contract))
             continue
-        p = c['plan']
-        limit = p['decision_price'] + 0.5 * p['atr20'] if use_limit else None
+        limit = p['decision_price'] + LIMIT_ATR * p['atr20'] if use_limit else None
         plan.events.append((_event('CANDIDATE_ACCEPTED', c['symbol'], run_date, dict(
-            decision_price=p['decision_price'], atr20=p['atr20'], stop_level=p['stop_level'], quantity=p['quantity'],
-            stress_loss_inr=stress, limit_price=limit, entry_policy=definition['entry']['policy'],
-            budget_used_before_inr=sum(used.values()), budget_inr=budget),
+            decision_price=p['decision_price'], atr20=p['atr20'], stop_level=p['stop_level'], quantity=quantity,
+            screening_quantity=p['quantity'], sizing='LIMIT_PRICE' if limit_sizing else 'DECISION_PRICE',
+            sizing_price=sizing_price, stress_loss_inr=stress, limit_price=limit,
+            entry_policy=definition['entry']['policy'], budget_used_before_inr=sum(used.values()), budget_inr=budget),
             position_id=pid, opportunity_id=c['opportunity_id'], decision_date=run_date), contract))
         used[pid] = stress
         held_symbols.add(c['symbol'])
@@ -333,11 +352,19 @@ def _settle_entry(praman_conn, p, pid, acc, day, run_date, use_limit, costs, per
     return _event('ENTRY_FILL_FAILED', p, day, evidence | dict(failure='MISSING_DATA'), position_id=pid)
 
 
-def _quantity_now(conn, p, day):
-    try:
-        return p['entry']['quantity'] * basis_factor(conn, p['symbol'], p['decision_date'], day)
-    except UnadjustableWindowError:
-        return p['entry']['quantity']  # recorded as-is; the exit reason already names the unadjustable action
+def _size_at_limit(plan, rulebook, costs):
+    """Strategy 0 v2 sizing: the rulebook sizing function at the entry limit price, never above the
+    screening quantity, with every decision-time cap re-checked at that price. Returns
+    (quantity, stress loss at the limit, sizing price, rejection reason or None)."""
+    limit = plan['decision_price'] + LIMIT_ATR * plan['atr20']
+    quantity = min(int(compute_position_size(limit, plan['stop_level'], rulebook, 0, 0, 0, costs=costs)), plan['quantity'])
+    if quantity < 1:
+        return 0, None, limit, 'ZERO_SHARES_AT_LIMIT'
+    caps = cap_measurements(plan, limit, quantity, rulebook, costs)
+    over = sorted(k for k, v in caps.items() if v['usage'] > v['cap'])
+    if over:
+        return quantity, caps['open_risk']['usage'], limit, 'DECISION_CAP_AT_LIMIT: ' + ','.join(over)
+    return quantity, caps['open_risk']['usage'], limit, None
 
 
 def _valid_plan(plan):
