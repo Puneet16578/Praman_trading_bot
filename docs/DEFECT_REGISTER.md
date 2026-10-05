@@ -1622,6 +1622,10 @@ is a partial month: 1,188 rows. The market-wide watermark is COMPLETE through 20
 `source_freshness` row 1), so a 2026-10-05 decision's disclosure window (needing 2026-10-04) is
 a FACT again. Residual: 163 bulk rows have an ambiguous or absent dated identity; they are stored
 and any window containing one reads as UNKNOWN, not "no disclosure".
+Nightly confirmation, 2026-10-05: the first scheduled bulk refresh (18:07 IST; 5 requests, all
+HTTP 200) was COMPLETE for 2026-09-28 to 2026-10-05: 4,834 rows returned, 270 inserted, 4,564
+already stored (Desk `source_freshness` row 2). September is unchanged at 17,077 rows. The
+receipt's through date overstates the run's own day; see P8-049.
 
 ## P8-020 — interrupted ingestion left no durable start or progress
 
@@ -1938,4 +1942,65 @@ Review fixes in the same change: the equity-only read filter required `INE` ISIN
 dropping the IN9 DVR class that the project's equity-only rule keeps; it now excludes fund units
 (`INF`) only. Bulk ingestion now resolves publication-date identity from the append-only
 `security_identities` fact table as of the run, not from the cache files that transported it.
+
+## P8-049 - a same-day refresh receipt certifies the rest of that day
+
+**Severity.** Medium. **Status.** Open. Found 2026-10-05 verifying the first nightly bulk
+refresh; no record affected.
+
+`step_announcements_recent` records `through_date` as the refresh's end date, which is the run's
+own market date (`ingest_announcements_recent.main`: `end_date = market_today()`), and
+`complete_through` returns it unchanged. A receipt recorded during day D therefore states the
+source complete through all of D, although D's filings keep arriving after the run. Both receipts
+so far do this: `source_freshness` row 1 (backfill, recorded 12:29 IST) and row 2 (nightly, 18:07
+IST) each certify 2026-10-05. Measured read-only from the stored bulk rows' own publication
+timestamps (`sort_date`): on each of the nine full trading days 2026-09-21 to 2026-10-01, 25.2% to
+38.2% of that day's announcements were published after 18:07 IST (2026-09-30: 460 of 1,216).
+
+Reach. A decision dated D+1 needs completeness through D. Normally the D+1 nightly re-reads D in
+full (seven-day overlap) before that night's Strategy 0 run, so nothing is exposed; tonight's
+decisions were dated 2026-10-05, needed 2026-10-04, and were fully covered. Exposed: (1) a night
+whose refresh is not COMPLETE while the later steps still run: that night's Strategy 0 decisions
+rest on the previous evening's receipt and read about a third of the previous day's filings as
+absent; (2) a manual `desk assess --as-of` later than the latest receipt's run date (the default
+as-of, the latest stored session, is not exposed). No decision or opportunity is affected:
+production `decisions` has 0 rows, and the 37 Strategy 0 contracts and 45 screened events are
+dated 2026-10-05. Medium, like P8-046 (a narrow condition can falsely establish freshness), not
+High like P8-021 (every live bundle affected).
+
+Proposed fix, not implemented (a Desk code change awaiting review): `complete_through` caps each
+receipt at the last calendar day fully elapsed in IST when it was recorded (the IST date of
+`recorded_at`, minus one day). Applied on read, it corrects the existing receipts without editing
+them, stays deterministic under replay (the same rule over the same visible rows), and leaves
+tonight's results unchanged (rows 1-2 would certify 2026-10-04, which those decisions needed).
+Test to add: a receipt recorded at 18:07 IST on D leaves a D+1 decision's disclosure dimension
+UNKNOWN until a receipt recorded on D+1 or later exists.
+
+## P8-050 - the nightly brief reports its own run as never finished
+
+**Severity.** Low. **Status.** Open. Found 2026-10-05 in the first brief written by the nightly.
+
+`step_brief` runs as step 11 of 12, before `weekly_ingest` writes the run's finish line, and the
+brief's data-health section uses `ingestion_health_line`, which (by P8-045's rule) reports any
+start later than the latest finished run as unfinished. Every nightly brief therefore describes the
+run that is writing it as "never finished (no matching finish recorded; may still be running)" and
+reports the previous run as the last one. `logs/brief_2026-10-05.txt`: "last run
+2026-10-03T05:54:29... overall=WARN...; started 2026-10-05T18:00:01..., never finished", while that
+run finished at 18:51:11 with overall=OK (`desk status` afterwards: "last run
+2026-10-05T18:00:01... (0d ago), overall=OK"). Display only: no gate or kill switch reads this
+line. Proposed fix: when the brief is written inside the nightly, label that run as in progress
+with the step statuses logged so far; keep P8-045's rule for any other unmatched start.
+
+## P8-051 - desk status shows only the manual book's open risk and positions
+
+**Severity.** Low. **Status.** Open. Found 2026-10-05 after the first Strategy 0 run.
+
+`cmd_status` prints `_open_risk_used_inr` (manual `paper_trade_events` only) as "Open risk used"
+and the manual open trade IDs as "Open positions", without saying so; Strategy 0's book
+(`strategy_paper_events`) is not shown. After tonight's run `desk status` printed "Open risk used:
+0.00 / 25000.00" and "Open positions: []", while the brief shows Strategy 0 at Rs 24,764.32 of
+Rs 25,000.00 with two pending entries (5PAISA, AUBANK). Display only: each book has its own budget
+and Strategy 0 sized against its own running total (`budget_used_before_inr` in its
+`strategy_paper_events`), so no gate is wrong. Proposed fix: label the existing lines as the
+manual book and add a Strategy 0 line from the latest `strategy_runs` record, as the brief does.
 

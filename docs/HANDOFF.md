@@ -1,3 +1,53 @@
+## 2026-10-05 evening: first nightly with the bulk refresh and Strategy 0 v2 verified (Claude)
+
+- Root verified; clean at b4a8f96 (= origin/master). One agent, foreground only. No network use
+  by this session after the 12:28 rollout.
+- 14:04 pre-flight on a temporary Desk copy (production Praman opened read-only): S0 v2 on the
+  2026-10-01 events gave 6 candidates, 2 accepted, 4 rejected OPEN_RISK_BUDGET; the brief
+  rendered; the 16 SCREEN_FAIL -> PASS flips were older rows that failed G2 on sector (since
+  exempted), not a regression. Production unchanged.
+- Nightly: PramanDailyIngest 18:00:01-18:51:11 IST, task Ready, LastTaskResult 0, overall=OK,
+  GAPs 0. All 12 steps OK: bhavcopy 18:07:20, announcements 18:07:20 (bulk-mode no-op), isin_map
+  18:07:24 (OK; it got HTTP 404 on 10-01 and 10-03), announcements_recent 18:07:39,
+  corporate_actions 18:07:50, asm_gsm 18:08:34, bhavcopy_today 18:08:40, circuit_bands 18:08:41,
+  desk_scan 18:40:19, auto_paper 18:40:30, brief 18:40:32, backups 18:51:11.
+- Freshness: Desk source_freshness row 2, COMPLETE MARKET through 2026-10-05, recorded 18:07:39
+  IST; complete_through 2026-10-05, market coverage from 2026-09-10 (a 2026-10-05 decision needs
+  2026-10-04). Refresh 2026-09-28..10-05: 5 requests (cookie, 2 bulk, 2 split checks; all HTTP
+  200; 14.3 s), 4,834 rows, 270 inserted (corporate_announcements 1,032,635), 121 returned rows
+  with unresolved identity (18 of the 270 stored). Identity files reused (security_identities
+  55,146, latest 2026-10-01). September still 17,077. New P8-049 (Medium): a receipt certifies its
+  own run day, although 25-38% of a day's filings arrive after 18:07 IST.
+- Brief (logs/brief_2026-10-05.txt): strategy_runs run 1 is S0 version 2, A1, code b4a8f96;
+  trading_strategies has S0 v2 PAPER_BURN_IN and v1 SUPERSEDED_NEVER_RUN. 45 screened, 37 passed
+  evidence, 2 accepted, 35 rejected OPEN_RISK_BUDGET (reason recorded on each event). Accepted:
+  5PAISA limit 367.90 (= 360.90 + 0.5 x ATR20 13.9975), qty 135, stress Rs 19,866.53; AUBANK
+  limit 1042.08 (= 1029.20 + 0.5 x 25.765), qty 47, stress Rs 4,897.79; S0 open risk Rs 24,764.32
+  of 25,000. Kill switches clear, P&L brake EXEMPT, calibration INACTIVE; kill_switch_events 0.
+  No P&L shown (brief's SEALED line; desk status shows none). Its data-health line calls its own
+  run "never finished": P8-050 (Low).
+- desk status: exit 0; ingestion overall=OK, no open High defect, latest session 2026-10-05, ISIN
+  map OK. It shows only the manual book's open risk and positions (0.00, []): P8-051 (Low).
+- desk backup verify: exit 0 in 2m08s. Desk archive desk_20261005T131032452338Z.zip integrity ok;
+  row_counts include all seven new tables (kill_switch_events 0, trading_strategies 3,
+  strategy_runs 1, strategy_paper_events 37, decision_contracts 37, source_freshness 2,
+  record_annotations 580). Praman archive integrity ok, security_identities 55,146. Afterwards both
+  production stores' row counts equal the 18:40 backup manifests.
+- Network today: rollout 48 requests (backfill 28/30, audit 20/20) plus the nightly's 5; all HTTP
+  200.
+- Full suite after the register entries: 754 tests in 371.302s, OK, exit 0
+  (logs/nightly_verify_final_suite_20261005.log). Readiness parser: no open High/Critical defect,
+  none unclassified, so OPEN_CRITICAL_DEFECT stays clear.
+- Next nightly (2026-10-06 18:00), verify: the 5PAISA and AUBANK entries settle against the
+  2026-10-06 session (a no-fill at the limit is not a fill failure); the refresh covers
+  2026-09-28..10-04 and 10-05..10-06 and fetches the 2026-10-05 identity file (about 8 requests);
+  a new COMPLETE receipt.
+- Waiting on the user: P8-049's proposed fix (cap each receipt at the last fully elapsed IST day,
+  on read). Until then, a night whose refresh fails leaves that night's S0 decisions treating the
+  previous day as complete, and a manual --as-of later than the latest receipt's day is exposed
+  the same way. P8-050 and P8-051 are Low display fixes. Still open: P8-043 (Medium) and P8-046
+  (Medium; historical reach is report-only).
+
 ## 2026-10-05 midday: bulk announcement switch finished (Claude; Codex out until 2026-10-10)
 
 - Root verified; HEAD e09d608; 17 modified + 6 untracked files from Codex's unfinished
