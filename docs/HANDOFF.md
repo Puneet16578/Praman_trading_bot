@@ -43,9 +43,10 @@
   2026-09-28..10-04 and 10-05..10-06 and fetches the 2026-10-05 identity file (about 8 requests);
   a new COMPLETE receipt.
 - Waiting on the user: P8-049's proposed fix (cap each receipt at the last fully elapsed IST day,
-  on read). Until then, a night whose refresh fails leaves that night's S0 decisions treating the
-  previous day as complete, and a manual --as-of later than the latest receipt's day is exposed
-  the same way. P8-050 and P8-051 are Low display fixes. Still open: P8-043 (Medium) and P8-046
+  on read). Until then, after a night whose refresh fails, that night's S0 decisions and any
+  manual assess at the default as-of (until the next COMPLETE refresh) treat the previous day as
+  complete; so does a manual --as-of later than the latest receipt's day. P8-050 and P8-051 are
+  Low display fixes. Still open: P8-043 (Medium) and P8-046
   (Medium; historical reach is report-only).
 
 ## 2026-10-05 midday: bulk announcement switch finished (Claude; Codex out until 2026-10-10)

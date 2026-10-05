@@ -1962,8 +1962,11 @@ full (seven-day overlap) before that night's Strategy 0 run, so nothing is expos
 decisions were dated 2026-10-05, needed 2026-10-04, and were fully covered. Exposed: (1) a night
 whose refresh is not COMPLETE while the later steps still run: that night's Strategy 0 decisions
 rest on the previous evening's receipt and read about a third of the previous day's filings as
-absent; (2) a manual `desk assess --as-of` later than the latest receipt's run date (the default
-as-of, the latest stored session, is not exposed). No decision or opportunity is affected:
+absent, and so does a manual `desk assess` at its default as-of (the newest stored session) until
+the next COMPLETE refresh; (2) a manual `desk assess --as-of` later than the latest receipt's run
+date. While every nightly refresh completes, the default as-of is not exposed. (Corrected
+2026-10-05 before the session ended: the first wording said the default as-of is never exposed.)
+No decision or opportunity is affected:
 production `decisions` has 0 rows, and the 37 Strategy 0 contracts and 45 screened events are
 dated 2026-10-05. Medium, like P8-046 (a narrow condition can falsely establish freshness), not
 High like P8-021 (every live bundle affected).
