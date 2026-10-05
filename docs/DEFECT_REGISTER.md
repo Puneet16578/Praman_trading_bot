@@ -1903,6 +1903,19 @@ the nightly no longer queries by symbol (bulk mode), so obsolete-symbol empty re
 longer establish freshness; status stays Open for the historical effect, which only a separately
 registered re-analysis could address.
 
+**Frozen-data implications, 2026-10-06 (user direction).** Recorded in `docs/OPERATIONS.md` as a
+known limitation for the June 2027 evaluation, not an amendment: about 2,400 catalogued events from
+renamed securities (roughly 3% of the catalogue) probably had their disclosure tier misrecorded in
+the training data, with the audit's estimates and sampling limits. The pinned forward pipeline
+(`afe3e2b`) was verified to still read the restructured store
+(`docs/desk/pinned_reader_verification.md`; `scripts/verify_pinned_announcement_reader.py`, read-only
+copy, temporary worktree): 1,143 of 1,156 recent events identical to HEAD's reader in tier and
+rows; 13 window-boundary differences in two renamed securities (HEAD the more conservative); the
+pinned `init_db` changes nothing; no unexplained, misfiled, duplicate or read-after-event
+difference. Not evaluation-blocking. The symbol-keyed blind spot continues forward: 9 sampled HEGAM
+events cannot see 118 rows filed under HEG (all from the old per-symbol path, no tier changed), and
+after a future rename an event's first 10 sessions will see only the post-rename announcements.
+
 Evidence: docs/desk/announcements_bulk_reconciliation.json and its captured
 responses; all five alias pairs reproduce offline. Tests reject same-ID matches
 with changed content, date or ISIN. The proposed bulk switch must resolve dated

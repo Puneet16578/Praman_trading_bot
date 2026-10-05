@@ -1,5 +1,73 @@
 # Operations
 
+## Known limitation for the June 2027 evaluation: disclosure tiers of renamed securities (P8-046) — not a pre-registration amendment
+
+Recorded 2026-10-06 at the user's direction, as a known limitation, not an amendment.
+
+**What.** The frozen catalogue's `disclosure_tier` (the training data, and the spent 2026
+hold-out) was computed by `scripts/build_event_classifications.py` at the pinned commit `afe3e2b`.
+That code reads announcements by symbol, from the per-symbol backfill of 2026-09-18/19.
+
+NSE's per-symbol endpoint returns an empty, successful response for a security's obsolete symbol
+(P8-046). A renamed security's announcements were therefore missing for its events under the
+earlier symbol, and those events were recorded as UNKNOWN_COVERAGE.
+
+The read-only audit of 2026-10-05 (`docs/desk/announcement_rename_audit_results.md`) estimates that
+**about 2,400 catalogued events from renamed securities (roughly 3% of the 70,638-event catalogue)
+probably had their disclosure tier misrecorded**:
+- about 2,356 of the 4,402 eligible events in the 195 logged rename groups (Hajek ratio estimate,
+  53.5%; Horvitz-Thompson about 2,407);
+- about 1,816 of those through missing disclosures; the rest are UNKNOWN_COVERAGE where the window
+  was in fact empty (NONE).
+
+Every changed case was frozen as UNKNOWN_COVERAGE, and eight of the ten sampled missing-disclosure
+cases would be SUBSTANTIVE. The effect is concentrated in the scoring function's
+`disclosure_UNKNOWN_COVERAGE` coefficient. That coefficient is already known to be confounded with
+instrument type and coverage (P8-007).
+
+**Sampling limits.**
+- Twenty securities were sampled, one event each, and 12 of the 20 changed tier. The event-weighted
+  estimate assumes the sampled event represents its security; variation within a security is
+  unmeasured.
+- No precise population confidence interval is claimed. Conservative identification bounds are 211
+  to 4,292 events.
+- The comparison used the bulk endpoint's contents on 2026-10-05, which NSE may have revised since
+  Phase 7's fetches.
+- Rows were matched by ISIN, so a security whose ISIN changed inside a window is undercounted.
+- The audit windows had no whole-versus-split completeness check.
+- Three equity renames absent from the historical rename log (TIDEWATER/VEEDOL,
+  KAVDEFENCE/KAVVERITEL, TIPSINDLTD/TIPSMUSIC) are not covered.
+
+**Forward inputs (verified 2026-10-06, `docs/desk/pinned_reader_verification.md`).** The pinned
+code still reads the restructured, ISIN-dated bulk announcement store.
+- On a read-only copy, 1,143 of 1,156 recent events had tiers and window rows identical to HEAD's
+  identity-aware reader.
+- The 13 differences are window-boundary cases in two renamed securities. In those, HEAD is the
+  more conservative reader.
+- The pinned `init_db` changes nothing on the restructured schema.
+- Forward UNKNOWN_COVERAGE keeps its training meaning for equities: 5.3% of sampled equity events,
+  against 5.1% in the 2019-2025 training classifications. All are symbols with no NSE announcement
+  at all.
+
+The symbol-keyed blind spot continues: rows filed under a renamed security's other symbol are
+invisible to the pinned reader.
+- Measured in the sample: 9 HEGAM events, 118 rows, all filed by the old per-symbol path; no tier
+  changed.
+- Since 2026-10-05 each announcement is filed under the symbol trading on its publication date. In
+  a security's first 10 sessions after a future rename, the pinned reader will see only the
+  post-rename announcements; the old refresh would have left those events UNKNOWN_COVERAGE.
+
+**How to read the evaluation.** The binding evaluation runs exactly as registered.
+- When interpreting `disclosure_UNKNOWN_COVERAGE`, or any result stratified by tier, treat training
+  UNKNOWN_COVERAGE as partly "a renamed security whose announcements sat under another symbol",
+  not only "no coverage".
+- Any re-analysis that corrects the training tiers needs its own registration. It can only be a
+  separately labelled secondary comparison to the pinned evaluation.
+
+**Why this is not an amendment.** No reference query, scoring rule, coefficient, success
+criterion, window or threshold changes. This records a known measurement limitation of frozen
+inputs, as the user directed.
+
 ## Announcement ingestion lapse, ~2026-09-19 to 2026-10-04 (P8-021) — operational deviation, not a pre-registration amendment
 
 **What lapsed.** Amendment 2 §5 of the frozen pre-registration
@@ -21,7 +89,10 @@ point-in-time-correct rows. The repair is the nightly `announcements_recent` ste
 with stored rows, first run at the next scheduled ingestion (2026-10-05 18:00 IST, reaching back to
 about 2026-09-10), then every night. **Before the June 2027 evaluation, confirm the recovery**:
 per-symbol announcement counts from 2026-09-16 onward back in their normal range, and
-`data/processed/announcements_refresh_state.json` recording a COMPLETE refresh.
+`data/processed/announcements_refresh_state.json` recording a COMPLETE refresh. (Recovery
+confirmed 2026-10-05 by the approved bulk switch and backfill: September 2026 back to 17,077 rows,
+market-wide refresh COMPLETE; P8-021 closed. The bulk state file is
+`data/processed/announcements_bulk_state.json`.)
 
 **Why this is not an amendment.** No reference query, scoring rule, success criterion, window or
 threshold changes. This records an ingestion failure and its repair, which is exactly what §5's

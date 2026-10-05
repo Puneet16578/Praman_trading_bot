@@ -1,0 +1,2168 @@
+{
+  "criteria": {
+    "A_runs_including_init_db": true,
+    "B_every_tier_difference_explained": true,
+    "C_no_misfiled_rows": true,
+    "no_unexplained_row_difference": true
+  },
+  "differing_events": [
+    {
+      "event_date": "2026-09-16",
+      "head_coverage": "insufficient_history",
+      "head_rows": [],
+      "head_rows_detail": [],
+      "head_tier": "NONE",
+      "head_window_start": null,
+      "outcome": "tier_differs",
+      "pinned_rows": [
+        [
+          "2026-09-03",
+          "Updates"
+        ],
+        [
+          "2026-09-04",
+          "Name and Symbol Change"
+        ],
+        [
+          "2026-09-05",
+          "Shareholders meeting"
+        ]
+      ],
+      "pinned_tier": "SUBSTANTIVE",
+      "pinned_window_start": "2026-09-01",
+      "reasons": {
+        "window_boundary": 1
+      },
+      "sources": [
+        "recent_renames"
+      ],
+      "symbol": "CRESTO"
+    },
+    {
+      "event_date": "2026-09-17",
+      "head_coverage": "insufficient_history",
+      "head_rows": [],
+      "head_rows_detail": [],
+      "head_tier": "NONE",
+      "head_window_start": null,
+      "outcome": "tier_differs",
+      "pinned_rows": [
+        [
+          "2026-09-03",
+          "Updates"
+        ],
+        [
+          "2026-09-04",
+          "Name and Symbol Change"
+        ],
+        [
+          "2026-09-05",
+          "Shareholders meeting"
+        ]
+      ],
+      "pinned_tier": "SUBSTANTIVE",
+      "pinned_window_start": "2026-09-02",
+      "reasons": {
+        "window_boundary": 1
+      },
+      "sources": [
+        "recent_renames"
+      ],
+      "symbol": "CRESTO"
+    },
+    {
+      "event_date": "2026-09-18",
+      "head_coverage": "insufficient_history",
+      "head_rows": [],
+      "head_rows_detail": [],
+      "head_tier": "NONE",
+      "head_window_start": null,
+      "outcome": "tier_differs",
+      "pinned_rows": [
+        [
+          "2026-09-03",
+          "Updates"
+        ],
+        [
+          "2026-09-04",
+          "Name and Symbol Change"
+        ],
+        [
+          "2026-09-05",
+          "Shareholders meeting"
+        ]
+      ],
+      "pinned_tier": "SUBSTANTIVE",
+      "pinned_window_start": "2026-09-03",
+      "reasons": {
+        "window_boundary": 1
+      },
+      "sources": [
+        "recent_renames"
+      ],
+      "symbol": "CRESTO"
+    },
+    {
+      "event_date": "2026-09-21",
+      "head_coverage": "insufficient_history",
+      "head_rows": [],
+      "head_rows_detail": [],
+      "head_tier": "NONE",
+      "head_window_start": null,
+      "outcome": "tier_differs",
+      "pinned_rows": [
+        [
+          "2026-09-04",
+          "Name and Symbol Change"
+        ],
+        [
+          "2026-09-05",
+          "Shareholders meeting"
+        ]
+      ],
+      "pinned_tier": "SUBSTANTIVE",
+      "pinned_window_start": "2026-09-04",
+      "reasons": {
+        "window_boundary": 1
+      },
+      "sources": [
+        "recent_renames"
+      ],
+      "symbol": "CRESTO"
+    },
+    {
+      "event_date": "2026-09-22",
+      "head_coverage": "insufficient_history",
+      "head_rows": [],
+      "head_rows_detail": [],
+      "head_tier": "NONE",
+      "head_window_start": null,
+      "outcome": "tier_differs",
+      "pinned_rows": [
+        [
+          "2026-08-24",
+          "Appointment"
+        ],
+        [
+          "2026-08-24",
+          "Appointment"
+        ],
+        [
+          "2026-08-24",
+          "Appointment"
+        ],
+        [
+          "2026-08-24",
+          "Appointment"
+        ],
+        [
+          "2026-08-24",
+          "Appointment"
+        ],
+        [
+          "2026-08-24",
+          "Appointment"
+        ],
+        [
+          "2026-08-24",
+          "Cessation"
+        ],
+        [
+          "2026-08-24",
+          "Cessation"
+        ],
+        [
+          "2026-08-24",
+          "Cessation"
+        ],
+        [
+          "2026-08-24",
+          "Change in Company Secretary/Compliance Officer"
+        ],
+        [
+          "2026-08-24",
+          "Change in Management"
+        ],
+        [
+          "2026-08-24",
+          "Change in Management"
+        ],
+        [
+          "2026-08-24",
+          "General Updates"
+        ],
+        [
+          "2026-08-24",
+          "General Updates"
+        ],
+        [
+          "2026-08-24",
+          "General Updates"
+        ],
+        [
+          "2026-08-24",
+          "Outcome of Board Meeting"
+        ],
+        [
+          "2026-08-24",
+          "Outcome of Board Meeting"
+        ],
+        [
+          "2026-08-24",
+          "Record Date"
+        ],
+        [
+          "2026-08-24",
+          "Resignation"
+        ],
+        [
+          "2026-08-24",
+          "Resignation"
+        ],
+        [
+          "2026-08-24",
+          "Resignation of Director/KMP/SMP"
+        ],
+        [
+          "2026-08-25",
+          "Press Release"
+        ],
+        [
+          "2026-08-25",
+          "Resignation of Director/KMP/SMP"
+        ],
+        [
+          "2026-08-27",
+          "Analysts/Institutional Investor Meet/Con. Call Updates"
+        ],
+        [
+          "2026-09-02",
+          "Name Change"
+        ],
+        [
+          "2026-09-03",
+          "General Updates"
+        ],
+        [
+          "2026-09-03",
+          "Press Release"
+        ],
+        [
+          "2026-09-06",
+          "Updates"
+        ],
+        [
+          "2026-09-08",
+          "Updates"
+        ],
+        [
+          "2026-09-10",
+          "Analysts/Institutional Investor Meet/Con. Call Updates"
+        ],
+        [
+          "2026-09-14",
+          "Resignation"
+        ],
+        [
+          "2026-09-14",
+          "Resignation of Director/KMP/SMP"
+        ],
+        [
+          "2026-09-16",
+          "Name and Symbol Change"
+        ],
+        [
+          "2026-09-17",
+          "Disclosure under SEBI Takeover Regulations"
+        ],
+        [
+          "2026-09-18",
+          "Bagging/Receiving of orders/contracts"
+        ],
+        [
+          "2026-09-18",
+          "Bagging/Receiving of orders/contracts"
+        ],
+        [
+          "2026-09-21",
+          "Analysts/Institutional Investor Meet/Con. Call Updates"
+        ]
+      ],
+      "pinned_tier": "SUBSTANTIVE",
+      "pinned_window_start": "2026-08-24",
+      "reasons": {
+        "window_boundary": 1
+      },
+      "sources": [
+        "recent_renames"
+      ],
+      "symbol": "HEGAM"
+    },
+    {
+      "event_date": "2026-09-23",
+      "head_coverage": "insufficient_history",
+      "head_rows": [],
+      "head_rows_detail": [],
+      "head_tier": "NONE",
+      "head_window_start": null,
+      "outcome": "tier_differs",
+      "pinned_rows": [
+        [
+          "2026-08-25",
+          "Press Release"
+        ],
+        [
+          "2026-08-25",
+          "Resignation of Director/KMP/SMP"
+        ],
+        [
+          "2026-08-27",
+          "Analysts/Institutional Investor Meet/Con. Call Updates"
+        ],
+        [
+          "2026-09-02",
+          "Name Change"
+        ],
+        [
+          "2026-09-03",
+          "General Updates"
+        ],
+        [
+          "2026-09-03",
+          "Press Release"
+        ],
+        [
+          "2026-09-06",
+          "Updates"
+        ],
+        [
+          "2026-09-08",
+          "Updates"
+        ],
+        [
+          "2026-09-10",
+          "Analysts/Institutional Investor Meet/Con. Call Updates"
+        ],
+        [
+          "2026-09-14",
+          "Resignation"
+        ],
+        [
+          "2026-09-14",
+          "Resignation of Director/KMP/SMP"
+        ],
+        [
+          "2026-09-16",
+          "Name and Symbol Change"
+        ],
+        [
+          "2026-09-17",
+          "Disclosure under SEBI Takeover Regulations"
+        ],
+        [
+          "2026-09-18",
+          "Bagging/Receiving of orders/contracts"
+        ],
+        [
+          "2026-09-18",
+          "Bagging/Receiving of orders/contracts"
+        ],
+        [
+          "2026-09-21",
+          "Analysts/Institutional Investor Meet/Con. Call Updates"
+        ]
+      ],
+      "pinned_tier": "SUBSTANTIVE",
+      "pinned_window_start": "2026-08-25",
+      "reasons": {
+        "window_boundary": 1
+      },
+      "sources": [
+        "recent_renames"
+      ],
+      "symbol": "HEGAM"
+    },
+    {
+      "event_date": "2026-09-24",
+      "head_coverage": "insufficient_history",
+      "head_rows": [],
+      "head_rows_detail": [],
+      "head_tier": "NONE",
+      "head_window_start": null,
+      "outcome": "tier_differs",
+      "pinned_rows": [
+        [
+          "2026-08-27",
+          "Analysts/Institutional Investor Meet/Con. Call Updates"
+        ],
+        [
+          "2026-09-02",
+          "Name Change"
+        ],
+        [
+          "2026-09-03",
+          "General Updates"
+        ],
+        [
+          "2026-09-03",
+          "Press Release"
+        ],
+        [
+          "2026-09-06",
+          "Updates"
+        ],
+        [
+          "2026-09-08",
+          "Updates"
+        ],
+        [
+          "2026-09-10",
+          "Analysts/Institutional Investor Meet/Con. Call Updates"
+        ],
+        [
+          "2026-09-14",
+          "Resignation"
+        ],
+        [
+          "2026-09-14",
+          "Resignation of Director/KMP/SMP"
+        ],
+        [
+          "2026-09-16",
+          "Name and Symbol Change"
+        ],
+        [
+          "2026-09-17",
+          "Disclosure under SEBI Takeover Regulations"
+        ],
+        [
+          "2026-09-18",
+          "Bagging/Receiving of orders/contracts"
+        ],
+        [
+          "2026-09-18",
+          "Bagging/Receiving of orders/contracts"
+        ],
+        [
+          "2026-09-21",
+          "Analysts/Institutional Investor Meet/Con. Call Updates"
+        ]
+      ],
+      "pinned_tier": "SUBSTANTIVE",
+      "pinned_window_start": "2026-08-26",
+      "reasons": {
+        "window_boundary": 1
+      },
+      "sources": [
+        "recent_renames"
+      ],
+      "symbol": "HEGAM"
+    },
+    {
+      "event_date": "2026-09-25",
+      "head_coverage": "insufficient_history",
+      "head_rows": [],
+      "head_rows_detail": [],
+      "head_tier": "NONE",
+      "head_window_start": null,
+      "outcome": "tier_differs",
+      "pinned_rows": [
+        [
+          "2026-08-27",
+          "Analysts/Institutional Investor Meet/Con. Call Updates"
+        ],
+        [
+          "2026-09-02",
+          "Name Change"
+        ],
+        [
+          "2026-09-03",
+          "General Updates"
+        ],
+        [
+          "2026-09-03",
+          "Press Release"
+        ],
+        [
+          "2026-09-06",
+          "Updates"
+        ],
+        [
+          "2026-09-08",
+          "Updates"
+        ],
+        [
+          "2026-09-10",
+          "Analysts/Institutional Investor Meet/Con. Call Updates"
+        ],
+        [
+          "2026-09-14",
+          "Resignation"
+        ],
+        [
+          "2026-09-14",
+          "Resignation of Director/KMP/SMP"
+        ],
+        [
+          "2026-09-16",
+          "Name and Symbol Change"
+        ],
+        [
+          "2026-09-17",
+          "Disclosure under SEBI Takeover Regulations"
+        ],
+        [
+          "2026-09-18",
+          "Bagging/Receiving of orders/contracts"
+        ],
+        [
+          "2026-09-18",
+          "Bagging/Receiving of orders/contracts"
+        ],
+        [
+          "2026-09-21",
+          "Analysts/Institutional Investor Meet/Con. Call Updates"
+        ]
+      ],
+      "pinned_tier": "SUBSTANTIVE",
+      "pinned_window_start": "2026-08-27",
+      "reasons": {
+        "window_boundary": 1
+      },
+      "sources": [
+        "recent_renames"
+      ],
+      "symbol": "HEGAM"
+    },
+    {
+      "event_date": "2026-09-28",
+      "head_coverage": "insufficient_history",
+      "head_rows": [],
+      "head_rows_detail": [],
+      "head_tier": "NONE",
+      "head_window_start": null,
+      "outcome": "tier_differs",
+      "pinned_rows": [
+        [
+          "2026-09-02",
+          "Name Change"
+        ],
+        [
+          "2026-09-03",
+          "General Updates"
+        ],
+        [
+          "2026-09-03",
+          "Press Release"
+        ],
+        [
+          "2026-09-06",
+          "Updates"
+        ],
+        [
+          "2026-09-08",
+          "Updates"
+        ],
+        [
+          "2026-09-10",
+          "Analysts/Institutional Investor Meet/Con. Call Updates"
+        ],
+        [
+          "2026-09-14",
+          "Resignation"
+        ],
+        [
+          "2026-09-14",
+          "Resignation of Director/KMP/SMP"
+        ],
+        [
+          "2026-09-16",
+          "Name and Symbol Change"
+        ],
+        [
+          "2026-09-17",
+          "Disclosure under SEBI Takeover Regulations"
+        ],
+        [
+          "2026-09-18",
+          "Bagging/Receiving of orders/contracts"
+        ],
+        [
+          "2026-09-18",
+          "Bagging/Receiving of orders/contracts"
+        ],
+        [
+          "2026-09-21",
+          "Analysts/Institutional Investor Meet/Con. Call Updates"
+        ]
+      ],
+      "pinned_tier": "SUBSTANTIVE",
+      "pinned_window_start": "2026-08-28",
+      "reasons": {
+        "window_boundary": 1
+      },
+      "sources": [
+        "recent_renames"
+      ],
+      "symbol": "HEGAM"
+    },
+    {
+      "event_date": "2026-09-29",
+      "head_coverage": "insufficient_history",
+      "head_rows": [],
+      "head_rows_detail": [],
+      "head_tier": "NONE",
+      "head_window_start": null,
+      "outcome": "tier_differs",
+      "pinned_rows": [
+        [
+          "2026-09-02",
+          "Name Change"
+        ],
+        [
+          "2026-09-03",
+          "General Updates"
+        ],
+        [
+          "2026-09-03",
+          "Press Release"
+        ],
+        [
+          "2026-09-06",
+          "Updates"
+        ],
+        [
+          "2026-09-08",
+          "Updates"
+        ],
+        [
+          "2026-09-10",
+          "Analysts/Institutional Investor Meet/Con. Call Updates"
+        ],
+        [
+          "2026-09-14",
+          "Resignation"
+        ],
+        [
+          "2026-09-14",
+          "Resignation of Director/KMP/SMP"
+        ],
+        [
+          "2026-09-16",
+          "Name and Symbol Change"
+        ],
+        [
+          "2026-09-17",
+          "Disclosure under SEBI Takeover Regulations"
+        ],
+        [
+          "2026-09-18",
+          "Bagging/Receiving of orders/contracts"
+        ],
+        [
+          "2026-09-18",
+          "Bagging/Receiving of orders/contracts"
+        ],
+        [
+          "2026-09-21",
+          "Analysts/Institutional Investor Meet/Con. Call Updates"
+        ],
+        [
+          "2026-09-28",
+          "Trading Window"
+        ]
+      ],
+      "pinned_tier": "SUBSTANTIVE",
+      "pinned_window_start": "2026-08-31",
+      "reasons": {
+        "window_boundary": 1
+      },
+      "sources": [
+        "recent_renames"
+      ],
+      "symbol": "HEGAM"
+    },
+    {
+      "event_date": "2026-09-30",
+      "head_coverage": "insufficient_history",
+      "head_rows": [],
+      "head_rows_detail": [],
+      "head_tier": "NONE",
+      "head_window_start": null,
+      "outcome": "tier_differs",
+      "pinned_rows": [
+        [
+          "2026-09-02",
+          "Name Change"
+        ],
+        [
+          "2026-09-03",
+          "General Updates"
+        ],
+        [
+          "2026-09-03",
+          "Press Release"
+        ],
+        [
+          "2026-09-06",
+          "Updates"
+        ],
+        [
+          "2026-09-08",
+          "Updates"
+        ],
+        [
+          "2026-09-10",
+          "Analysts/Institutional Investor Meet/Con. Call Updates"
+        ],
+        [
+          "2026-09-14",
+          "Resignation"
+        ],
+        [
+          "2026-09-14",
+          "Resignation of Director/KMP/SMP"
+        ],
+        [
+          "2026-09-16",
+          "Name and Symbol Change"
+        ],
+        [
+          "2026-09-17",
+          "Disclosure under SEBI Takeover Regulations"
+        ],
+        [
+          "2026-09-18",
+          "Bagging/Receiving of orders/contracts"
+        ],
+        [
+          "2026-09-18",
+          "Bagging/Receiving of orders/contracts"
+        ],
+        [
+          "2026-09-21",
+          "Analysts/Institutional Investor Meet/Con. Call Updates"
+        ],
+        [
+          "2026-09-28",
+          "Trading Window"
+        ],
+        [
+          "2026-09-29",
+          "Updates"
+        ]
+      ],
+      "pinned_tier": "SUBSTANTIVE",
+      "pinned_window_start": "2026-09-01",
+      "reasons": {
+        "window_boundary": 1
+      },
+      "sources": [
+        "recent_renames"
+      ],
+      "symbol": "HEGAM"
+    },
+    {
+      "event_date": "2026-10-01",
+      "head_coverage": "insufficient_history",
+      "head_rows": [],
+      "head_rows_detail": [],
+      "head_tier": "NONE",
+      "head_window_start": null,
+      "outcome": "tier_differs",
+      "pinned_rows": [
+        [
+          "2026-09-02",
+          "Name Change"
+        ],
+        [
+          "2026-09-03",
+          "General Updates"
+        ],
+        [
+          "2026-09-03",
+          "Press Release"
+        ],
+        [
+          "2026-09-06",
+          "Updates"
+        ],
+        [
+          "2026-09-08",
+          "Updates"
+        ],
+        [
+          "2026-09-10",
+          "Analysts/Institutional Investor Meet/Con. Call Updates"
+        ],
+        [
+          "2026-09-14",
+          "Resignation"
+        ],
+        [
+          "2026-09-14",
+          "Resignation of Director/KMP/SMP"
+        ],
+        [
+          "2026-09-16",
+          "Name and Symbol Change"
+        ],
+        [
+          "2026-09-17",
+          "Disclosure under SEBI Takeover Regulations"
+        ],
+        [
+          "2026-09-18",
+          "Bagging/Receiving of orders/contracts"
+        ],
+        [
+          "2026-09-18",
+          "Bagging/Receiving of orders/contracts"
+        ],
+        [
+          "2026-09-21",
+          "Analysts/Institutional Investor Meet/Con. Call Updates"
+        ],
+        [
+          "2026-09-28",
+          "Trading Window"
+        ],
+        [
+          "2026-09-29",
+          "Updates"
+        ],
+        [
+          "2026-09-30",
+          "Press Release"
+        ]
+      ],
+      "pinned_tier": "SUBSTANTIVE",
+      "pinned_window_start": "2026-09-02",
+      "reasons": {
+        "window_boundary": 1
+      },
+      "sources": [
+        "recent_renames"
+      ],
+      "symbol": "HEGAM"
+    },
+    {
+      "event_date": "2026-10-05",
+      "head_coverage": "insufficient_history",
+      "head_rows": [],
+      "head_rows_detail": [],
+      "head_tier": "NONE",
+      "head_window_start": null,
+      "outcome": "tier_differs",
+      "pinned_rows": [
+        [
+          "2026-09-03",
+          "General Updates"
+        ],
+        [
+          "2026-09-03",
+          "Press Release"
+        ],
+        [
+          "2026-09-06",
+          "Updates"
+        ],
+        [
+          "2026-09-08",
+          "Updates"
+        ],
+        [
+          "2026-09-10",
+          "Analysts/Institutional Investor Meet/Con. Call Updates"
+        ],
+        [
+          "2026-09-14",
+          "Resignation"
+        ],
+        [
+          "2026-09-14",
+          "Resignation of Director/KMP/SMP"
+        ],
+        [
+          "2026-09-16",
+          "Name and Symbol Change"
+        ],
+        [
+          "2026-09-17",
+          "Disclosure under SEBI Takeover Regulations"
+        ],
+        [
+          "2026-09-18",
+          "Bagging/Receiving of orders/contracts"
+        ],
+        [
+          "2026-09-18",
+          "Bagging/Receiving of orders/contracts"
+        ],
+        [
+          "2026-09-21",
+          "Analysts/Institutional Investor Meet/Con. Call Updates"
+        ],
+        [
+          "2026-09-28",
+          "Trading Window"
+        ],
+        [
+          "2026-09-29",
+          "Updates"
+        ],
+        [
+          "2026-09-30",
+          "Press Release"
+        ],
+        [
+          "2026-10-01",
+          "Bagging/Receiving of orders/contracts"
+        ]
+      ],
+      "pinned_tier": "SUBSTANTIVE",
+      "pinned_window_start": "2026-09-03",
+      "reasons": {
+        "window_boundary": 1
+      },
+      "sources": [
+        "recent_renames"
+      ],
+      "symbol": "HEGAM"
+    }
+  ],
+  "events": {
+    "by_source": {
+      "desk_scan": 625,
+      "random_sessions": 500,
+      "recent_renames": 46
+    },
+    "sha256": "b9318ad4870022522ccf6b392bdd9cce8448631ccf529bc70ff3c2013fa7447d",
+    "total": 1156
+  },
+  "head_commit": "63f8254b500679b69b994fb9b3ee3c45d28ea9cc",
+  "head_unknown_identity_windows": 1,
+  "outcomes": {
+    "identical": 1143,
+    "tier_differs": 13
+  },
+  "pinned_commit": "afe3e2bd07abe8b602c4119b916f7696a3c12131",
+  "pinned_init_db": {
+    "added": [],
+    "exit_code": 0,
+    "modules": {
+      "src.bitemporal.connection": "C:\\Users\\VICTUS\\AppData\\Local\\Temp\\claude\\d--Agentic-ai-project\\73df7060-2f8b-4c87-9b11-d1237165f827\\scratchpad\\praman_afe3e2b\\src\\bitemporal\\connection.py",
+      "src.ingestion.nse_market_data.isin_mapping": "C:\\Users\\VICTUS\\AppData\\Local\\Temp\\claude\\d--Agentic-ai-project\\73df7060-2f8b-4c87-9b11-d1237165f827\\scratchpad\\praman_afe3e2b\\src\\ingestion\\nse_market_data\\isin_mapping.py",
+      "src.signals.disclosure_classification": "C:\\Users\\VICTUS\\AppData\\Local\\Temp\\claude\\d--Agentic-ai-project\\73df7060-2f8b-4c87-9b11-d1237165f827\\scratchpad\\praman_afe3e2b\\src\\signals\\disclosure_classification.py",
+      "src.signals.event_catalogue": "C:\\Users\\VICTUS\\AppData\\Local\\Temp\\claude\\d--Agentic-ai-project\\73df7060-2f8b-4c87-9b11-d1237165f827\\scratchpad\\praman_afe3e2b\\src\\signals\\event_catalogue.py"
+    },
+    "removed": []
+  },
+  "pinned_modules": {
+    "src.bitemporal.connection": "C:\\Users\\VICTUS\\AppData\\Local\\Temp\\claude\\d--Agentic-ai-project\\73df7060-2f8b-4c87-9b11-d1237165f827\\scratchpad\\praman_afe3e2b\\src\\bitemporal\\connection.py",
+    "src.ingestion.nse_market_data.isin_mapping": "C:\\Users\\VICTUS\\AppData\\Local\\Temp\\claude\\d--Agentic-ai-project\\73df7060-2f8b-4c87-9b11-d1237165f827\\scratchpad\\praman_afe3e2b\\src\\ingestion\\nse_market_data\\isin_mapping.py",
+    "src.signals.disclosure_classification": "C:\\Users\\VICTUS\\AppData\\Local\\Temp\\claude\\d--Agentic-ai-project\\73df7060-2f8b-4c87-9b11-d1237165f827\\scratchpad\\praman_afe3e2b\\src\\signals\\disclosure_classification.py",
+    "src.signals.event_catalogue": "C:\\Users\\VICTUS\\AppData\\Local\\Temp\\claude\\d--Agentic-ai-project\\73df7060-2f8b-4c87-9b11-d1237165f827\\scratchpad\\praman_afe3e2b\\src\\signals\\event_catalogue.py"
+  },
+  "pinned_tier_counts": {
+    "NONE": 112,
+    "ROUTINE_ONLY": 478,
+    "SUBSTANTIVE": 453,
+    "UNKNOWN_COVERAGE": 113
+  },
+  "pinned_tiers_run": {
+    "exit_code": 0,
+    "stderr_tail": ""
+  },
+  "plan": ", fixed before the first run:\n  A. The pinned code runs on the restructured store without error, including its init_db, and\n     init_db removes nothing.\n  B. Every tier difference is explained by an intended reader difference: HEAD also reads a\n     security's rows filed under another symbol of the same ISIN (rename_alias), applies\n     knowledge_date <= event date (known_after_event), keeps one row per announcement\n     (duplicate_vintage), drops fund units (fund_unit), or uses the unstitched trading history\n     (window_boundary).\n  C. No row HEAD attributes to an event is filed under a symbol that was not trading on the row's\n     publication date (misfiled): the symbol-keyed pinned reader could never find such a row.\nAnything else is UNEXPLAINED and is reported as a possible evaluation-blocking defect.\nAlso measured for every event (added after the first run showed criterion B's window_boundary\ncases are exactly the renamed securities): rows inside the pinned, ISIN-stitched window that are\nfiled under ANOTHER symbol of the same security, which the symbol-keyed pinned reader cannot see\n(the P8-046 class), split by whether the bulk path or the legacy per-symbol path filed them.\nWrites docs/desk/pinned_reader_verification.json.",
+  "reasons": {
+    "tier_differs:window_boundary": 13
+  },
+  "seconds": 33.7,
+  "seed": 20261006,
+  "store_copy": {
+    "corporate_announcements": 1032635,
+    "latest_session": "2026-10-05"
+  },
+  "unseen_alias_rows": {
+    "detail": [
+      {
+        "event_date": "2026-09-22",
+        "pinned_tier": "SUBSTANTIVE",
+        "pinned_window_start": "2026-08-24",
+        "rows": [
+          {
+            "category": "Resignation of Director/KMP/SMP",
+            "event_date": "2026-08-24",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-08-24",
+            "seq_id": "106754850",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Record Date",
+            "event_date": "2026-08-24",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-08-24",
+            "seq_id": "106754766",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Change in Management",
+            "event_date": "2026-08-24",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-08-24",
+            "seq_id": "106754723",
+            "symbol": "HEG"
+          },
+          {
+            "category": "General Updates",
+            "event_date": "2026-08-24",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-08-24",
+            "seq_id": "106754725",
+            "symbol": "HEG"
+          },
+          {
+            "category": "General Updates",
+            "event_date": "2026-08-24",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-08-24",
+            "seq_id": "106754724",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Appointment",
+            "event_date": "2026-08-24",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-08-24",
+            "seq_id": "106754712",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Change in Management",
+            "event_date": "2026-08-24",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-08-24",
+            "seq_id": "106754713",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Cessation",
+            "event_date": "2026-08-24",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-08-24",
+            "seq_id": "106754711",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Change in Company Secretary/Compliance Officer",
+            "event_date": "2026-08-24",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-08-24",
+            "seq_id": "106754697",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Resignation",
+            "event_date": "2026-08-24",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-08-24",
+            "seq_id": "106754698",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Resignation",
+            "event_date": "2026-08-24",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-08-24",
+            "seq_id": "106754688",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Appointment",
+            "event_date": "2026-08-24",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-08-24",
+            "seq_id": "106754681",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Appointment",
+            "event_date": "2026-08-24",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-08-24",
+            "seq_id": "106754676",
+            "symbol": "HEG"
+          },
+          {
+            "category": "General Updates",
+            "event_date": "2026-08-24",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-08-24",
+            "seq_id": "106754675",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Appointment",
+            "event_date": "2026-08-24",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-08-24",
+            "seq_id": "106754674",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Appointment",
+            "event_date": "2026-08-24",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-08-24",
+            "seq_id": "106754648",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Cessation",
+            "event_date": "2026-08-24",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-08-24",
+            "seq_id": "106754647",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Cessation",
+            "event_date": "2026-08-24",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-08-24",
+            "seq_id": "106754646",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Appointment",
+            "event_date": "2026-08-24",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-08-24",
+            "seq_id": "106754649",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Outcome of Board Meeting",
+            "event_date": "2026-08-24",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-08-24",
+            "seq_id": "106754609",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Outcome of Board Meeting",
+            "event_date": "2026-08-24",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-08-24",
+            "seq_id": "106754610",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Press Release",
+            "event_date": "2026-08-25",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-08-25",
+            "seq_id": "106755876",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Resignation of Director/KMP/SMP",
+            "event_date": "2026-08-25",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-08-25",
+            "seq_id": "106755570",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Analysts/Institutional Investor Meet/Con. Call Updates",
+            "event_date": "2026-08-27",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-08-27",
+            "seq_id": "106759676",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Name Change",
+            "event_date": "2026-09-02",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-02",
+            "seq_id": "106766812",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Press Release",
+            "event_date": "2026-09-03",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-03",
+            "seq_id": "106768097",
+            "symbol": "HEG"
+          },
+          {
+            "category": "General Updates",
+            "event_date": "2026-09-03",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-03",
+            "seq_id": "106767847",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Updates",
+            "event_date": "2026-09-06",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-06",
+            "seq_id": "106772140",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Updates",
+            "event_date": "2026-09-08",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-08",
+            "seq_id": "106775414",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Analysts/Institutional Investor Meet/Con. Call Updates",
+            "event_date": "2026-09-10",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-10",
+            "seq_id": "106778188",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Resignation of Director/KMP/SMP",
+            "event_date": "2026-09-14",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-14",
+            "seq_id": "106780034",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Resignation",
+            "event_date": "2026-09-14",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-14",
+            "seq_id": "106780030",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Name and Symbol Change",
+            "event_date": "2026-09-16",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-16",
+            "seq_id": "106781855",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Disclosure under SEBI Takeover Regulations",
+            "event_date": "2026-09-17",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-17",
+            "seq_id": "106783607",
+            "symbol": "HEG"
+          }
+        ],
+        "sources": [
+          "recent_renames"
+        ],
+        "symbol": "HEGAM",
+        "tier_if_seen": "SUBSTANTIVE"
+      },
+      {
+        "event_date": "2026-09-23",
+        "pinned_tier": "SUBSTANTIVE",
+        "pinned_window_start": "2026-08-25",
+        "rows": [
+          {
+            "category": "Press Release",
+            "event_date": "2026-08-25",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-08-25",
+            "seq_id": "106755876",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Resignation of Director/KMP/SMP",
+            "event_date": "2026-08-25",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-08-25",
+            "seq_id": "106755570",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Analysts/Institutional Investor Meet/Con. Call Updates",
+            "event_date": "2026-08-27",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-08-27",
+            "seq_id": "106759676",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Name Change",
+            "event_date": "2026-09-02",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-02",
+            "seq_id": "106766812",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Press Release",
+            "event_date": "2026-09-03",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-03",
+            "seq_id": "106768097",
+            "symbol": "HEG"
+          },
+          {
+            "category": "General Updates",
+            "event_date": "2026-09-03",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-03",
+            "seq_id": "106767847",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Updates",
+            "event_date": "2026-09-06",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-06",
+            "seq_id": "106772140",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Updates",
+            "event_date": "2026-09-08",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-08",
+            "seq_id": "106775414",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Analysts/Institutional Investor Meet/Con. Call Updates",
+            "event_date": "2026-09-10",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-10",
+            "seq_id": "106778188",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Resignation of Director/KMP/SMP",
+            "event_date": "2026-09-14",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-14",
+            "seq_id": "106780034",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Resignation",
+            "event_date": "2026-09-14",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-14",
+            "seq_id": "106780030",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Name and Symbol Change",
+            "event_date": "2026-09-16",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-16",
+            "seq_id": "106781855",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Disclosure under SEBI Takeover Regulations",
+            "event_date": "2026-09-17",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-17",
+            "seq_id": "106783607",
+            "symbol": "HEG"
+          }
+        ],
+        "sources": [
+          "recent_renames"
+        ],
+        "symbol": "HEGAM",
+        "tier_if_seen": "SUBSTANTIVE"
+      },
+      {
+        "event_date": "2026-09-24",
+        "pinned_tier": "SUBSTANTIVE",
+        "pinned_window_start": "2026-08-26",
+        "rows": [
+          {
+            "category": "Analysts/Institutional Investor Meet/Con. Call Updates",
+            "event_date": "2026-08-27",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-08-27",
+            "seq_id": "106759676",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Name Change",
+            "event_date": "2026-09-02",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-02",
+            "seq_id": "106766812",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Press Release",
+            "event_date": "2026-09-03",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-03",
+            "seq_id": "106768097",
+            "symbol": "HEG"
+          },
+          {
+            "category": "General Updates",
+            "event_date": "2026-09-03",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-03",
+            "seq_id": "106767847",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Updates",
+            "event_date": "2026-09-06",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-06",
+            "seq_id": "106772140",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Updates",
+            "event_date": "2026-09-08",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-08",
+            "seq_id": "106775414",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Analysts/Institutional Investor Meet/Con. Call Updates",
+            "event_date": "2026-09-10",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-10",
+            "seq_id": "106778188",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Resignation of Director/KMP/SMP",
+            "event_date": "2026-09-14",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-14",
+            "seq_id": "106780034",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Resignation",
+            "event_date": "2026-09-14",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-14",
+            "seq_id": "106780030",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Name and Symbol Change",
+            "event_date": "2026-09-16",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-16",
+            "seq_id": "106781855",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Disclosure under SEBI Takeover Regulations",
+            "event_date": "2026-09-17",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-17",
+            "seq_id": "106783607",
+            "symbol": "HEG"
+          }
+        ],
+        "sources": [
+          "recent_renames"
+        ],
+        "symbol": "HEGAM",
+        "tier_if_seen": "SUBSTANTIVE"
+      },
+      {
+        "event_date": "2026-09-25",
+        "pinned_tier": "SUBSTANTIVE",
+        "pinned_window_start": "2026-08-27",
+        "rows": [
+          {
+            "category": "Analysts/Institutional Investor Meet/Con. Call Updates",
+            "event_date": "2026-08-27",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-08-27",
+            "seq_id": "106759676",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Name Change",
+            "event_date": "2026-09-02",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-02",
+            "seq_id": "106766812",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Press Release",
+            "event_date": "2026-09-03",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-03",
+            "seq_id": "106768097",
+            "symbol": "HEG"
+          },
+          {
+            "category": "General Updates",
+            "event_date": "2026-09-03",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-03",
+            "seq_id": "106767847",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Updates",
+            "event_date": "2026-09-06",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-06",
+            "seq_id": "106772140",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Updates",
+            "event_date": "2026-09-08",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-08",
+            "seq_id": "106775414",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Analysts/Institutional Investor Meet/Con. Call Updates",
+            "event_date": "2026-09-10",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-10",
+            "seq_id": "106778188",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Resignation of Director/KMP/SMP",
+            "event_date": "2026-09-14",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-14",
+            "seq_id": "106780034",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Resignation",
+            "event_date": "2026-09-14",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-14",
+            "seq_id": "106780030",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Name and Symbol Change",
+            "event_date": "2026-09-16",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-16",
+            "seq_id": "106781855",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Disclosure under SEBI Takeover Regulations",
+            "event_date": "2026-09-17",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-17",
+            "seq_id": "106783607",
+            "symbol": "HEG"
+          }
+        ],
+        "sources": [
+          "recent_renames"
+        ],
+        "symbol": "HEGAM",
+        "tier_if_seen": "SUBSTANTIVE"
+      },
+      {
+        "event_date": "2026-09-28",
+        "pinned_tier": "SUBSTANTIVE",
+        "pinned_window_start": "2026-08-28",
+        "rows": [
+          {
+            "category": "Name Change",
+            "event_date": "2026-09-02",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-02",
+            "seq_id": "106766812",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Press Release",
+            "event_date": "2026-09-03",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-03",
+            "seq_id": "106768097",
+            "symbol": "HEG"
+          },
+          {
+            "category": "General Updates",
+            "event_date": "2026-09-03",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-03",
+            "seq_id": "106767847",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Updates",
+            "event_date": "2026-09-06",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-06",
+            "seq_id": "106772140",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Updates",
+            "event_date": "2026-09-08",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-08",
+            "seq_id": "106775414",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Analysts/Institutional Investor Meet/Con. Call Updates",
+            "event_date": "2026-09-10",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-10",
+            "seq_id": "106778188",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Resignation of Director/KMP/SMP",
+            "event_date": "2026-09-14",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-14",
+            "seq_id": "106780034",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Resignation",
+            "event_date": "2026-09-14",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-14",
+            "seq_id": "106780030",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Name and Symbol Change",
+            "event_date": "2026-09-16",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-16",
+            "seq_id": "106781855",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Disclosure under SEBI Takeover Regulations",
+            "event_date": "2026-09-17",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-17",
+            "seq_id": "106783607",
+            "symbol": "HEG"
+          }
+        ],
+        "sources": [
+          "recent_renames"
+        ],
+        "symbol": "HEGAM",
+        "tier_if_seen": "SUBSTANTIVE"
+      },
+      {
+        "event_date": "2026-09-29",
+        "pinned_tier": "SUBSTANTIVE",
+        "pinned_window_start": "2026-08-31",
+        "rows": [
+          {
+            "category": "Name Change",
+            "event_date": "2026-09-02",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-02",
+            "seq_id": "106766812",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Press Release",
+            "event_date": "2026-09-03",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-03",
+            "seq_id": "106768097",
+            "symbol": "HEG"
+          },
+          {
+            "category": "General Updates",
+            "event_date": "2026-09-03",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-03",
+            "seq_id": "106767847",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Updates",
+            "event_date": "2026-09-06",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-06",
+            "seq_id": "106772140",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Updates",
+            "event_date": "2026-09-08",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-08",
+            "seq_id": "106775414",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Analysts/Institutional Investor Meet/Con. Call Updates",
+            "event_date": "2026-09-10",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-10",
+            "seq_id": "106778188",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Resignation of Director/KMP/SMP",
+            "event_date": "2026-09-14",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-14",
+            "seq_id": "106780034",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Resignation",
+            "event_date": "2026-09-14",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-14",
+            "seq_id": "106780030",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Name and Symbol Change",
+            "event_date": "2026-09-16",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-16",
+            "seq_id": "106781855",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Disclosure under SEBI Takeover Regulations",
+            "event_date": "2026-09-17",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-17",
+            "seq_id": "106783607",
+            "symbol": "HEG"
+          }
+        ],
+        "sources": [
+          "recent_renames"
+        ],
+        "symbol": "HEGAM",
+        "tier_if_seen": "SUBSTANTIVE"
+      },
+      {
+        "event_date": "2026-09-30",
+        "pinned_tier": "SUBSTANTIVE",
+        "pinned_window_start": "2026-09-01",
+        "rows": [
+          {
+            "category": "Name Change",
+            "event_date": "2026-09-02",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-02",
+            "seq_id": "106766812",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Press Release",
+            "event_date": "2026-09-03",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-03",
+            "seq_id": "106768097",
+            "symbol": "HEG"
+          },
+          {
+            "category": "General Updates",
+            "event_date": "2026-09-03",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-03",
+            "seq_id": "106767847",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Updates",
+            "event_date": "2026-09-06",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-06",
+            "seq_id": "106772140",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Updates",
+            "event_date": "2026-09-08",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-08",
+            "seq_id": "106775414",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Analysts/Institutional Investor Meet/Con. Call Updates",
+            "event_date": "2026-09-10",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-10",
+            "seq_id": "106778188",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Resignation of Director/KMP/SMP",
+            "event_date": "2026-09-14",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-14",
+            "seq_id": "106780034",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Resignation",
+            "event_date": "2026-09-14",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-14",
+            "seq_id": "106780030",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Name and Symbol Change",
+            "event_date": "2026-09-16",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-16",
+            "seq_id": "106781855",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Disclosure under SEBI Takeover Regulations",
+            "event_date": "2026-09-17",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-17",
+            "seq_id": "106783607",
+            "symbol": "HEG"
+          }
+        ],
+        "sources": [
+          "recent_renames"
+        ],
+        "symbol": "HEGAM",
+        "tier_if_seen": "SUBSTANTIVE"
+      },
+      {
+        "event_date": "2026-10-01",
+        "pinned_tier": "SUBSTANTIVE",
+        "pinned_window_start": "2026-09-02",
+        "rows": [
+          {
+            "category": "Name Change",
+            "event_date": "2026-09-02",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-02",
+            "seq_id": "106766812",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Press Release",
+            "event_date": "2026-09-03",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-03",
+            "seq_id": "106768097",
+            "symbol": "HEG"
+          },
+          {
+            "category": "General Updates",
+            "event_date": "2026-09-03",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-03",
+            "seq_id": "106767847",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Updates",
+            "event_date": "2026-09-06",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-06",
+            "seq_id": "106772140",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Updates",
+            "event_date": "2026-09-08",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-08",
+            "seq_id": "106775414",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Analysts/Institutional Investor Meet/Con. Call Updates",
+            "event_date": "2026-09-10",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-10",
+            "seq_id": "106778188",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Resignation of Director/KMP/SMP",
+            "event_date": "2026-09-14",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-14",
+            "seq_id": "106780034",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Resignation",
+            "event_date": "2026-09-14",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-14",
+            "seq_id": "106780030",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Name and Symbol Change",
+            "event_date": "2026-09-16",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-16",
+            "seq_id": "106781855",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Disclosure under SEBI Takeover Regulations",
+            "event_date": "2026-09-17",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-17",
+            "seq_id": "106783607",
+            "symbol": "HEG"
+          }
+        ],
+        "sources": [
+          "recent_renames"
+        ],
+        "symbol": "HEGAM",
+        "tier_if_seen": "SUBSTANTIVE"
+      },
+      {
+        "event_date": "2026-10-05",
+        "pinned_tier": "SUBSTANTIVE",
+        "pinned_window_start": "2026-09-03",
+        "rows": [
+          {
+            "category": "Press Release",
+            "event_date": "2026-09-03",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-03",
+            "seq_id": "106768097",
+            "symbol": "HEG"
+          },
+          {
+            "category": "General Updates",
+            "event_date": "2026-09-03",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-03",
+            "seq_id": "106767847",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Updates",
+            "event_date": "2026-09-06",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-06",
+            "seq_id": "106772140",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Updates",
+            "event_date": "2026-09-08",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-08",
+            "seq_id": "106775414",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Analysts/Institutional Investor Meet/Con. Call Updates",
+            "event_date": "2026-09-10",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-10",
+            "seq_id": "106778188",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Resignation of Director/KMP/SMP",
+            "event_date": "2026-09-14",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-14",
+            "seq_id": "106780034",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Resignation",
+            "event_date": "2026-09-14",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-14",
+            "seq_id": "106780030",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Name and Symbol Change",
+            "event_date": "2026-09-16",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-16",
+            "seq_id": "106781855",
+            "symbol": "HEG"
+          },
+          {
+            "category": "Disclosure under SEBI Takeover Regulations",
+            "event_date": "2026-09-17",
+            "filed_by": "legacy",
+            "identity_status": null,
+            "knowledge_date": "2026-09-17",
+            "seq_id": "106783607",
+            "symbol": "HEG"
+          }
+        ],
+        "sources": [
+          "recent_renames"
+        ],
+        "symbol": "HEGAM",
+        "tier_if_seen": "SUBSTANTIVE"
+      }
+    ],
+    "events": 9,
+    "events_whose_tier_would_change": 0,
+    "rows": 118,
+    "rows_filed_by": {
+      "legacy": 118
+    }
+  },
+  "verdict": "PASS: the pinned code reads the restructured store as it read the per-symbol store"
+}

@@ -24,6 +24,16 @@
   (brief and `desk status`): Strategy 0 as of its latest run with its held positions (symbol,
   state, version, decision date; no prices or P&L) plus the manual book. Verified on production
   `desk status`.
+- P8-046 implications: OPERATIONS.md now records the known limitation for the June 2027
+  evaluation (about 2,400 events, ~3% of the catalogue, probably misrecorded tiers; audit
+  estimates and sampling limits), explicitly not an amendment. Pinned pipeline check
+  (docs/desk/pinned_reader_verification.md): afe3e2b in a temporary worktree (since removed),
+  read-only store copy, 1,156 recent events: 1,143 identical to HEAD in tier and rows, 13
+  window-boundary differences (CRESTO, HEGAM; HEAD more conservative), pinned init_db a no-op, 0
+  unexplained. PASS, not evaluation-blocking. My first draft assumed forward UNKNOWN_COVERAGE
+  would be rarer; measured, equity UNKNOWN_COVERAGE is 5.3% vs training 5.1% (symbols with no NSE
+  announcements at all, e.g. ABBOTINDIA confirmed absent from the raw bulk capture), so that claim
+  was dropped.
 
 ## 2026-10-05 evening: first nightly with the bulk refresh and Strategy 0 v2 verified (Claude)
 
