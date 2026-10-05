@@ -1,3 +1,14 @@
+## 2026-10-06 (from 01:11 IST): approved fixes P8-049/050/051, Strategy 0 v3, P8-046 follow-ups (Claude)
+
+- Root verified; clean start at 9a24f1c (= origin/master); no Python running; PramanDailyIngest
+  next run 2026-10-06 18:00. One agent, foreground only. User approvals (message of 2026-10-06):
+  P8-049 fix as proposed (Medium); fix P8-050 and P8-051; Strategy 0 v3 with a seeded random
+  candidate order, applied from the next run, v2 superseded after one run; OPERATIONS.md known
+  limitation for P8-046; verify the pinned pipeline (afe3e2b) reads the restructured store.
+- P8-049 fixed: receipts certify at most the IST day before the day they were recorded (applied
+  on read). Production rows 1-2 now certify 2026-10-04: 2026-10-05 decisions unchanged; a
+  2026-10-06 decision is UNKNOWN until tonight's receipt (expected to certify 2026-10-05).
+
 ## 2026-10-05 evening: first nightly with the bulk refresh and Strategy 0 v2 verified (Claude)
 
 - Root verified; clean at b4a8f96 (= origin/master). One agent, foreground only. No network use

@@ -17,9 +17,16 @@ Where completeness comes from:
   cannot establish market-wide coverage. Historical COMPLETE receipts remain replay-visible.
   Rows are read through the caller's Desk connection, so a replay connection limited to the
   decision's Desk watermark sees exactly the freshness the decision saw.
+- A receipt never certifies past the last calendar day fully elapsed in IST when it was recorded
+  (P8-049): a refresh that runs during day D cannot know D's later filings (25-38% of a trading
+  day's announcements are published after the 18:07 nightly refresh), so a receipt recorded on D
+  stating D certifies only D-1. The cap is applied on read: stored receipts are never edited, and
+  replay applies the same rule to the same visible rows.
 """
 from datetime import date, datetime, timedelta, timezone
 import json
+
+from shared.market_time import market_date
 
 ANNOUNCEMENTS = 'nse_corporate_announcements'
 BACKFILL_COMPLETE_THROUGH = '2026-09-17'
@@ -31,37 +38,58 @@ def required_through(as_of_date: str) -> str:
     return (date.fromisoformat(as_of_date) - timedelta(days=1 + STALENESS_LIMIT_DAYS)).isoformat()
 
 
+def certified_through(through_date: str, recorded_at: str) -> str | None:
+    """What one receipt can certify (P8-049): its stated date, but never past the IST calendar day
+    before the one it was recorded on. None (certifies nothing) if `recorded_at` is not an aware
+    timestamp: which day it was recorded on is then unknown."""
+    try:
+        recorded = market_date(datetime.fromisoformat(recorded_at))
+    except (TypeError, ValueError):
+        return None
+    return min(through_date, (recorded - timedelta(days=1)).isoformat())
+
+
+def _complete_receipts(desk_conn, source):
+    """(certified date, detail) of every COMPLETE receipt visible on this connection."""
+    for row in desk_conn.execute("SELECT through_date, detail, recorded_at FROM source_freshness "
+                                 "WHERE source=? AND status='COMPLETE' ORDER BY row_id", (source,)):
+        certified = certified_through(row['through_date'], row['recorded_at'])
+        if certified is not None:
+            yield certified, json.loads(row['detail'])
+
+
 def complete_through(desk_conn, symbol: str, source: str = ANNOUNCEMENTS) -> str:
     """Latest complete source date as visible on this connection; partial runs cannot advance it."""
     best = BACKFILL_COMPLETE_THROUGH
     if desk_conn is None:
         return best
-    for row in desk_conn.execute("SELECT through_date, detail FROM source_freshness WHERE source=? AND status='COMPLETE' "
-                                 'ORDER BY through_date DESC, row_id DESC', (source,)):
-        detail = json.loads(row['detail'])
+    for certified, detail in _complete_receipts(desk_conn, source):
         if not detail.get('failed_symbols') and detail.get('summary', {}).get('scope') != 'PER_SYMBOL':
-            return max(best, row['through_date'])
+            best = max(best, certified)
     return best
 
 
-def record_refresh(desk_conn, *, through_date: str, status: str, failed_symbols, summary, source: str = ANNOUNCEMENTS):
-    """Append one refresh's completeness statement. Never updates an earlier row."""
+def record_refresh(desk_conn, *, through_date: str, status: str, failed_symbols, summary, source: str = ANNOUNCEMENTS,
+                   now: datetime | None = None):
+    """Append one refresh's completeness statement. Never updates an earlier row. `now` (aware) is
+    for tests only; production receipts are stamped with the real time."""
     if status not in ('COMPLETE', 'PARTIAL'):
         raise ValueError(f'Only a COMPLETE or PARTIAL refresh establishes freshness, not {status!r}.')
+    recorded_at = (now or datetime.now(timezone.utc)).astimezone(timezone.utc).isoformat()
     desk_conn.execute('INSERT INTO source_freshness (source, through_date, status, detail, recorded_at) VALUES (?,?,?,?,?)',
                       (source, through_date, status,
                        json.dumps(dict(failed_symbols=sorted(failed_symbols), summary=summary), sort_keys=True, default=str),
-                       datetime.now(timezone.utc).isoformat()))
+                       recorded_at))
     desk_conn.commit()
 
 
 def market_coverage_from(desk_conn, through_date, source=ANNOUNCEMENTS):
+    """Earliest market-wide coverage start among COMPLETE receipts that certify `through_date`."""
     if desk_conn is None:
         return None
     starts = []
-    for row in desk_conn.execute("SELECT detail FROM source_freshness WHERE source=? AND status='COMPLETE' AND through_date>=?",
-                                 (source, through_date)):
-        summary = json.loads(row['detail']).get('summary', {})
-        if summary.get('scope') == 'MARKET' and summary.get('coverage_from'):
+    for certified, detail in _complete_receipts(desk_conn, source):
+        summary = detail.get('summary', {})
+        if certified >= through_date and summary.get('scope') == 'MARKET' and summary.get('coverage_from'):
             starts.append(summary['coverage_from'])
     return min(starts) if starts else None

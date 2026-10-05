@@ -1,6 +1,6 @@
 """P8-021 addition: missing announcements never read as "no disclosure"."""
 import contextlib
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 import io
 from pathlib import Path
 import sys
@@ -12,7 +12,9 @@ from desk.evidence.bundle import _disclosures
 from desk.evidence.types import Fact, Unknown
 from desk.lib.connection import get_desk_connection
 from desk.lib.store import ProductionStoreMissingError, get_live_connection
-from desk.source_freshness import BACKFILL_COMPLETE_THROUGH, complete_through, record_refresh, required_through
+from desk.source_freshness import (BACKFILL_COMPLETE_THROUGH, certified_through, complete_through,
+                                   market_coverage_from, record_refresh, required_through)
+from shared.market_time import IST
 from src.bitemporal.connection import get_connection, init_db
 from tests.desk_fixtures import COMPLETE_AXISBANK_THESIS, copy_symbol_rows, make_test_costs, make_test_rulebook
 
@@ -26,6 +28,11 @@ except ProductionStoreMissingError:
 
 def day_before(d, n=1):
     return (date.fromisoformat(d) - timedelta(days=n)).isoformat()
+
+
+def ist(stamp):
+    """An aware IST moment, e.g. ist('2026-10-05T18:07') -- receipts are stamped explicitly in tests."""
+    return datetime.fromisoformat(stamp).replace(tzinfo=IST)
 
 
 class FreshnessRulesTest(unittest.TestCase):
@@ -44,19 +51,23 @@ class FreshnessRulesTest(unittest.TestCase):
         self.assertEqual(complete_through(None, 'X'), BACKFILL_COMPLETE_THROUGH)
 
     def test_partial_refresh_keeps_failed_symbols_stale(self):
-        record_refresh(self.desk, through_date='2026-10-05', status='PARTIAL', failed_symbols=['BAD'], summary={})
+        record_refresh(self.desk, through_date='2026-10-05', status='PARTIAL', failed_symbols=['BAD'], summary={},
+                       now=ist('2026-10-06T01:00'))
         self.assertEqual(complete_through(self.desk, 'GOOD'), BACKFILL_COMPLETE_THROUGH)
         self.assertEqual(complete_through(self.desk, 'BAD'), BACKFILL_COMPLETE_THROUGH)
-        record_refresh(self.desk, through_date='2026-10-06', status='COMPLETE', failed_symbols=[], summary={})
+        record_refresh(self.desk, through_date='2026-10-06', status='COMPLETE', failed_symbols=[], summary={},
+                       now=ist('2026-10-07T01:00'))
         self.assertEqual(complete_through(self.desk, 'BAD'), '2026-10-06')
         with self.assertRaises(ValueError):
             record_refresh(self.desk, through_date='2026-10-07', status='NOT_DUE', failed_symbols=[], summary={})
 
     def test_replay_sees_only_the_freshness_known_at_the_decision(self):
         from desk.replay import get_desk_replay_connection
-        record_refresh(self.desk, through_date='2026-10-05', status='COMPLETE', failed_symbols=[], summary={})
+        record_refresh(self.desk, through_date='2026-10-05', status='COMPLETE', failed_symbols=[], summary={},
+                       now=ist('2026-10-06T00:30'))
         watermark = self.desk.execute('SELECT recorded_at FROM source_freshness').fetchone()[0]
-        record_refresh(self.desk, through_date='2026-10-09', status='COMPLETE', failed_symbols=[], summary={})
+        record_refresh(self.desk, through_date='2026-10-09', status='COMPLETE', failed_symbols=[], summary={},
+                       now=ist('2026-10-10T00:30'))
         replay = get_desk_replay_connection(self.desk_path, watermark)
         try:
             self.assertEqual(complete_through(replay, 'X'), '2026-10-05')
@@ -78,6 +89,64 @@ class FreshnessRulesTest(unittest.TestCase):
         rows = self.desk.execute('SELECT through_date, status FROM source_freshness').fetchall()
         self.assertEqual([tuple(r) for r in rows], [('2026-10-05', 'PARTIAL')])
         self.assertEqual(complete_through(self.desk, 'BAD'), BACKFILL_COMPLETE_THROUGH)
+
+
+class SameDayReceiptTest(unittest.TestCase):
+    """P8-049: a refresh recorded during day D cannot certify D itself."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.desk = get_desk_connection(Path(self.temp.name) / 'desk.sqlite')
+
+    def tearDown(self):
+        self.desk.close()
+        self.temp.cleanup()
+
+    def test_receipt_certifies_only_days_fully_elapsed_when_recorded(self):
+        utc = lambda stamp: datetime.fromisoformat(stamp + '+00:00').isoformat()
+        cases = [('2026-10-05', ist('2026-10-05T18:07').isoformat(), '2026-10-04'),   # tonight's nightly
+                 ('2026-10-05', ist('2026-10-05T12:29').isoformat(), '2026-10-04'),   # the midday backfill
+                 ('2026-10-05', utc('2026-10-05T18:29'), '2026-10-04'),               # 23:59 IST: still D
+                 ('2026-10-05', utc('2026-10-05T18:31'), '2026-10-05'),               # 00:01 IST on D+1
+                 ('2026-10-03', ist('2026-10-06T18:07').isoformat(), '2026-10-03'),   # claims less: kept
+                 ('2026-10-05', '2026-10-06T18:07:00', None)]                        # naive: certifies nothing
+        for through, recorded, expected in cases:
+            with self.subTest(recorded=recorded):
+                self.assertEqual(certified_through(through, recorded), expected)
+
+    def test_same_day_receipt_leaves_next_day_decision_unknown(self):
+        conn = get_connection(str(Path(self.temp.name) / 'praman.db'))
+        init_db(conn)
+        days, d = [], date(2026, 9, 21)                  # after the 2026-09-17 backfill baseline
+        while len(days) < 15:
+            if d.weekday() < 5:
+                days.append(d.isoformat())
+                conn.execute('INSERT INTO bhavcopy (symbol,event_date,knowledge_date,open_price,high_price,low_price,'
+                             'close_price,prev_close,traded_qty,series,source_file,recorded_at) VALUES '
+                             "('NOANN',?,?,100,101,99,100,100,1000,'EQ','f',?)", (d.isoformat(),) * 3)
+            d += timedelta(days=1)
+        conn.commit()
+        decision, previous = days[-1], days[-2]          # a decision dated D+1 needs completeness through D
+        market = dict(scope='MARKET', coverage_from=days[0])
+
+        def disclosures():
+            needed = required_through(decision)
+            return _disclosures(conn, 'NOANN', decision, complete_through(self.desk, 'NOANN'),
+                                market_coverage_from(self.desk, needed))
+        try:
+            record_refresh(self.desk, through_date=previous, status='COMPLETE', failed_symbols=[], summary=market,
+                           now=ist(f'{previous}T18:07'))
+            self.assertEqual(complete_through(self.desk, 'NOANN'), day_before(previous))
+            self.assertIsNone(market_coverage_from(self.desk, required_through(decision)))
+            stale = disclosures()
+            self.assertIsInstance(stale, Unknown)
+            self.assertIn(f'complete only through {day_before(previous)}', stale.detail)
+            record_refresh(self.desk, through_date=decision, status='COMPLETE', failed_symbols=[], summary=market,
+                           now=ist(f'{decision}T18:07'))
+            self.assertEqual(complete_through(self.desk, 'NOANN'), previous)
+            self.assertIsInstance(disclosures(), Fact)
+        finally:
+            conn.close()
 
 
 class MissingCoverageTest(unittest.TestCase):
@@ -163,7 +232,8 @@ class RealDataFreshnessTest(unittest.TestCase):
         self.assertEqual(stale.state, 'INSUFFICIENT')
         self.assertEqual(stale.gate_results['G2'].result, 'FAIL')
         self.assertIn("'disclosures'", ' '.join(stale.gate_results['G2'].reasons))
-        record_refresh(self.desk, through_date=as_of, status='COMPLETE', failed_symbols=[], summary={})
+        record_refresh(self.desk, through_date=as_of, status='COMPLETE', failed_symbols=[], summary={},
+                       now=ist(f'{day_before(as_of, -1)}T00:30'))      # recorded after as_of has fully elapsed
         fresh = run_assessment(self.praman, self.desk, symbol='AXISBANK', as_of_date=as_of, sector='Financials',
                                thesis=thesis, rulebook=make_test_rulebook(), costs=make_test_costs())
         self.assertEqual(fresh.gate_results['G2'].result, 'PASS')

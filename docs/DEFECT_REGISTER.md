@@ -1979,6 +1979,18 @@ tonight's results unchanged (rows 1-2 would certify 2026-10-04, which those deci
 Test to add: a receipt recorded at 18:07 IST on D leaves a D+1 decision's disclosure dimension
 UNKNOWN until a receipt recorded on D+1 or later exists.
 
+**Fix, 2026-10-06 (user approval: "approve the fix as proposed, at Medium severity").**
+**Status.** Closed — fixed as proposed and verified against the production receipts (read-only).
+`desk/source_freshness.py`: `certified_through` caps a receipt at the IST day before the day it was
+recorded (a naive or unreadable `recorded_at` certifies nothing); `complete_through` and
+`market_coverage_from` both use it. Receipts are unchanged. Tests
+(`tests/test_disclosure_freshness.py::SameDayReceiptTest`): the cap at the IST day boundary
+(23:59 IST still D; 00:01 IST is D+1), a receipt claiming less is kept, and a D+1 decision is UNKNOWN
+under a receipt recorded on D, then a FACT after one recorded on D+1. That test fails with the cap
+removed. Earlier tests now stamp receipts explicitly instead of using the wall clock. Production,
+read-only: rows 1-2 now certify 2026-10-04, so the 2026-10-05 decisions (needing 2026-10-04) are
+unchanged; a 2026-10-06 decision stays UNKNOWN until tonight's receipt certifies 2026-10-05.
+
 ## P8-050 - the nightly brief reports its own run as never finished
 
 **Severity.** Low. **Status.** Open. Found 2026-10-05 in the first brief written by the nightly.
