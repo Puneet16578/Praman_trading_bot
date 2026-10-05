@@ -18,6 +18,24 @@
   holds the watermark with WARN, per-symbol fallback behind PRAMAN_ANNOUNCEMENTS_MODE).
 - Planned backfill computed read-only: 4 windows x 3 = 12 announcement calls + 15
   identity files + 1 cookie = 28 of 30. Full suite: 754 tests in 414.554s, OK.
+- Committed 904c53f at 12:28 IST (before the 16:30 target; stash fallback NOT used).
+- Backfill + audit run in the foreground at 12:28 (scripts/run_bulk_announcement_backfill_audit.py
+  --execute-approved, 101 s, exit 0; receipt docs/desk/announcements_bulk_rollout_results.json;
+  raw captures under data/raw/announcement_runs/). Requests: backfill 28/30 (cookie 1, bulk 4,
+  split checks 8, identity 15), audit 20/20; all HTTP 200, no retries/errors.
+  Backfill COMPLETE 2026-09-10..2026-10-05: 12,394 rows, 9,400 inserted, 2,994 already stored,
+  store delta +9,400, other tables unchanged; security_identities created (55,146 rows,
+  2026-09-10..2026-10-01); 163 rows with ambiguous/absent dated identity (read as UNKNOWN).
+  September 2026: 17,077 rows / 17,067 unique / 2,384 symbols (equity-only identical), inside
+  16,000-21,000 (was 8,847). October to 2026-10-05 (partial): 1,188. Desk source_freshness row 1:
+  COMPLETE MARKET through 2026-10-05. P8-021 CLOSED.
+- P8-046 audit (report only): 12/20 sampled securities' frozen tiers differ (all
+  UNKNOWN_COVERAGE); ~2,356 of 4,402 renamed-security events affected (HT ~2,407), ~1,816 via
+  missing disclosures; limits in docs/desk/announcement_rename_audit_results.md. 195 vs 205:
+  the 10 extra current groups are 7 INF ETF groups + 3 equity renames not in the historical log.
+- Tonight (18:00): bulk state last_complete 2026-10-05 -> windows 2026-09-28..10-04 and 10-05,
+  4 bulk calls + cookie, identities cached. Readiness parser now finds no open High or
+  unclassified defect, so the OPEN_CRITICAL_DEFECT kill switch should clear.
 
 ## 2026-10-05: bulk reconciliation and T1 exposure clarification
 

@@ -1611,6 +1611,18 @@ by publication date before the June 2027 evaluation. Tests: `tests/test_disclosu
 assessment becomes INSUFFICIENT; coverage and history gaps; partial refreshes; replay; the nightly
 step) and `tests/test_record_annotations.py`.
 
+**Closure, 2026-10-05 (user conditions: September back in range and a current watermark).**
+**Status.** Closed — fixed and verified live.
+The approved bulk switch (`904c53f`) and its foreground backfill from 2026-09-10 to 2026-10-05
+(`docs/desk/announcements_bulk_rollout_results.json`; 28 of 30 approved requests, all HTTP 200)
+completed every window: 12,394 rows returned, 9,400 inserted, 2,994 already stored, store delta
+exactly +9,400. September 2026 now holds 17,077 rows (17,067 unique announcements, 2,384 symbols;
+identical equity-only), inside the normal 16,000-21,000 (it was 8,847). October through 2026-10-05
+is a partial month: 1,188 rows. The market-wide watermark is COMPLETE through 2026-10-05 (Desk
+`source_freshness` row 1), so a 2026-10-05 decision's disclosure window (needing 2026-10-04) is
+a FACT again. Residual: 163 bulk rows have an ambiguous or absent dated identity; they are stored
+and any window containing one reads as UNKNOWN, not "no disclosure".
+
 ## P8-020 — interrupted ingestion left no durable start or progress
 
 **Root cause.** `weekly_ingest.main()` captured all steps in memory and wrote its
@@ -1864,6 +1876,7 @@ and history preservation. Full-suite verification is in HANDOFF.
 ## P8-046 - obsolete announcement symbols can return a successful empty response
 
 **Status.** Open. Medium. Found 2026-10-05 during the approved bulk parity probe.
+**Severity.** Medium (stated above; added in this machine-readable form 2026-10-05).
 
 NSE returned HTTP 200 with zero rows for HEG and SANGINITA over September 7-13,
 while the bulk endpoint returned the same five stored announcements under HEGAM
@@ -1873,6 +1886,18 @@ empty list as success; it does not distinguish an obsolete symbol from a real
 absence. This can falsely establish freshness when an old symbol is in the plan.
 The scope of missed post-rename disclosures has not been measured; these five
 historical disclosures are already stored and are not claimed lost.
+
+**Historical reach, 2026-10-05 (approved read-only audit; report only).** Plan fixed before any
+request; 20 of 20 approved audit requests, all HTTP 200
+(`docs/desk/announcement_rename_audit_results.md` / `.json`). Of 20 sampled securities from the
+logged 195 rename groups (127 with 4,402 eligible events), 12 would have a different frozen
+disclosure tier, all frozen `UNKNOWN_COVERAGE` while the bulk endpoint holds their announcements
+under the later symbol (10 by missing disclosures, 2 coverage-only). Estimated affected events:
+about 2,356 of 4,402 (Hajek ratio; Horvitz-Thompson about 2,407), about 1,816 through missing
+disclosures; no precise CI (one event per security). No frozen artifact changed. Prospectively,
+the nightly no longer queries by symbol (bulk mode), so obsolete-symbol empty responses can no
+longer establish freshness; status stays Open for the historical effect, which only a separately
+registered re-analysis could address.
 
 Evidence: docs/desk/announcements_bulk_reconciliation.json and its captured
 responses; all five alias pairs reproduce offline. Tests reject same-ID matches
