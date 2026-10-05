@@ -44,6 +44,8 @@ def main():
     modules = {m.__name__: m.__file__ for m in (pinned_connection, disclosure_classification, event_catalogue, isin_mapping)}
     if not all(Path(f).resolve().is_relative_to(worktree) for f in modules.values()):
         raise SystemExit(f'Refusing: an import did not resolve to the pinned worktree: {modules}')
+    # Recorded relative to the worktree: each module was loaded from the pinned checkout.
+    modules = {name: 'pinned worktree/' + Path(f).resolve().relative_to(worktree).as_posix() for name, f in modules.items()}
 
     if args.mode == 'init_db':
         conn = sqlite3.connect(args.store)

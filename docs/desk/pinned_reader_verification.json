@@ -940,7 +940,7 @@
     "sha256": "b9318ad4870022522ccf6b392bdd9cce8448631ccf529bc70ff3c2013fa7447d",
     "total": 1156
   },
-  "head_commit": "63f8254b500679b69b994fb9b3ee3c45d28ea9cc",
+  "head_commit": "67962c1514bbb2696e3cff6385ceaa637c3e57f8",
   "head_unknown_identity_windows": 1,
   "outcomes": {
     "identical": 1143,
@@ -951,18 +951,18 @@
     "added": [],
     "exit_code": 0,
     "modules": {
-      "src.bitemporal.connection": "C:\\Users\\VICTUS\\AppData\\Local\\Temp\\claude\\d--Agentic-ai-project\\73df7060-2f8b-4c87-9b11-d1237165f827\\scratchpad\\praman_afe3e2b\\src\\bitemporal\\connection.py",
-      "src.ingestion.nse_market_data.isin_mapping": "C:\\Users\\VICTUS\\AppData\\Local\\Temp\\claude\\d--Agentic-ai-project\\73df7060-2f8b-4c87-9b11-d1237165f827\\scratchpad\\praman_afe3e2b\\src\\ingestion\\nse_market_data\\isin_mapping.py",
-      "src.signals.disclosure_classification": "C:\\Users\\VICTUS\\AppData\\Local\\Temp\\claude\\d--Agentic-ai-project\\73df7060-2f8b-4c87-9b11-d1237165f827\\scratchpad\\praman_afe3e2b\\src\\signals\\disclosure_classification.py",
-      "src.signals.event_catalogue": "C:\\Users\\VICTUS\\AppData\\Local\\Temp\\claude\\d--Agentic-ai-project\\73df7060-2f8b-4c87-9b11-d1237165f827\\scratchpad\\praman_afe3e2b\\src\\signals\\event_catalogue.py"
+      "src.bitemporal.connection": "pinned worktree/src/bitemporal/connection.py",
+      "src.ingestion.nse_market_data.isin_mapping": "pinned worktree/src/ingestion/nse_market_data/isin_mapping.py",
+      "src.signals.disclosure_classification": "pinned worktree/src/signals/disclosure_classification.py",
+      "src.signals.event_catalogue": "pinned worktree/src/signals/event_catalogue.py"
     },
     "removed": []
   },
   "pinned_modules": {
-    "src.bitemporal.connection": "C:\\Users\\VICTUS\\AppData\\Local\\Temp\\claude\\d--Agentic-ai-project\\73df7060-2f8b-4c87-9b11-d1237165f827\\scratchpad\\praman_afe3e2b\\src\\bitemporal\\connection.py",
-    "src.ingestion.nse_market_data.isin_mapping": "C:\\Users\\VICTUS\\AppData\\Local\\Temp\\claude\\d--Agentic-ai-project\\73df7060-2f8b-4c87-9b11-d1237165f827\\scratchpad\\praman_afe3e2b\\src\\ingestion\\nse_market_data\\isin_mapping.py",
-    "src.signals.disclosure_classification": "C:\\Users\\VICTUS\\AppData\\Local\\Temp\\claude\\d--Agentic-ai-project\\73df7060-2f8b-4c87-9b11-d1237165f827\\scratchpad\\praman_afe3e2b\\src\\signals\\disclosure_classification.py",
-    "src.signals.event_catalogue": "C:\\Users\\VICTUS\\AppData\\Local\\Temp\\claude\\d--Agentic-ai-project\\73df7060-2f8b-4c87-9b11-d1237165f827\\scratchpad\\praman_afe3e2b\\src\\signals\\event_catalogue.py"
+    "src.bitemporal.connection": "pinned worktree/src/bitemporal/connection.py",
+    "src.ingestion.nse_market_data.isin_mapping": "pinned worktree/src/ingestion/nse_market_data/isin_mapping.py",
+    "src.signals.disclosure_classification": "pinned worktree/src/signals/disclosure_classification.py",
+    "src.signals.event_catalogue": "pinned worktree/src/signals/event_catalogue.py"
   },
   "pinned_tier_counts": {
     "NONE": 112,
@@ -978,7 +978,7 @@
   "reasons": {
     "tier_differs:window_boundary": 13
   },
-  "seconds": 33.7,
+  "seconds": 34.2,
   "seed": 20261006,
   "store_copy": {
     "corporate_announcements": 1032635,

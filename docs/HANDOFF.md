@@ -33,7 +33,24 @@
   unexplained. PASS, not evaluation-blocking. My first draft assumed forward UNKNOWN_COVERAGE
   would be rarer; measured, equity UNKNOWN_COVERAGE is 5.3% vs training 5.1% (symbols with no NSE
   announcements at all, e.g. ABBOTINDIA confirmed absent from the raw bulk capture), so that claim
-  was dropped.
+  was dropped. Re-run once more with module paths recorded relative to the worktree (identical
+  results, event-list sha256 b9318ad4...); worktree removed (`git worktree list` shows only master).
+- Commits this session: a950028 (P8-049), e36ac7c (S0 v3, P8-052), 63f8254 (P8-050, P8-051),
+  67962c1 (P8-046 limitation and pinned-reader check), plus this handoff commit. Open defects:
+  P8-043 (Medium), P8-046 (Medium, historical effect); no open High.
+- Tonight's run (2026-10-06 18:00), verify afterwards:
+  1. trading_strategies: S0 v2 revision 2 SUPERSEDED_AFTER_ONE_RUN; S0 v3 revision 1
+     PAPER_BURN_IN.
+  2. strategy_runs run 2 is v3 for 2026-10-06, and operational.candidate_order records seed
+     211cd6834da9a787... and the full order. If the 2026-10-06 bhavcopy is not stored by
+     desk_scan, the run date stays 2026-10-05 and the result is ALREADY_RUN (expected).
+  3. 5PAISA (limit 367.90) and AUBANK (limit 1042.08) settle against 2026-10-06: entry events with
+     strategy_version 2 and the v3 run's run_id.
+  4. source_freshness row 3 COMPLETE through 2026-10-06, certifying 2026-10-05 (P8-049), so
+     2026-10-06 decisions read disclosures as FACT.
+  5. logs/brief_2026-10-06.txt: "Strategy 0 version 3; candidate order SEEDED_RANDOM, seed
+     211cd6834da9a787", the "Open risk by book" block, and "this run (started ...) is in
+     progress" in Data health; `desk status` then shows the Strategy 0 line for version 3.
 
 ## 2026-10-05 evening: first nightly with the bulk refresh and Strategy 0 v2 verified (Claude)
 
