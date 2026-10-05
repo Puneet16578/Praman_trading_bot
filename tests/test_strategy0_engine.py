@@ -1,5 +1,6 @@
 """Strategy 0 sealed paper engine, registry and seal (session item B4)."""
 from datetime import date
+import hashlib
 import json
 from pathlib import Path
 import sqlite3
@@ -45,6 +46,13 @@ class Store:
     def market(self, day, symbols=('ZZZ',)):
         for s in symbols:
             self.bar(s, day, 100, 101, 99, 100)
+
+
+def expected_order(symbols, day):
+    """Strategy 0 v3's registered order, restated independently of the engine: seed =
+    sha256('S0-v3-candidate-order|<day>'); rank by sha256('<seed>|<symbol>'), ascending."""
+    seed = hashlib.sha256(f'S0-v3-candidate-order|{day}'.encode('utf-8')).hexdigest()
+    return seed, sorted(symbols, key=lambda s: hashlib.sha256(f'{seed}|{s}'.encode('utf-8')).hexdigest())
 
 
 def plan(price=100.0, atr=4.0, stop=92.0, qty=100, stress=12000.0):
@@ -99,11 +107,14 @@ class EngineTest(EngineFixture):
         for s in ('AAA', 'BBB', 'CCC'):
             self.store.bar(s, d0, 100, 101, 99, 100)
             opportunity(self.desk, s, d0, plan(qty=600))
+        seed, (first, second, last) = expected_order(('AAA', 'BBB', 'CCC'), d0)   # v3: seeded, not alphabetical
         ops = self.run_day(d0)
         self.assertEqual((ops['candidates'], ops['accepted']), (3, 2))
         self.assertEqual(ops['rejected'], {'OPEN_RISK_BUDGET': 1})
+        self.assertEqual((ops['candidate_order']['seed'], [s for _, s in ops['candidate_order']['order']]),
+                         (seed, [first, second, last]))
         rejected = self.events('CANDIDATE_REJECTED')[0]
-        self.assertEqual(rejected['symbol'], 'CCC')
+        self.assertEqual(rejected['symbol'], last)
         self.assertIn('budget 25000.00', rejected['detail']['reasons'][0])
         self.assertEqual(self.run_day(d0)['status'], 'ALREADY_RUN')
         self.assertEqual(len(self.events()), 3)
@@ -111,37 +122,37 @@ class EngineTest(EngineFixture):
         self.assertEqual([c['state']['value'] for c in contracts], ['WATCH', 'WATCH', 'VETO'])
         self.assertEqual(contracts[0]['calibrated_probability']['status'], 'UNKNOWN')
 
-        # Next session: AAA opens under the limit (102); BBB opens above, low touches it.
+        # Next session: the first opens under the limit (102); the second opens above, low touches it.
         d1 = DAYS[1]
         self.store.market(d1)
-        self.store.bar('AAA', d1, 101, 104, 100, 103)
-        self.store.bar('BBB', d1, 105, 106, 101, 104)
+        self.store.bar(first, d1, 101, 104, 100, 103)
+        self.store.bar(second, d1, 105, 106, 101, 104)
         ops = self.run_day(d1)
         fills = {e['symbol']: e['detail'] for e in self.events('ENTRY_FILLED')}
-        self.assertEqual(fills['AAA']['price'], 101)
-        self.assertEqual((fills['BBB']['price'], fills['BBB']['status']), (102, 'FILL_LIMIT'))
+        self.assertEqual(fills[first]['price'], 101)
+        self.assertEqual((fills[second]['price'], fills[second]['status']), (102, 'FILL_LIMIT'))
         self.assertEqual(ops['entries_filled'], 2)
-        # v2 sizes at the 102 limit: 490 shares (the stock cap), not the screening 600, so no limit
-        # fill can breach the Rs 5,000 per-trade cap (v1 sizing breached it on both fills).
+        # Sized at the 102 limit (v2 rule, kept by v3): 490 shares (the stock cap), not the screening
+        # 600, so no limit fill can breach the Rs 5,000 per-trade cap (v1 sizing breached it on both fills).
         self.assertEqual(ops['cap_breaches_at_fill'], 0)
-        self.assertFalse(fills['AAA']['per_trade_cap_breach_at_fill'])
+        self.assertFalse(fills[first]['per_trade_cap_breach_at_fill'])
         from desk.risk.officer import compute_position_size
         expected = min(int(compute_position_size(102.0, 92.0, rulebook(), 0, 0, 0, costs=self.costs)), 600)
-        self.assertEqual(fills['AAA']['quantity'], expected)
+        self.assertEqual(fills[first]['quantity'], expected)
         accepted = self.events('CANDIDATE_ACCEPTED')[0]['detail']
         self.assertEqual((accepted['sizing'], accepted['screening_quantity'], accepted['quantity']), ('LIMIT_PRICE', 600, expected))
 
-        # AAA hits its stop by gapping below it; BBB is held until the time limit.
+        # The first hits its stop by gapping below it; the second is held until the time limit.
         d2 = DAYS[2]
         self.store.market(d2)
-        self.store.bar('AAA', d2, 91, 92, 90, 91)
-        self.store.bar('BBB', d2, 103, 104, 101, 103)
+        self.store.bar(first, d2, 91, 92, 90, 91)
+        self.store.bar(second, d2, 103, 104, 101, 103)
         self.run_day(d2)
         stop = self.events('EXIT_FILLED')[0]
-        self.assertEqual((stop['symbol'], stop['detail']['kind'], stop['detail']['price']), ('AAA', 'stop_gap', 91))
+        self.assertEqual((stop['symbol'], stop['detail']['kind'], stop['detail']['price']), (first, 'stop_gap', 91))
         for day in DAYS[3:12]:
             self.store.market(day)
-            self.store.bar('BBB', day, 103, 104, 101, 103)
+            self.store.bar(second, day, 103, 104, 101, 103)
             self.run_day(day)
         ordered = self.events('EXIT_ORDERED')
         self.assertEqual(len(ordered), 1)
@@ -149,9 +160,9 @@ class EngineTest(EngineFixture):
         self.assertEqual(ordered[0]['detail']['sessions_held'], 10)
         exit_day = DAYS[12]
         self.store.market(exit_day)
-        self.store.bar('BBB', exit_day, 99, 100, 98, 99)
+        self.store.bar(second, exit_day, 99, 100, 98, 99)
         self.run_day(exit_day)
-        filled = [e for e in self.events('EXIT_FILLED') if e['symbol'] == 'BBB'][0]
+        filled = [e for e in self.events('EXIT_FILLED') if e['symbol'] == second][0]
         self.assertEqual((filled['event_date'], filled['detail']['price'], filled['detail']['reason']), (exit_day, 99, 'TIME_LIMIT'))
         book = strategy0.load_book(self.desk, V)
         self.assertEqual(sorted(p['status'] for p in book.values()), ['CLOSED', 'CLOSED'])
@@ -303,7 +314,7 @@ class EngineTest(EngineFixture):
         try:
             row = conn.execute('SELECT * FROM journal_events WHERE event_type=?', (strategy0.RUN_FAILED_EVENT,)).fetchone()
             self.assertEqual(json.loads(row['detail']), dict(run_date=DAYS[0], error_type='RuntimeError'))
-            self.assertEqual(strategy0._entry_outcomes_since(conn, V, None), ['OPERATIONAL_FAILURE'])
+            self.assertEqual(strategy0._entry_outcomes_since(conn, None), ['OPERATIONAL_FAILURE'])
         finally:
             conn.close()
 
@@ -345,6 +356,107 @@ class EngineTest(EngineFixture):
         self.assertFalse(stored['no_trade'])
 
 
+class StrategyV3Test(EngineFixture):
+    """v3 (user approval 2026-10-06): seeded random candidate order; one book across versions."""
+
+    def run_as_v2(self, day):
+        """Production history: v2 ran on 2026-10-05, before v3 existed."""
+        v2 = registry.register(self.desk, **registry.STRATEGY_0_V2, definition=registry.strategy0_definition(version=2))
+        with patch('desk.automation.registry.ensure_registered', return_value=v2):
+            return self.run_day(day)
+
+    def test_order_is_seeded_by_the_decision_date_and_recorded_with_the_run(self):
+        symbols = [f'S{i:02d}' for i in range(8)]
+        d0 = DAYS[0]
+        self.store.market(d0)
+        for s in symbols:
+            opportunity(self.desk, s, d0, plan(qty=600))     # equal stress: exactly two fit the budget
+        seed, order = expected_order(symbols, d0)
+        self.assertNotEqual(order, sorted(symbols))         # this fixture's seeded order is not alphabetical
+        self.run_day(d0)
+        self.assertEqual([e['symbol'] for e in self.events('CANDIDATE_ACCEPTED', 'CANDIDATE_REJECTED')], order)
+        self.assertEqual([e['symbol'] for e in self.events('CANDIDATE_ACCEPTED')], order[:2])
+        stored = strategy0.latest_operational(self.desk)['operational']['candidate_order']
+        self.assertEqual((stored['method'], stored['seed'], stored['seed_source']),
+                         ('SEEDED_RANDOM', seed, f'S0-v3-candidate-order|{d0}'))
+        self.assertEqual([s for _, s in stored['order']], order)
+        # Reproducible from the date alone; another date gives its own order; removing a candidate
+        # never reorders the rest.
+        rows = [dict(symbol=s, opportunity_id=i) for i, s in enumerate(symbols)]
+        self.assertEqual([c['symbol'] for c in strategy0.seeded_order(rows, d0)[0]], order)
+        other = expected_order(symbols, DAYS[1])[1]
+        self.assertNotEqual(other, order)
+        self.assertEqual([c['symbol'] for c in strategy0.seeded_order(rows, DAYS[1])[0]], other)
+        self.assertEqual([c['symbol'] for c in strategy0.seeded_order(rows[1:], d0)[0]], [s for s in order if s != 'S00'])
+
+    def test_v2_positions_carry_into_the_v3_book(self):
+        d0, d1, d2 = DAYS[:3]
+        self.store.market(d0)
+        for s in ('AAA', 'BBB'):
+            opportunity(self.desk, s, d0, plan())
+        self.run_as_v2(d0)
+        self.assertEqual({e['strategy_version'] for e in self.events()}, {2})
+        # The live code never re-decides a date v2 already ran, and supersedes v2 after its one run.
+        self.assertEqual(self.run_day(d0)['status'], 'ALREADY_RUN')
+        self.assertEqual(len(self.events()), 2)
+        v2 = [r[0] for r in self.desk.execute("SELECT status FROM trading_strategies WHERE strategy_id='S0' AND version=2 "
+                                              'ORDER BY revision')]
+        self.assertEqual(v2, ['PAPER_BURN_IN', 'SUPERSEDED_AFTER_ONE_RUN'])
+        live = registry.current(self.desk, 'S0')
+        self.assertEqual((live['version'], live['status']), (3, 'PAPER_BURN_IN'))
+
+        # Next session, under v3: AAA fills, BBB's limit is untouched, and two new v3 candidates
+        # compete for the budget that v2's AAA still uses.
+        self.store.market(d1)
+        self.store.bar('AAA', d1, 101, 104, 100, 103)
+        self.store.bar('BBB', d1, 110, 112, 109, 111)
+        for s in ('CCC', 'DDD'):
+            opportunity(self.desk, s, d1, plan())
+        ops = self.run_day(d1)
+        run = strategy0.latest_operational(self.desk)
+        self.assertEqual((run['strategy_version'], run['run_date']), (3, d1))
+        mine = {(e['event_type'], e['symbol']): e for e in self.events() if e['run_id'] == run['run_id']}
+        self.assertEqual(mine[('ENTRY_FILLED', 'AAA')]['strategy_version'], 2)
+        self.assertEqual(mine[('ENTRY_NO_FILL', 'BBB')]['strategy_version'], 2)
+        first, second = expected_order(('CCC', 'DDD'), d1)[1]
+        self.assertEqual(mine[('CANDIDATE_ACCEPTED', first)]['strategy_version'], 3)
+        self.assertIn('OPEN_RISK_BUDGET: used 24480.00', mine[('CANDIDATE_REJECTED', second)]['detail']['reasons'][0])
+        self.assertEqual(ops['positions_holding'], 2)
+        self.assertAlmostEqual(ops['open_risk_inr'], 24480.0, places=6)
+        book = strategy0.load_book(self.desk)
+        self.assertEqual({p['symbol']: (p['version'], p['status']) for p in book.values()},
+                         {'AAA': (2, 'OPEN'), 'BBB': (2, 'NOT_FILLED'), first: (3, 'PENDING_ENTRY')})
+        self.assertEqual(sorted(p['symbol'] for p in strategy0.load_book(self.desk, 2).values()), ['AAA', 'BBB'])
+        before = strategy0.load_book(self.desk, through_run_id=run['run_id'] - 1)
+        self.assertEqual({p['symbol']: p['status'] for p in before.values()}, {'AAA': 'PENDING_ENTRY', 'BBB': 'PENDING_ENTRY'})
+
+        # v3 keeps monitoring v2's position under v2's own stop.
+        self.store.market(d2)
+        self.store.bar('AAA', d2, 103, 104, 101, 103)
+        self.run_day(d2)
+        monitored = [e for e in self.events('MONITORED') if e['symbol'] == 'AAA']
+        self.assertEqual([(e['strategy_version'], e['detail']['stop']) for e in monitored], [(2, 92.0)])
+
+    def test_fill_failure_streak_counts_every_version(self):
+        d0, d1, d2, d3 = DAYS[:4]
+        self.store.market(d0)
+        for s in ('F1', 'F2'):
+            opportunity(self.desk, s, d0, plan())         # never any bar: both entries fail on d1
+        self.run_as_v2(d0)
+        self.store.market(d1)
+        opportunity(self.desk, 'F3', d1, plan())
+        self.run_day(d1)                                   # v3 settles F1 and F2 (two failures), accepts F3
+        self.store.market(d2)
+        self.assertNotIn('REPEATED_FILL_FAILURES', self.run_day(d2)['kill_switches_active'])   # F3 fails
+        self.store.market(d3)
+        opportunity(self.desk, 'G1', d3, plan())
+        ops = self.run_day(d3)
+        failed = [(e['symbol'], e['strategy_version']) for e in self.events('ENTRY_FILL_FAILED')]
+        self.assertEqual(failed, [('F1', 2), ('F2', 2), ('F3', 3)])
+        self.assertIn('REPEATED_FILL_FAILURES', ops['kill_switches_active'])
+        self.assertEqual(ops['rejected'], {'KILL_SWITCH': 1})
+
+
 class RegistryAndSealTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -357,11 +469,19 @@ class RegistryAndSealTest(unittest.TestCase):
     def test_strategy0_registered_with_rule_based_entry_policy(self):
         row = registry.ensure_registered(self.desk)
         self.assertEqual((row['strategy_id'], row['version'], row['name'], row['status']),
-                         ('S0', 2, 'baseline screen', 'PAPER_BURN_IN'))
+                         ('S0', 3, 'baseline screen', 'PAPER_BURN_IN'))
         self.assertEqual(row['definition']['sizing_rule'], 'LIMIT_PRICE')
+        self.assertEqual(row['definition']['candidate_order'], 'SEEDED_RANDOM')
+        statuses = {r['version']: r['status'] for r in
+                    self.desk.execute("SELECT version, status FROM trading_strategies WHERE strategy_id='S0'")}
+        self.assertEqual(statuses, {1: 'SUPERSEDED_NEVER_RUN', 2: 'SUPERSEDED_NEVER_RUN', 3: 'PAPER_BURN_IN'})
         v1 = self.desk.execute("SELECT status, definition FROM trading_strategies WHERE strategy_id='S0' AND version=1").fetchone()
-        self.assertEqual(v1['status'], 'SUPERSEDED_NEVER_RUN')
         self.assertNotIn('sizing_rule', json.loads(v1['definition']))
+        v2 = json.loads(self.desk.execute("SELECT definition FROM trading_strategies WHERE strategy_id='S0' AND version=2").fetchone()[0])
+        self.assertNotIn('candidate_order', v2)
+        self.assertIn('ordered by symbol', v2['candidates'])
+        self.assertEqual({k: v for k, v in row['definition'].items() if k not in ('candidates', 'candidate_order', 'book', 'version_note')},
+                         {k: v for k, v in v2.items() if k not in ('candidates', 'version_note')})   # v3 = v2 + order
         self.assertIn('NOT expected to be profitable', row['purpose'])
         entry = row['definition']['entry']
         self.assertEqual(entry['policy'], 'LIMIT_DECISION_PLUS_0.5_ATR20')
@@ -369,7 +489,7 @@ class RegistryAndSealTest(unittest.TestCase):
                                                               'fill_rate_at_least_60pct')))
         self.assertEqual(registry.current(self.desk, 'manual')['status'], 'ACTIVE_MANUAL')
         registry.ensure_registered(self.desk)   # idempotent
-        self.assertEqual(self.desk.execute('SELECT COUNT(*) FROM trading_strategies').fetchone()[0], 3)
+        self.assertEqual(self.desk.execute('SELECT COUNT(*) FROM trading_strategies').fetchone()[0], 4)
 
     def test_entry_rule_falls_back_when_conditions_fail(self):
         source = json.loads(registry.FOLLOWUP2.read_text(encoding='utf-8'))
@@ -392,9 +512,9 @@ class RegistryAndSealTest(unittest.TestCase):
         registry.ensure_registered(self.desk)
         with self.assertRaises(registry.RegistryError):
             registry.register(self.desk, **registry.STRATEGY_0, definition=dict(changed=True))
-        registry.set_status(self.desk, 'S0', 2, 'RETIRED')
+        registry.set_status(self.desk, 'S0', 3, 'RETIRED')
         self.assertEqual(registry.current(self.desk, 'S0')['status'], 'RETIRED')
-        self.assertEqual(self.desk.execute("SELECT COUNT(*) FROM trading_strategies WHERE strategy_id='S0'").fetchone()[0], 3)
+        self.assertEqual(self.desk.execute("SELECT COUNT(*) FROM trading_strategies WHERE strategy_id='S0'").fetchone()[0], 4)
         with self.assertRaises(sqlite3.IntegrityError):
             self.desk.execute("DELETE FROM trading_strategies WHERE strategy_id='S0'")
 

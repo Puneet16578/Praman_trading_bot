@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from desk.brief import build_brief, write_brief
-from tests.test_strategy0_engine import DAYS, EngineFixture, ROOT, opportunity, plan, rulebook
+from tests.test_strategy0_engine import DAYS, EngineFixture, ROOT, expected_order, opportunity, plan, rulebook
 
 
 class BriefTest(EngineFixture):
@@ -22,14 +22,17 @@ class BriefTest(EngineFixture):
         opportunity(self.desk, 'DDD', DAYS[0], plan(), state='SCREEN_FAIL')
         self.run_day(DAYS[0])
         text = self.brief(DAYS[0])
+        seed, (first, second, last) = expected_order(('AAA', 'BBB', 'CCC'), DAYS[0])
         for expected in ('PRAMAN - DAILY DECISION DESK', 'Universe scanned: 4', 'Candidates: 4',
                          'Passed evidence/data checks: 3', 'High-confidence model candidates: UNKNOWN',
                          'Passed risk/portfolio/execution checks: 2', 'Rejected by reason: OPEN_RISK_BUDGET 1',
-                         'Candidate AAA', 'Calibrated P(profitable): UNKNOWN (T4)', 'Expected value: UNKNOWN (T4)',
-                         'Execution: limit order at 102.00', 'Final state: WATCH', 'Kill switches:',
-                         'Strategy 0: Rs 24,480.00 of Rs 25,000.00', 'Manual (strategy_id=manual)',
+                         f'Strategy 0 version 3; candidate order SEEDED_RANDOM, seed {seed[:16]}',
+                         f'Candidate {first}', f'Candidate {second}', 'Calibrated P(profitable): UNKNOWN (T4)',
+                         'Expected value: UNKNOWN (T4)', 'Execution: limit order at 102.00', 'Final state: WATCH',
+                         'Kill switches:', 'Rs 24,480.00 of Rs 25,000.00', 'Manual (strategy_id=manual)',
                          'SEALED until 2027-06-01', 'Data health:'):
             self.assertIn(expected, text)
+        self.assertNotIn(f'Candidate {last}', text)
         self.assertNotIn('NO TRADE', text)
 
     def test_no_trade_is_a_normal_outcome(self):

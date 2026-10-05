@@ -15,9 +15,16 @@ Sizing follows the registered definition: v2 (`sizing_rule` LIMIT_PRICE) re-size
 candidate at its entry limit price, never above the screening quantity, so no limit fill can
 exceed the per-trade cap; v1 kept the screening quantity. Operational metrics are stored in the run
 row; P&L never is (seal).
+
+Candidate order (v3, `candidate_order` SEEDED_RANDOM): a seeded random permutation reproducible
+from the decision date alone (`seeded_order`), recorded with the run; v2 used symbol order. One book
+spans versions: positions accepted by v2 are settled, monitored and exited by v3's runs under the
+same rules, keep their own version on every event, and count against the same budget. A run date
+is processed once across all versions, and the fill-failure streak counts every version's entries.
 """
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+import hashlib
 import json
 import math
 
@@ -67,15 +74,19 @@ def session_bar(conn, symbol, day, as_of):
     return rows[0] if rows else None
 
 
-def load_book(conn, version):
-    """Rebuild every Strategy 0 position from its events (current state is derived, never stored)."""
+def load_book(conn, version=None, *, through_run_id=None):
+    """Rebuild every Strategy 0 position from its events (current state is derived, never stored).
+    One book across versions: each position keeps the version that accepted it, and `version`
+    keeps only that version's positions. `through_run_id` rebuilds the book as of that run."""
     positions = {}
-    for row in conn.execute('SELECT * FROM strategy_paper_events WHERE strategy_id=? AND strategy_version=? '
-                            'AND position_id IS NOT NULL ORDER BY event_id', (STRATEGY_ID, version)):
+    for row in conn.execute('SELECT * FROM strategy_paper_events WHERE strategy_id=? AND position_id IS NOT NULL '
+                            'AND (? IS NULL OR run_id<=?) ORDER BY event_id', (STRATEGY_ID, through_run_id, through_run_id)):
         detail = json.loads(row['detail'])
         p = positions.setdefault(row['position_id'], dict(symbol=row['symbol'], decision_date=row['decision_date'],
-                                                          accepted=None, entry=None, entry_outcome=None,
-                                                          exit_order=None, exit=None))
+                                                          version=row['strategy_version'], accepted=None, entry=None,
+                                                          entry_outcome=None, exit_order=None, exit=None))
+        if row['strategy_version'] != p['version']:
+            raise EngineRefused(f"{row['position_id']}: events under more than one strategy version; book inconsistent.")
         record = dict(detail, event_date=row['event_date'], event_id=row['event_id'], recorded_at=row['recorded_at'])
         if row['event_type'] == 'CANDIDATE_ACCEPTED':
             p['accepted'] = record
@@ -94,7 +105,23 @@ def load_book(conn, version):
                        'NOT_FILLED' if p['entry'] is None else
                        'CLOSED' if p['exit'] is not None else
                        'EXIT_PENDING' if p['exit_order'] is not None else 'OPEN')
-    return positions
+    return positions if version is None else {pid: p for pid, p in positions.items() if p['version'] == version}
+
+
+def selection_seed(decision_date):
+    """v3: the candidate-order seed, derived from the decision date alone (registry.SEED_PREFIX)."""
+    return hashlib.sha256((registry.SEED_PREFIX + decision_date).encode('utf-8')).hexdigest()
+
+
+def seeded_order(candidates, decision_date):
+    """v3: a seeded random permutation of the day's candidates. Each candidate ranks by
+    sha256('<seed>|<symbol>') (ties by opportunity_id), so the order is reproducible from the date
+    and adding or removing one candidate never reorders the others. Returns (ordered, record)."""
+    seed = selection_seed(decision_date)
+    ordered = sorted(candidates, key=lambda c: (hashlib.sha256(f"{seed}|{c['symbol']}".encode('utf-8')).hexdigest(),
+                                                c['opportunity_id']))
+    return ordered, dict(method='SEEDED_RANDOM', seed=seed, seed_source=f'{registry.SEED_PREFIX}{decision_date}',
+                         order=[[c['opportunity_id'], c['symbol']] for c in ordered])
 
 
 def _holding(p):
@@ -102,10 +129,13 @@ def _holding(p):
 
 
 def _event(event_type, p_or_symbol, run_date, detail, *, position_id=None, opportunity_id=None, decision_date=None):
-    symbol = p_or_symbol if isinstance(p_or_symbol, str) else p_or_symbol['symbol']
+    """A candidate event (symbol) takes the run's version when written; a position event keeps the
+    version that accepted the position."""
+    candidate = isinstance(p_or_symbol, str)
+    symbol = p_or_symbol if candidate else p_or_symbol['symbol']
     return dict(event_type=event_type, symbol=symbol, event_date=run_date, detail=detail, position_id=position_id,
-                opportunity_id=opportunity_id,
-                decision_date=decision_date or (None if isinstance(p_or_symbol, str) else p_or_symbol['decision_date']))
+                opportunity_id=opportunity_id, version=None if candidate else p_or_symbol['version'],
+                decision_date=decision_date or (None if candidate else p_or_symbol['decision_date']))
 
 
 def _last_reset(conn, switch):
@@ -126,12 +156,13 @@ def run(praman_conn, desk_conn, run_date, *, rulebook, costs, rulebook_file, rul
     require_level(rulebook, 'paper_auto')
     strategy = registry.ensure_registered(desk_conn)
     version = strategy['version']
-    if desk_conn.execute('SELECT 1 FROM strategy_runs WHERE strategy_id=? AND strategy_version=? AND run_date=?',
-                         (STRATEGY_ID, version, run_date)).fetchone():
+    # Once per run date across versions: a later version never re-decides a date already run.
+    if desk_conn.execute('SELECT 1 FROM strategy_runs WHERE strategy_id=? AND run_date=?',
+                         (STRATEGY_ID, run_date)).fetchone():
         return dict(status='ALREADY_RUN', run_date=run_date)
     definition = strategy['definition']
     use_limit = definition['entry']['policy'].startswith('LIMIT')
-    positions = load_book(desk_conn, version)
+    positions = load_book(desk_conn)
     plan = Plan()
     budget = rulebook.risk.capital_allocated_inr * rulebook.risk.max_open_risk_pct / 100
     per_trade = rulebook.risk.capital_allocated_inr * rulebook.risk.risk_per_trade_pct / 100
@@ -139,6 +170,11 @@ def run(praman_conn, desk_conn, run_date, *, rulebook, costs, rulebook_file, rul
     candidates = [dict(r) | dict(plan=json.loads(r['inputs'])['plan'], gates=json.loads(r['gate_results']))
                   for r in desk_conn.execute("SELECT * FROM opportunity_log WHERE event_date=? AND state='SCREEN_PASS' "
                                              'ORDER BY symbol, opportunity_id', (run_date,))]
+    if definition.get('candidate_order') == 'SEEDED_RANDOM':
+        candidates, candidate_order = seeded_order(candidates, run_date)
+    else:
+        candidate_order = dict(method='SYMBOL_THEN_OPPORTUNITY_ID',
+                               order=[[c['opportunity_id'], c['symbol']] for c in candidates])
 
     # 1. Kill switches.
     from desk.ingestion_health import STALE_AFTER_DAYS
@@ -152,7 +188,7 @@ def run(praman_conn, desk_conn, run_date, *, rulebook, costs, rulebook_file, rul
         ks.data_health(run_date, latest, today, isin_status or _isin_status(praman_conn, run_date),
                        [(c['symbol'], c['plan']) for c in candidates], STALE_AFTER_DAYS),
         ks.risk_state(holding_stress, budget),
-        ks.fill_failures(_entry_outcomes_since(desk_conn, version, _last_reset(desk_conn, 'REPEATED_FILL_FAILURES')),
+        ks.fill_failures(_entry_outcomes_since(desk_conn, _last_reset(desk_conn, 'REPEATED_FILL_FAILURES')),
                          params['fill_failure_threshold']),
         ks.open_critical_defect(high, unclassified),
         ks.calibration_degradation(),
@@ -172,7 +208,8 @@ def run(praman_conn, desk_conn, run_date, *, rulebook, costs, rulebook_file, rul
                entries_no_fill=0, entries_failed=0, entries_cancelled=0, cap_breaches_at_fill=0,
                monitored=0, missing_bars=0, kill_switches_active=sorted(s for s, on in active.items() if on),
                entry_blocked_by=blocking, entry_policy=definition['entry']['policy'], unpriceable_exits=0,
-               exempt_switches={s: exemption for s in ks.P_AND_L_BRAKES} if exemption else {})
+               exempt_switches={s: exemption for s in ks.P_AND_L_BRAKES} if exemption else {},
+               candidate_order=candidate_order)
 
     # 2. Settle entry orders on the first session after their decision date.
     for pid, p in sorted(positions.items()):
@@ -388,13 +425,13 @@ def classify_entry(event_type, detail):
     raise ValueError(f'{event_type} is not an entry outcome.')
 
 
-def _entry_outcomes_since(conn, version, since):
-    """Entry outcomes and whole-run engine failures (journalled by the nightly wrapper), in the order
-    they were recorded, after the latest human reset."""
+def _entry_outcomes_since(conn, since):
+    """Entry outcomes of every Strategy 0 version and whole-run engine failures (journalled by the
+    nightly wrapper), in the order they were recorded, after the latest human reset."""
     rows = [(r['recorded_at'], classify_entry(r['event_type'], json.loads(r['detail'])))
             for r in conn.execute("SELECT event_type, detail, recorded_at FROM strategy_paper_events WHERE strategy_id=? "
-                                  "AND strategy_version=? AND event_type IN ('ENTRY_FILLED','ENTRY_FILL_FAILED','ENTRY_NO_FILL') "
-                                  'ORDER BY event_id', (STRATEGY_ID, version))]
+                                  "AND event_type IN ('ENTRY_FILLED','ENTRY_FILL_FAILED','ENTRY_NO_FILL') "
+                                  'ORDER BY event_id', (STRATEGY_ID,))]
     rows += [(r['recorded_at'], ks.OPERATIONAL_FAILURE)
              for r in conn.execute('SELECT recorded_at FROM journal_events WHERE event_type=? ORDER BY journal_event_id',
                                    (RUN_FAILED_EVENT,))]
@@ -434,7 +471,8 @@ def _write(conn, version, run_date, plan, ops, level, rulebook_hash, cost_hash, 
         for event, contract in plan.events:
             cur = conn.execute('INSERT INTO strategy_paper_events (strategy_id,strategy_version,run_id,position_id,opportunity_id,'
                                'symbol,decision_date,event_type,event_date,detail,recorded_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
-                               (STRATEGY_ID, version, run_id, event['position_id'], event['opportunity_id'], event['symbol'],
+                               (STRATEGY_ID, event['version'] or version, run_id, event['position_id'],
+                                event['opportunity_id'], event['symbol'],
                                 event['decision_date'], event['event_type'], event['event_date'],
                                 json.dumps(event['detail'], sort_keys=True, allow_nan=False), _now()))
             if contract is not None:

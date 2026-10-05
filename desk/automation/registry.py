@@ -59,15 +59,34 @@ V2_PORTFOLIO = ('Own notional book, separate from manual paper trades: one posit
                 'budget are rejected with the reason logged.')
 
 
-def strategy0_definition(path=FOLLOWUP2, version=2):
+SEED_PREFIX = 'S0-v3-candidate-order|'
+V3_CANDIDATES = ('SCREEN_PASS rows of opportunity_log for the run date (desk scan), in a seeded random order '
+                 f'stated before any run: seed = sha256("{SEED_PREFIX}<decision date>") as hex; each candidate '
+                 'ranks by sha256("<seed>|<symbol>") as hex, ascending, ties by opportunity_id. The seed and '
+                 "the resulting order are recorded with each run. Replaces v2's alphabetical order, under which "
+                 'the spelling of a symbol decided which candidates fit the open-risk budget.')
+V3_BOOK = ('One Strategy 0 book across versions: a position accepted by an earlier version stays in it, '
+           'counts against the same open-risk budget, and is settled, monitored and exited by the same entry, '
+           "stop and exit rules (v2 and v3 differ only in candidate order); each position's events keep the "
+           'version that accepted it. A run date is processed once across all versions, and the fill-failure '
+           "streak counts every version's entries.")
+
+
+def strategy0_definition(path=FOLLOWUP2, version=3):
     """Version 1 is kept byte-for-byte as reviewed (registered as superseded, never run); version 2
-    differs only in sizing (and the portfolio note that follows from it), approved 2026-10-04."""
-    if version not in (1, 2):
+    differs only in sizing (and the portfolio note that follows from it), approved 2026-10-04;
+    version 3 differs from v2 only in candidate order (seeded random, not alphabetical) and states
+    the shared book, approved 2026-10-06. Each earlier version's definition stays byte-identical."""
+    if version not in (1, 2, 3):
         raise RegistryError(f'Strategy 0 v{version} is not defined.')
     definition = _strategy0_v1_definition(path)
-    if version == 2:
+    if version >= 2:
         definition.update(sizing=V2_SIZING, sizing_rule='LIMIT_PRICE', portfolio=V2_PORTFOLIO,
                           version_note='v2 = v1 with limit-price sizing (user approval 2026-10-04).')
+    if version == 3:
+        definition.update(candidates=V3_CANDIDATES, candidate_order='SEEDED_RANDOM', book=V3_BOOK,
+                          version_note='v3 = v2 with a seeded random candidate order (user approval 2026-10-06); '
+                                       'v2 was superseded after its one run (2026-10-05).')
     return definition
 
 
@@ -116,7 +135,8 @@ S0_PURPOSE = ('Exercise the automation end to end: candidates, sizing, kill swit
               'of an edge.')
 STRATEGY_0_V1 = dict(strategy_id='S0', version=1, name='baseline screen', status='SUPERSEDED_NEVER_RUN',
                      purpose=S0_PURPOSE)
-STRATEGY_0 = dict(strategy_id='S0', version=2, name='baseline screen', status='PAPER_BURN_IN', purpose=S0_PURPOSE)
+STRATEGY_0_V2 = dict(strategy_id='S0', version=2, name='baseline screen', status='PAPER_BURN_IN', purpose=S0_PURPOSE)
+STRATEGY_0 = dict(strategy_id='S0', version=3, name='baseline screen', status='PAPER_BURN_IN', purpose=S0_PURPOSE)
 MANUAL = dict(strategy_id='manual', version=1, name='manual discretionary paper trades', status='ACTIVE_MANUAL',
               purpose="The user's own discretionary paper trades (desk assess / desk paper open). Kept separate "
                       'from Strategy 0 and fully visible; never sealed.',
@@ -164,9 +184,23 @@ def set_status(conn, strategy_id, version, status):
     conn.commit()
 
 
+def _superseded_status(conn, version):
+    """A superseded version's status states how many runs it had."""
+    runs = conn.execute('SELECT COUNT(*) FROM strategy_runs WHERE strategy_id=? AND strategy_version=?',
+                        ('S0', version)).fetchone()[0]
+    return {0: 'SUPERSEDED_NEVER_RUN', 1: 'SUPERSEDED_AFTER_ONE_RUN'}.get(runs, f'SUPERSEDED_AFTER_{runs}_RUNS')
+
+
 def ensure_registered(conn, path=FOLLOWUP2):
     """Register the manual book and Strategy 0 if absent; verify the stored definitions. v1 is kept in
-    the registry as superseded before it ever ran (none is ever deleted); v2 is the live version."""
+    the registry as superseded before it ever ran (none is ever deleted). v2 ran once (2026-10-05) and
+    is then superseded by v3, the live version: an existing v2 burn-in row gains a revision with that
+    status, and a store that never had v2 registers it directly as superseded, never run."""
     register(conn, **MANUAL)
     register(conn, **STRATEGY_0_V1, definition=strategy0_definition(path, version=1))
-    return register(conn, **STRATEGY_0, definition=strategy0_definition(path, version=2))
+    v2_definition = strategy0_definition(path, version=2)
+    if conn.execute("SELECT 1 FROM trading_strategies WHERE strategy_id='S0' AND version=2").fetchone() is None:
+        register(conn, **(STRATEGY_0_V2 | dict(status='SUPERSEDED_NEVER_RUN')), definition=v2_definition)
+    elif register(conn, **STRATEGY_0_V2, definition=v2_definition)['status'] == 'PAPER_BURN_IN':
+        set_status(conn, 'S0', 2, _superseded_status(conn, 2))
+    return register(conn, **STRATEGY_0, definition=strategy0_definition(path, version=3))

@@ -114,6 +114,18 @@ accuracy bar and zero unverified numbers in any output. A persistent edge is a b
 
 ## Changelog
 
+**2026-10-06 — Strategy 0 v3: seeded random candidate order; v2 superseded after one run
+(approved by the user in their message of 2026-10-06).** Before (v2): the day's SCREEN_PASS
+candidates were taken in symbol order and accepted greedily against the open-risk budget, so the
+spelling of a symbol decided which candidates were traded when not all fit (2026-10-05: 37 passed,
+2 accepted, 35 rejected on the budget). After (v3): the same greedy budget rule over a seeded random
+order: seed = sha256("S0-v3-candidate-order|<decision date>"), each candidate ranked by
+sha256("<seed>|<symbol>"), ties by opportunity_id; the seed and the order are recorded with each
+run. Nothing else changes. v2 ran once (2026-10-05) and is marked SUPERSEDED_AFTER_ONE_RUN; its two
+pending positions stay in the one Strategy 0 book, keep version 2 on every event and count against
+the same budget. A run date is processed once across versions, and the fill-failure streak counts
+every version's entries.
+
 **2026-10-04 — manual decisions are sized at the entry limit price; Strategy 0 v2 likewise
 (approved by the user in their message of 2026-10-04, after follow-up 3 passed).** Before: `desk
 assess` sized at the thesis `planned_entry`; Strategy 0 used the screening quantity sized at the

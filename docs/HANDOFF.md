@@ -8,6 +8,16 @@
 - P8-049 fixed: receipts certify at most the IST day before the day they were recorded (applied
   on read). Production rows 1-2 now certify 2026-10-04: 2026-10-05 decisions unchanged; a
   2026-10-06 decision is UNKNOWN until tonight's receipt (expected to certify 2026-10-05).
+- Strategy 0 v3 (P8-052): v2's order was alphabetical (registered "ordered by symbol then
+  opportunity_id"); 5PAISA and AUBANK were #1 and #3 (ATLANTAELE #2 did not fit). v3 = v2 with a
+  seeded random order (seed sha256("S0-v3-candidate-order|<date>"), rank sha256("<seed>|<symbol>")),
+  recorded in each run's operational record and shown in the brief. One book across versions, one
+  run per date across versions, S0-wide fill-failure streak (else v2's two pending positions would
+  have been orphaned). v1/v2 hashes match production. Rehearsed on a temporary desk copy.
+  Tonight's run will: append v2 revision 2 SUPERSEDED_AFTER_ONE_RUN, register v3, settle 5PAISA
+  and AUBANK (version 2 events, v3 run), then decide 2026-10-06's candidates in seeded order (seed
+  for 2026-10-06: 211cd6834da9a787...). If both entries fill they hold Rs 24,764.32 of Rs 25,000,
+  so most new candidates will be rejected on the budget.
 
 ## 2026-10-05 evening: first nightly with the bulk refresh and Strategy 0 v2 verified (Claude)
 

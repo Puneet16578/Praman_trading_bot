@@ -36,7 +36,11 @@ def build_brief(praman_conn, desk_conn, run_date, *, rulebook, health_lines=()):
     if ops is None:
         lines += ['Passed risk/portfolio/execution checks: UNKNOWN (Strategy 0 has not run for this date)']
     else:
+        order = ops.get('candidate_order') or {}
         lines += [f"Passed risk/portfolio/execution checks: {ops['accepted']} (Strategy 0 paper burn-in)",
+                  f"Strategy 0 version {run['strategy_version']}; candidate order "
+                  + (f"{order['method']}, seed {order['seed'][:16]} (from the decision date)" if order.get('seed')
+                     else order.get('method', 'not recorded')),
                   f"Opened (entry fills settled today): {ops['entries_filled']}; no fill {ops['entries_no_fill']}; "
                   f"fill failures {ops['entries_failed']}; cancelled {ops['entries_cancelled']}; "
                   f"per-trade cap breaches at fill {ops['cap_breaches_at_fill']}",

@@ -1991,6 +1991,38 @@ removed. Earlier tests now stamp receipts explicitly instead of using the wall c
 read-only: rows 1-2 now certify 2026-10-04, so the 2026-10-05 decisions (needing 2026-10-04) are
 unchanged; a 2026-10-06 decision stays UNKNOWN until tonight's receipt certifies 2026-10-05.
 
+## P8-052 - Strategy 0 v2 chose among budget-limited candidates in symbol order
+
+**Severity.** Low. **Status.** Closed — superseded by Strategy 0 v3 (user approval 2026-10-06).
+
+Raised by the user after the first run: v2's registered definition takes the day's SCREEN_PASS
+candidates "ordered by symbol then opportunity_id" and accepts them greedily against the Rs 25,000
+open-risk budget, so a symbol's spelling decided which candidates were traded when not all fit. On
+2026-10-05, 37 passed: 5PAISA (first alphabetically) and AUBANK (third) were accepted; ATLANTAELE
+(second) was rejected because its Rs 8,849.79 stress loss no longer fitted after 5PAISA's Rs
+19,866.53; the other 34 were rejected on the budget as well. Low: Strategy 0 is a paper burn-in, not
+expected to be profitable, its results are not evidence of an edge, and no evaluation uses its
+selection; but its sealed record would over-weight early-alphabet and digit-led symbols.
+
+Fix (v3, `desk/automation/registry.py`, `desk/automation/strategy0.py`): the same greedy budget rule
+over a seeded random order, seed = sha256("S0-v3-candidate-order|<decision date>"), each candidate
+ranked by sha256("<seed>|<symbol>"), ties by opportunity_id. The seed and order are recorded in each
+run's operational record and shown in the brief. A hash rank rather than `random.shuffle` keeps the
+order independent of Python's RNG implementation, and adding or removing one candidate never
+reorders the others. v2 is marked SUPERSEDED_AFTER_ONE_RUN by the next run's registration. Found
+while implementing it and fixed with it: the engine's book, its once-per-date check and its
+fill-failure streak were all keyed by version, so a version change would have orphaned v2's two
+pending positions (never settled, never monitored, outside the budget) and could re-decide
+2026-10-05. Now one book spans versions (each position keeps its accepting version on every
+event), a run date is processed once across versions, and the streak counts every version. Tests
+(`tests/test_strategy0_engine.py`): the order matches an independent restatement of the rule and is
+recorded; reproducibility from the date; v2's positions settle and are monitored under v3 with
+version 2 and count against v3's budget; ALREADY_RUN across versions; a cross-version failure
+streak trips the switch. The in-code v1 and v2 definitions hash exactly as the production rows
+(`3e93f063...`, `1ff7fa71...`). Rehearsed on a temporary copy of the production desk store: v2
+superseded after one run, v3 registered, 2026-10-05 ALREADY_RUN, 5PAISA and AUBANK in the book as
+v2 PENDING_ENTRY (Rs 24,764.32 of the budget); the production store was unchanged.
+
 ## P8-050 - the nightly brief reports its own run as never finished
 
 **Severity.** Low. **Status.** Open. Found 2026-10-05 in the first brief written by the nightly.
