@@ -18,6 +18,7 @@ _SUMMARY_RE = re.compile(
 )
 _GAPS_RE = re.compile(r"^\s*GAPs: (?P<n>\d+)")
 _START_RE = re.compile(r"^=== (?P<start>\S+) weekly_ingest started ===\s*$")
+_STEP_RE = re.compile(r"^=== (?P<start>\S+) weekly_ingest step=(?P<label>\S+) status=(?P<status>\w+) completed=\S+ ===\s*$")
 
 STALE_AFTER_DAYS = 7  # PROPOSED, matching the roughly-weekly cadence weekly_ingest.py's own name implies
 
@@ -44,7 +45,11 @@ def isin_map_health_line(conn, as_of_date: str | None) -> str:
         return "ISIN map: ERROR (build metadata unavailable or checksum invalid)."
 
 
-def ingestion_health_line() -> str:
+def ingestion_health_line(current_run_start: str | None = None) -> str:
+    """`current_run_start` is the start stamp of the run asking for this line, i.e. the nightly
+    brief, which is written before its own run finishes (P8-050): that run is reported as in
+    progress, with the steps it has logged so far, never as unfinished. Every other unmatched start
+    keeps P8-045's rule."""
     if not LOG_PATH.exists():
         return "Ingestion health: UNKNOWN (logs/weekly_ingest.log not found)."
 
@@ -53,12 +58,17 @@ def ingestion_health_line() -> str:
         last_summary = None
         last_gaps = None
         unfinished = {}
+        steps = {}
         last_successful_start = None
         from shared.market_time import parse_logged_timestamp
         for line in text.splitlines():
             started = _START_RE.match(line)
             if started:
                 unfinished[started.group("start")] = None
+                continue
+            step = _STEP_RE.match(line)
+            if step:
+                steps.setdefault(step.group("start"), []).append((step.group("label"), step.group("status")))
                 continue
             m = _SUMMARY_RE.match(line)
             if m:
@@ -76,25 +86,37 @@ def ingestion_health_line() -> str:
             if gm and last_summary is not None:
                 last_gaps = int(gm.group("n"))
 
-        current_unfinished = [stamp for stamp in unfinished if last_successful_start is None
-                              or parse_logged_timestamp(stamp) > last_successful_start]
+        in_progress = current_run_start if current_run_start in unfinished else None
+        current_unfinished = [stamp for stamp in unfinished if stamp != in_progress and (
+                              last_successful_start is None or parse_logged_timestamp(stamp) > last_successful_start)]
         unfinished_notice = (
             f"started {max(current_unfinished, key=parse_logged_timestamp)}, never finished "
             "(no matching finish recorded; may still be running)"
         ) if current_unfinished else ""
+        progress_notice = ""
+        if in_progress:
+            logged = steps.get(in_progress, [])
+            problems = [f"{label}={status}" for label, status in logged if status != "OK"]
+            progress_notice = (f"this run (started {in_progress}) is in progress: {len(logged)} "
+                               f"step{'' if len(logged) == 1 else 's'} logged so far, "
+                               + (", ".join(problems) if problems else "all OK")
+                               + "; later steps run after this line is written")
 
         if last_summary is None:
-            if unfinished_notice:
-                return f"Ingestion health: {unfinished_notice}."
+            notices = [n for n in (progress_notice, unfinished_notice) if n]
+            if notices:
+                return f"Ingestion health: {'; '.join(notices)}."
             return "Ingestion health: UNKNOWN (no run summary found in the log)."
 
         start = parse_logged_timestamp(last_summary["start"])
         age_days = (datetime.now(timezone.utc) - start).days
         staleness = f"STALE ({age_days}d ago)" if age_days > STALE_AFTER_DAYS else f"{age_days}d ago"
+        summary = (f"{last_summary['start']} ({staleness}), overall={last_summary['overall']}, "
+                   f"gaps={last_gaps if last_gaps is not None else '?'}")
 
         return (
-            f"Ingestion health: last run {last_summary['start']} ({staleness}), "
-            f"overall={last_summary['overall']}, gaps={last_gaps if last_gaps is not None else '?'}"
+            (f"Ingestion health: {progress_notice}. Previous finished run {summary}" if progress_notice
+             else f"Ingestion health: last run {summary}")
             + (f"; {unfinished_notice}." if unfinished_notice else "")
         )
     except Exception as exc:  # best-effort only -- never lets a log-parsing problem break `desk status`

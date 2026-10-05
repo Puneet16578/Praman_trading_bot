@@ -29,11 +29,41 @@ class BriefTest(EngineFixture):
                          f'Strategy 0 version 3; candidate order SEEDED_RANDOM, seed {seed[:16]}',
                          f'Candidate {first}', f'Candidate {second}', 'Calibrated P(profitable): UNKNOWN (T4)',
                          'Expected value: UNKNOWN (T4)', 'Execution: limit order at 102.00', 'Final state: WATCH',
-                         'Kill switches:', 'Rs 24,480.00 of Rs 25,000.00', 'Manual (strategy_id=manual)',
+                         'Kill switches:', 'Open risk by book (Strategy 0: stress loss; manual: entry-to-stop risk):',
+                         f'Strategy 0 (after its {DAYS[0]} run, version 3): Rs 24,480.00 of Rs 25,000.00; '
+                         f'2 positions open, pending or exiting: ',
+                         f'{first} PENDING_ENTRY (v3, decided {DAYS[0]})', 'Manual (strategy_id=manual)',
                          'SEALED until 2027-06-01', 'Data health:'):
             self.assertIn(expected, text)
         self.assertNotIn(f'Candidate {last}', text)
         self.assertNotIn('NO TRADE', text)
+
+    def test_status_shows_both_books_labelled_without_pnl(self):
+        """P8-051: `desk status` showed only the manual book, unlabelled."""
+        from desk import cli
+        self.store.market(DAYS[0])
+        for s in ('AAA', 'BBB'):
+            opportunity(self.desk, s, DAYS[0], plan())
+        self.run_day(DAYS[0])
+        loaded = type('L', (), dict(rulebook=rulebook(), version_file='desk_rulebook_v3.yaml'))
+        with patch('desk.cli.get_desk_connection', return_value=self.desk), \
+             patch('desk.cli.get_live_connection', return_value=self.store.conn), \
+             patch('desk.cli.load_active_rulebook', return_value=loaded), \
+             contextlib.redirect_stdout(io.StringIO()) as out:
+            cli.cmd_status(None)
+        text = out.getvalue()
+        for expected in ('Open risk by book (Strategy 0: stress loss; manual: entry-to-stop risk):',
+                         f'Strategy 0 (after its {DAYS[0]} run, version 3): Rs 24,480.00 of Rs 25,000.00; 2 positions',
+                         f'AAA PENDING_ENTRY (v3, decided {DAYS[0]})', f'BBB PENDING_ENTRY (v3, decided {DAYS[0]})',
+                         'Manual (strategy_id=manual): Rs 0.00 of Rs 25,000.00; open trades []',
+                         'SEALED until 2027-06-01'):
+            self.assertIn(expected, text)
+        for forbidden in ('Open risk used', 'Open positions:', 'pnl', 'P&L:', 'profit of', '102.00'):
+            self.assertNotIn(forbidden, text)
+        # cmd_status closed the fixture connections; reopen for tearDown.
+        from desk.lib.connection import get_desk_connection
+        self.desk = get_desk_connection(Path(self.temp.name)/'desk.sqlite')
+        self.store.conn = __import__('sqlite3').connect(':memory:')
 
     def test_no_trade_is_a_normal_outcome(self):
         self.store.market(DAYS[0])
@@ -88,8 +118,24 @@ class BriefNightlyTest(unittest.TestCase):
         with patch('desk.brief.write_brief', return_value=(Path('logs/brief_2026-10-05.txt'), '')) as called, \
              contextlib.redirect_stdout(io.StringIO()) as out:
             weekly_ingest.step_brief()
-        called.assert_called_once_with()
+        called.assert_called_once_with(current_run_start=None)     # outside a run
         self.assertIn('brief_2026-10-05.txt', out.getvalue())
+
+    def test_nightly_brief_is_told_which_run_is_writing_it(self):
+        """P8-050: inside the nightly, the brief knows its own run's start, so it can report that
+        run as in progress instead of 'never finished'."""
+        sys.path.insert(0, str(ROOT/'scripts'))
+        import weekly_ingest
+        with tempfile.TemporaryDirectory() as temp:
+            log = Path(temp)/'ingest.log'
+            with patch.object(weekly_ingest, 'LOG_PATH', log), \
+                 patch.object(weekly_ingest, 'STEPS', [('brief', weekly_ingest.step_brief)]), \
+                 patch.object(weekly_ingest, '_prevent_sleep', contextlib.nullcontext), \
+                 patch('desk.brief.write_brief', return_value=(Path('logs/brief_x.txt'), '')) as called, \
+                 contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(weekly_ingest.main(), 0)
+            started = log.read_text(encoding='utf-8').splitlines()[0].split(' ')[1]
+        called.assert_called_once_with(current_run_start=started)
 
 
 if __name__ == '__main__':

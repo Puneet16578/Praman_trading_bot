@@ -2038,6 +2038,17 @@ run finished at 18:51:11 with overall=OK (`desk status` afterwards: "last run
 line. Proposed fix: when the brief is written inside the nightly, label that run as in progress
 with the step statuses logged so far; keep P8-045's rule for any other unmatched start.
 
+**Fix, 2026-10-06 (user approval: "fix both").**
+**Status.** Closed — fixed; first live brief with it is tonight's.
+`weekly_ingest` holds the running run's start while its steps run and passes it to the brief
+(`write_brief(current_run_start=...)`); `ingestion_health_line(current_run_start)` reports that run
+as "this run (started ...) is in progress: N steps logged so far, all OK" (or the non-OK steps),
+followed by the previous finished run, and never as unfinished. Called without it (`desk status`,
+an outside observer) the line is unchanged, and any other unmatched start keeps P8-045's rule.
+Tests: `tests/test_ingestion_progress.py` (own run in progress while the outside view still says
+unfinished; an earlier interruption and a WARN step still reported; the log unchanged) and
+`tests/test_desk_brief.py` (the nightly passes its own start to the brief).
+
 ## P8-051 - desk status shows only the manual book's open risk and positions
 
 **Severity.** Low. **Status.** Open. Found 2026-10-05 after the first Strategy 0 run.
@@ -2050,4 +2061,16 @@ Rs 25,000.00 with two pending entries (5PAISA, AUBANK). Display only: each book 
 and Strategy 0 sized against its own running total (`budget_used_before_inr` in its
 `strategy_paper_events`), so no gate is wrong. Proposed fix: label the existing lines as the
 manual book and add a Strategy 0 line from the latest `strategy_runs` record, as the brief does.
+
+**Fix, 2026-10-06 (user approval: "desk status should show Strategy 0's book alongside the manual
+one, clearly labelled, with no P&L").**
+**Status.** Closed — fixed and checked against the production store.
+`desk.brief.open_risk_lines`, shared by the brief and `desk status`: "Open risk by book (Strategy 0:
+stress loss; manual: entry-to-stop risk)", a Strategy 0 line as of its latest run (version, open
+risk of its budget, each held position's symbol, state, accepting version and decision date; no
+prices, no P&L), the manual line, and the seal line. Production `desk status` now prints
+"Strategy 0 (after its 2026-10-05 run, version 2): Rs 24,764.32 of Rs 25,000.00; 2 positions open,
+pending or exiting: 5PAISA PENDING_ENTRY (v2, decided 2026-10-05), AUBANK PENDING_ENTRY (v2, decided
+2026-10-05)" above the manual line. Test: `tests/test_desk_brief.py` (both books labelled in `desk
+status`; no limit price or P&L text; the old unlabelled lines gone).
 

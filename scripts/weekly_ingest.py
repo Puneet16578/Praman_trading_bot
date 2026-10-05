@@ -299,9 +299,10 @@ def step_auto_paper() -> None:
 
 
 def step_brief() -> None:
-    """Daily decision desk after the automatic paper run; written to logs/brief_<date>.txt."""
+    """Daily decision desk after the automatic paper run; written to logs/brief_<date>.txt. The
+    brief is written before this run finishes, so it reports this run as in progress (P8-050)."""
     from desk.brief import write_brief
-    path, _ = write_brief()
+    path, _ = write_brief(current_run_start=_CURRENT_RUN_START)
     print(f"[BRIEF] wrote {path}")
 
 
@@ -403,14 +404,22 @@ def main() -> int:
         return _run_steps_and_summarize(started)
 
 
+_CURRENT_RUN_START: str | None = None  # the run in progress, while its steps run (read by step_brief)
+
+
 def _run_steps_and_summarize(started: str) -> int:
+    global _CURRENT_RUN_START
     results = []
-    for label, fn in STEPS:
-        result = _run_capturing(label, fn)
-        results.append(result)
-        completed = datetime.now(IST).isoformat(timespec="microseconds")
-        _append_log(f"=== {started} weekly_ingest step={label} "
-                    f"status={result['status']} completed={completed} ===")
+    _CURRENT_RUN_START = started
+    try:
+        for label, fn in STEPS:
+            result = _run_capturing(label, fn)
+            results.append(result)
+            completed = datetime.now(IST).isoformat(timespec="microseconds")
+            _append_log(f"=== {started} weekly_ingest step={label} "
+                        f"status={result['status']} completed={completed} ===")
+    finally:
+        _CURRENT_RUN_START = None
 
 
     all_gaps: list[str] = []

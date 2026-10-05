@@ -18,6 +18,12 @@
   and AUBANK (version 2 events, v3 run), then decide 2026-10-06's candidates in seeded order (seed
   for 2026-10-06: 211cd6834da9a787...). If both entries fill they hold Rs 24,764.32 of Rs 25,000,
   so most new candidates will be rejected on the budget.
+- P8-050 fixed: the nightly passes its own start to the brief, whose health line now reads "this
+  run (started ...) is in progress: N steps logged so far, all OK. Previous finished run ...";
+  `desk status` (outside the run) is unchanged. P8-051 fixed: one shared "Open risk by book" block
+  (brief and `desk status`): Strategy 0 as of its latest run with its held positions (symbol,
+  state, version, decision date; no prices or P&L) plus the manual book. Verified on production
+  `desk status`.
 
 ## 2026-10-05 evening: first nightly with the bulk refresh and Strategy 0 v2 verified (Claude)
 

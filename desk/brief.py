@@ -69,28 +69,46 @@ def build_brief(praman_conn, desk_conn, run_date, *, rulebook, health_lines=()):
     if ops is not None and not accepted:
         lines += ['NO TRADE - no candidate passed every check today. This is a normal outcome.']
     lines += ['', 'Kill switches:'] + kill_switches.display_lines(desk_conn, 'S0')
-    budget = rulebook.risk.capital_allocated_inr * rulebook.risk.max_open_risk_pct / 100
-    from desk.gates.engine import _open_risk_used_inr
-    from desk.journal.store import open_trade_ids
-    manual_risk = _open_risk_used_inr(desk_conn)
-    lines += ['', 'Open risk (stress loss):',
-              (f"  Strategy 0: Rs {ops['open_risk_inr']:,.2f} of Rs {ops['open_risk_budget_inr']:,.2f} "
-               f"({ops['positions_holding']} positions open, pending or exiting)") if ops else '  Strategy 0: no run',
-              f'  Manual (strategy_id=manual): Rs {manual_risk:,.2f} of Rs {budget:,.2f}; open trades {open_trade_ids(desk_conn)}',
-              '',
-              f'Strategy 0 profit/loss and outcome metrics: SEALED until {OUTCOMES_OPEN.isoformat()}. '
-              'Only operational metrics are shown.']
+    lines += [''] + open_risk_lines(desk_conn, rulebook, run)
     if health_lines:
         lines += ['', 'Data health:'] + [f'  {h}' for h in health_lines]
     return '\n'.join(lines) + '\n'
 
 
-def health_lines(praman_conn, run_date):
+def open_risk_lines(desk_conn, rulebook, run):
+    """Both paper books, each labelled (P8-051), shared by the brief and `desk status`: Strategy 0 as
+    of `run` (operational only: open risk and the positions held, never prices or P&L) and the
+    manual book. Each book has its own budget."""
+    from desk.gates.engine import _open_risk_used_inr
+    from desk.journal.store import open_trade_ids
+    budget = rulebook.risk.capital_allocated_inr * rulebook.risk.max_open_risk_pct / 100
+    lines = ['Open risk by book (Strategy 0: stress loss; manual: entry-to-stop risk):']
+    if run is None:
+        lines.append('  Strategy 0: no run')
+    else:
+        ops = run['operational']
+        held = [p for _, p in sorted(strategy0.load_book(desk_conn, through_run_id=run['run_id']).items())
+                if strategy0._holding(p)]
+        listed = ', '.join(f"{p['symbol']} {p['status']} (v{p['version']}, decided {p['decision_date']})"
+                           for p in held) or 'none'
+        lines.append(f"  Strategy 0 (after its {run['run_date']} run, version {run['strategy_version']}): "
+                     f"Rs {ops['open_risk_inr']:,.2f} of Rs {ops['open_risk_budget_inr']:,.2f}; "
+                     f"{ops['positions_holding']} positions open, pending or exiting: {listed}")
+    lines.append(f'  Manual (strategy_id=manual): Rs {_open_risk_used_inr(desk_conn):,.2f} of Rs {budget:,.2f}; '
+                 f'open trades {open_trade_ids(desk_conn)}')
+    lines.append(f'Strategy 0 profit/loss and outcome metrics: SEALED until {OUTCOMES_OPEN.isoformat()}. '
+                 'Only operational metrics are shown.')
+    return lines
+
+
+def health_lines(praman_conn, run_date, current_run_start=None):
     from desk.ingestion_health import ingestion_health_line, isin_map_health_line, latest_trading_date_line
-    return [ingestion_health_line(), latest_trading_date_line(praman_conn), isin_map_health_line(praman_conn, run_date)]
+    return [ingestion_health_line(current_run_start), latest_trading_date_line(praman_conn),
+            isin_map_health_line(praman_conn, run_date)]
 
 
-def write_brief(run_date=None, *, out_dir=ROOT/'logs'):
+def write_brief(run_date=None, *, out_dir=ROOT/'logs', current_run_start=None):
+    """`current_run_start`: the nightly run writing this brief, reported as in progress (P8-050)."""
     from desk.lib.connection import get_desk_connection
     from desk.lib.rulebook import load_active_rulebook
     from desk.lib.store import get_live_connection
@@ -98,7 +116,7 @@ def write_brief(run_date=None, *, out_dir=ROOT/'logs'):
     try:
         run_date = run_date or praman.execute('SELECT MAX(event_date) FROM bhavcopy').fetchone()[0]
         text = build_brief(praman, desk, run_date, rulebook=load_active_rulebook().rulebook,
-                           health_lines=health_lines(praman, run_date))
+                           health_lines=health_lines(praman, run_date, current_run_start))
     finally:
         desk.close()
         praman.close()

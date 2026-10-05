@@ -126,13 +126,13 @@ def _latest_bhavcopy_date(conn) -> str:
 def cmd_status(args):
     desk_conn = get_desk_connection()
     rulebook = load_active_rulebook()
-    from desk.gates.engine import _open_risk_used_inr
+    from desk.automation import strategy0
+    from desk.brief import open_risk_lines
     from desk.ingestion_health import ingestion_health_line, isin_map_health_line, latest_trading_date_line
 
-    open_risk = _open_risk_used_inr(desk_conn)
-    budget = rulebook.rulebook.risk.capital_allocated_inr * rulebook.rulebook.risk.max_open_risk_pct / 100.0
-    print(f"Open risk used: {open_risk:.2f} / {budget:.2f}")
-    print(f"Open positions: {jstore.open_trade_ids(desk_conn)}")
+    # Both books, labelled; Strategy 0 as of its latest run, operational only (P8-051).
+    for line in open_risk_lines(desk_conn, rulebook.rulebook, strategy0.latest_operational(desk_conn)):
+        print(line)
     from desk.readiness import print_gate_progress
     print_gate_progress(desk_conn, rulebook.rulebook)
     from desk.automation import kill_switches
