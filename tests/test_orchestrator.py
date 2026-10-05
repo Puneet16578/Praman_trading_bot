@@ -41,6 +41,8 @@ def _seed_announcement(conn, event_date: str, category: str = "Outcome of Board 
         "symbol": SYMBOL, "event_date": event_date, "knowledge_date": event_date,
         "seq_id": f"SEQ-{event_date}", "category": category, "description": "fixture announcement",
         "sort_timestamp": f"{event_date} 09:00:00", "source_file": "fixture",
+        "isin": None, "reported_symbol": SYMBOL, "identity_date": None,
+        "identity_status": "LEGACY_UNVERIFIED", "raw_json": None,
     }])
 
 class OrchestratorFixtureTest(unittest.TestCase):

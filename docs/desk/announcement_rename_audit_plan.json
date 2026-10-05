@@ -1,0 +1,280 @@
+{
+  "seed": 20261005,
+  "cutoff": "2026-09-15",
+  "security_population": 195,
+  "securities_with_eligible_events": 127,
+  "catalogue_events": 4402,
+  "eligible_events": 4402,
+  "excluded_short_history": 0,
+  "sample": [
+    {
+      "symbol": "WORTH",
+      "event_date": "2023-08-07",
+      "isin": "INE196Y01018",
+      "start": "2023-07-24",
+      "end": "2023-08-06",
+      "frozen_tier": "UNKNOWN_COVERAGE",
+      "security_events": 39,
+      "symbols": [
+        "WORTH",
+        "WORTHPERI"
+      ]
+    },
+    {
+      "symbol": "INCREDIBLE",
+      "event_date": "2022-07-29",
+      "isin": "INE452L01012",
+      "start": "2022-07-15",
+      "end": "2022-07-28",
+      "frozen_tier": "ROUTINE_ONLY",
+      "security_events": 39,
+      "symbols": [
+        "ADHUNIKIND",
+        "INCREDIBLE"
+      ]
+    },
+    {
+      "symbol": "SUNDARMHLD",
+      "event_date": "2020-03-23",
+      "isin": "INE202Z01029",
+      "start": "2020-03-06",
+      "end": "2020-03-22",
+      "frozen_tier": "UNKNOWN_COVERAGE",
+      "security_events": 40,
+      "symbols": [
+        "SUNDARMHLD",
+        "TSFINV"
+      ]
+    },
+    {
+      "symbol": "PAPERPROD",
+      "event_date": "2020-09-23",
+      "isin": "INE275B01026",
+      "start": "2020-09-09",
+      "end": "2020-09-22",
+      "frozen_tier": "UNKNOWN_COVERAGE",
+      "security_events": 48,
+      "symbols": [
+        "PAPERPROD",
+        "HUHTAMAKI"
+      ]
+    },
+    {
+      "symbol": "SUNCLAYLTD",
+      "event_date": "2022-11-09",
+      "isin": "INE105A01035",
+      "start": "2022-10-24",
+      "end": "2022-11-08",
+      "frozen_tier": "UNKNOWN_COVERAGE",
+      "security_events": 44,
+      "symbols": [
+        "SUNCLAYLTD",
+        "TVSHLTD"
+      ]
+    },
+    {
+      "symbol": "EPIGRAL",
+      "event_date": "2025-03-04",
+      "isin": "INE071N01016",
+      "start": "2025-02-17",
+      "end": "2025-03-03",
+      "frozen_tier": "SUBSTANTIVE",
+      "security_events": 36,
+      "symbols": [
+        "MFL",
+        "EPIGRAL"
+      ]
+    },
+    {
+      "symbol": "GANESHHOUC",
+      "event_date": "2023-12-29",
+      "isin": "INE460C01014",
+      "start": "2023-12-14",
+      "end": "2023-12-28",
+      "frozen_tier": "UNKNOWN_COVERAGE",
+      "security_events": 29,
+      "symbols": [
+        "GANESHHOUC",
+        "GANESHHOU"
+      ]
+    },
+    {
+      "symbol": "MINDAIND",
+      "event_date": "2021-02-05",
+      "isin": "INE405E01023",
+      "start": "2021-01-21",
+      "end": "2021-02-04",
+      "frozen_tier": "UNKNOWN_COVERAGE",
+      "security_events": 31,
+      "symbols": [
+        "MINDAIND",
+        "UNOMINDA"
+      ]
+    },
+    {
+      "symbol": "SASTASUNDR",
+      "event_date": "2024-10-31",
+      "isin": "INE019J01013",
+      "start": "2024-10-17",
+      "end": "2024-10-30",
+      "frozen_tier": "UNKNOWN_COVERAGE",
+      "security_events": 37,
+      "symbols": [
+        "SASTASUNDR",
+        "HEALTHX"
+      ]
+    },
+    {
+      "symbol": "BINANIIND",
+      "event_date": "2025-03-28",
+      "isin": "INE071A01013",
+      "start": "2025-03-13",
+      "end": "2025-03-27",
+      "frozen_tier": "UNKNOWN_COVERAGE",
+      "security_events": 6,
+      "symbols": [
+        "BINANIIND",
+        "BILVYAPAR"
+      ]
+    },
+    {
+      "symbol": "STLTECH",
+      "event_date": "2022-04-22",
+      "isin": "INE089C01029",
+      "start": "2022-04-06",
+      "end": "2022-04-21",
+      "frozen_tier": "SUBSTANTIVE",
+      "security_events": 40,
+      "symbols": [
+        "STRTECH",
+        "STLTECH"
+      ]
+    },
+    {
+      "symbol": "BORORENEW",
+      "event_date": "2022-12-26",
+      "isin": "INE666D01022",
+      "start": "2022-12-12",
+      "end": "2022-12-25",
+      "frozen_tier": "SUBSTANTIVE",
+      "security_events": 41,
+      "symbols": [
+        "BOROSIL",
+        "BORORENEW"
+      ]
+    },
+    {
+      "symbol": "GET&D",
+      "event_date": "2020-02-10",
+      "isin": "INE200A01026",
+      "start": "2020-01-27",
+      "end": "2020-02-09",
+      "frozen_tier": "UNKNOWN_COVERAGE",
+      "security_events": 27,
+      "symbols": [
+        "GET&D",
+        "GVT&D"
+      ]
+    },
+    {
+      "symbol": "RPSGVENT",
+      "event_date": "2021-07-19",
+      "isin": "INE425Y01011",
+      "start": "2021-07-05",
+      "end": "2021-07-18",
+      "frozen_tier": "SUBSTANTIVE",
+      "security_events": 48,
+      "symbols": [
+        "CESCVENT",
+        "RPSGVENT"
+      ]
+    },
+    {
+      "symbol": "EXCEL",
+      "event_date": "2022-03-29",
+      "isin": "INE688J01023",
+      "start": "2021-11-17",
+      "end": "2022-03-28",
+      "frozen_tier": "UNKNOWN_COVERAGE",
+      "security_events": 11,
+      "symbols": [
+        "EXCEL",
+        "LANDSMILL"
+      ]
+    },
+    {
+      "symbol": "MIRCELECTR",
+      "event_date": "2022-08-23",
+      "isin": "INE831A01028",
+      "start": "2022-08-04",
+      "end": "2022-08-22",
+      "frozen_tier": "UNKNOWN_COVERAGE",
+      "security_events": 24,
+      "symbols": [
+        "MIRCELECTR",
+        "ONIDA"
+      ]
+    },
+    {
+      "symbol": "SMLISUZU",
+      "event_date": "2023-10-03",
+      "isin": "INE294B01019",
+      "start": "2023-09-15",
+      "end": "2023-10-02",
+      "frozen_tier": "UNKNOWN_COVERAGE",
+      "security_events": 43,
+      "symbols": [
+        "SMLISUZU",
+        "SMLMAH"
+      ]
+    },
+    {
+      "symbol": "BIRLANU",
+      "event_date": "2025-11-10",
+      "isin": "INE557A01011",
+      "start": "2025-10-24",
+      "end": "2025-11-09",
+      "frozen_tier": "SUBSTANTIVE",
+      "security_events": 45,
+      "symbols": [
+        "HIL",
+        "BIRLANU"
+      ]
+    },
+    {
+      "symbol": "ATLANTAA",
+      "event_date": "2025-10-01",
+      "isin": "INE285H01022",
+      "start": "2025-09-17",
+      "end": "2025-09-30",
+      "frozen_tier": "SUBSTANTIVE",
+      "security_events": 28,
+      "symbols": [
+        "ATLANTA",
+        "ATLANTAA"
+      ]
+    },
+    {
+      "symbol": "SUDARCOLOR",
+      "event_date": "2026-01-28",
+      "isin": "INE492A01029",
+      "start": "2026-01-12",
+      "end": "2026-01-27",
+      "frozen_tier": "SUBSTANTIVE",
+      "security_events": 52,
+      "symbols": [
+        "CLNINDIA",
+        "HEUBACHIND",
+        "SUDARCOLOR"
+      ]
+    }
+  ],
+  "input_sha256": "e0b02b1290ce5a2c5b1e37969fbd1d60080c9c61b49fc2e55d34c490b6575d63",
+  "source_hashes": {
+    "logs\\amendment4_renames_output.log": "8b1c737d0e719ac09a59c9462de44c3b969765812e158882fafff60c7ef52839",
+    "data\\processed\\event_catalogue_loose_zscore_only.csv": "ab6dbe701b223076824f4430db5139dba8ed2ecdf9a5cdef5db29ed8e2e81908",
+    "data\\processed\\event_classifications.csv": "759a55b06d6e2b0564dadf05d6ca7aa77578ec5c8f470fbceb36ac135d27e42f"
+  },
+  "method": "Uniform sample of 20 securities with eligible events, then one uniform event per security. Twenty bulk window calls reuse the backfill session. No resampling after responses. Point estimate is the security-event-count-weighted changed-tier fraction times eligible events (Hajek ratio). Report raw Horvitz-Thompson estimate too. Remaining sampled-window observations are descriptive only. Identification bounds show the unobserved uncertainty; no precise population CI. Any failed sampled window suppresses the point estimate. Counts compare the frozen tier and the pre-backfill store with current bulk contents, not trading outcomes.",
+  "secondary_measure": "Separately report missing-disclosure changes of the stored NONE/ROUTINE_ONLY/SUBSTANTIVE tier, weighted by the same security event counts; distinguish UNKNOWN_COVERAGE to confirmed empty NONE. Added before any requests."
+}

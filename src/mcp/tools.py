@@ -95,7 +95,8 @@ def get_disclosure_window(conn, symbol: str, event_date: str, window_sessions: i
                 "window_start": None, "coverage": "insufficient_history"}
 
     window_start = days[idx - window_sessions]
-    ann_rows = read_as_of(conn, "corporate_announcements", event_date, symbol=symbol)
+    from ..ingestion.nse_market_data.announcements_bulk import read_equity_announcements
+    ann_rows = read_equity_announcements(conn, symbol, event_date)
     window_rows = sorted(
         (r for r in ann_rows if window_start <= r["event_date"] < event_date),
         key=lambda r: r["event_date"],
@@ -106,7 +107,7 @@ def get_disclosure_window(conn, symbol: str, event_date: str, window_sessions: i
                   "description": r["description"]}
                  for r in window_rows],
         "tier": tier, "window_sessions": window_sessions, "window_start": window_start,
-        "coverage": "checked",
+        "coverage": "unknown_identity" if any((r.get('identity_status') or '').startswith('UNKNOWN') for r in window_rows) else "checked",
     }
 
 def has_announcement_coverage(conn, symbol: str) -> bool:

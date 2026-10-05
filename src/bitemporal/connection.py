@@ -2,7 +2,7 @@
 from __future__ import annotations
 import sqlite3
 from pathlib import Path
-from .schema import BITEMPORAL_TABLES
+from .schema import BITEMPORAL_TABLES, ANNOUNCEMENT_METADATA_COLUMNS
 from shared.store_safety import install_guard, protect_connection
 
 install_guard()
@@ -28,9 +28,16 @@ def init_db(conn: sqlite3.Connection) -> None:
     for table in BITEMPORAL_TABLES.values():
         if table.name not in existing:
             conn.execute(table.ddl)
+        if table.name == 'corporate_announcements':
+            columns = {r['name'] for r in conn.execute('PRAGMA table_info(corporate_announcements)')}
+            for column in ANNOUNCEMENT_METADATA_COLUMNS:
+                if column not in columns:
+                    conn.execute(f'ALTER TABLE corporate_announcements ADD COLUMN {column} TEXT')
         # Indices are derived, query-speed-only structures (schema.py's note on FactTable.indices)
         # -- created every call via IF NOT EXISTS regardless of whether the table itself is new, so
         # an index added to an existing FactTable definition still gets created on an old DB file.
         for index_ddl in table.indices:
             conn.execute(index_ddl)
+        for trigger_ddl in table.triggers:
+            conn.execute(trigger_ddl)
     conn.commit()

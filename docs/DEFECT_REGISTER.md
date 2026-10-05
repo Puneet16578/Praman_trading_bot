@@ -1890,3 +1890,27 @@ reported a false persisted-content difference for non-ASCII announcement text.
 All JSON text reads in that script now specify UTF-8. Re-running on the real
 captures confirms identical persisted fields across both days and split windows.
 No durable store, source payload, or committed historical result was changed.
+
+## P8-048 - bulk-switch draft broke schema setup and migrated production before review
+
+**Severity.** Medium. **Status.** Fixed 2026-10-05, before the switch was committed.
+
+Found while resuming the unfinished Codex bulk switch. (1) `CORPORATE_ANNOUNCEMENTS.triggers` was
+written as `("""CREATE TRIGGER ...""")` with no trailing comma: a string, not a one-element tuple,
+so `init_db` iterated its characters and failed with `near "C": syntax error`. Every test that
+initialises a store errored (20 targeted tests); the full suite was otherwise unaffected. Fixed with
+the trailing comma; 45 targeted tests and the full suite (752) then passed. (2) Process: before that
+edit, an earlier uncommitted draft had already run `init_db` against the PRODUCTION Praman store
+(data/processed/praman.db, modified 2026-10-05 11:58), adding five nullable columns to
+`corporate_announcements` (isin, reported_symbol, identity_date, identity_status, raw_json), two
+indexes and the `announcements_stable_id_insert` trigger. Verified read-only: no row added or
+changed (1,022,965 rows, latest recorded_at 2026-10-03; no row has an isin), and `security_identities`
+was not created. The change is additive and is the approved design, but it reached production
+unreviewed. It is compatible with e09d608's code (the trigger only rejects an exact
+(seq_id, knowledge_date) repeat, which that code already treats as a skipped duplicate).
+
+Review fixes in the same change: the equity-only read filter required `INE` ISINs, silently
+dropping the IN9 DVR class that the project's equity-only rule keeps; it now excludes fund units
+(`INF`) only. Bulk ingestion now resolves publication-date identity from the append-only
+`security_identities` fact table as of the run, not from the cache files that transported it.
+

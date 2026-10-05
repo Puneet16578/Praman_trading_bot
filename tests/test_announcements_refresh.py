@@ -77,7 +77,7 @@ class RefreshTest(unittest.TestCase):
 
     def run_refresh(self, session, **kw):
         with contextlib.redirect_stdout(io.StringIO()) as out:
-            summary = recent.main(END, conn=self.conn, session=session, isin_map=self.isin, state_path=self.state, **kw)
+            summary = recent.main(END, mode='per_symbol', conn=self.conn, session=session, isin_map=self.isin, state_path=self.state, **kw)
         return summary, out.getvalue()
 
     def count(self, symbol):
@@ -131,7 +131,7 @@ class RefreshTest(unittest.TestCase):
 
     def test_missing_isin_map_refuses(self):
         with patch.object(recent, 'ISIN_MAP_PATH', Path(self.temp.name) / 'absent.json'), self.assertRaises(Exception):
-            recent.main(END, conn=self.conn, session=Session({}), state_path=self.state)
+            recent.main(END, mode='per_symbol', conn=self.conn, session=Session({}), state_path=self.state)
 
 
 class BackfillVisibilityTest(unittest.TestCase):

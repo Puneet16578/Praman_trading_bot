@@ -1,3 +1,24 @@
+## 2026-10-05 midday: bulk announcement switch finished (Claude; Codex out until 2026-10-10)
+
+- Root verified; HEAD e09d608; 17 modified + 6 untracked files from Codex's unfinished
+  bulk switch. No Python running. PramanDailyIngest next run 2026-10-05 18:00.
+- Requests: the 8 reconciliation calls (e09d608) are the only network use. No
+  data/raw/announcement_runs capture directory and no rollout receipt exist, and
+  CaptureSession creates that directory before its first request: backfill budget 0/30
+  and audit budget 0/20 used before this session.
+- Production stores: Praman store schema WAS migrated by an uncommitted draft at 11:58
+  (5 nullable corporate_announcements columns, 2 indexes, insert trigger; no rows
+  changed; security_identities absent) -> P8-048. Desk store unchanged since
+  2026-10-04 21:10.
+- Finished: fixed the broken trigger tuple (the cause of the reported failures),
+  equity read filter now excludes INF only (keeps IN9 DVRs), and ingestion resolves
+  identity from the security_identities fact table as of the run. Conditions 1-4
+  verified in tests (rename pairs, hash fallback, dated ISIN, fund retained/filtered,
+  revision vintages, legacy duplicates preserved and new ones blocked, failed window
+  holds the watermark with WARN, per-symbol fallback behind PRAMAN_ANNOUNCEMENTS_MODE).
+- Planned backfill computed read-only: 4 windows x 3 = 12 announcement calls + 15
+  identity files + 1 cookie = 28 of 30. Full suite: 754 tests in 414.554s, OK.
+
 ## 2026-10-05: bulk reconciliation and T1 exposure clarification
 
 - Root verified D:/Agentic_ai_project/praman; clean start at 0dbfe6b. Pushed that

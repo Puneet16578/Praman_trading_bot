@@ -13,7 +13,8 @@ SYMBOLS=('RELIANCE','TCS','KOTAKBANK')
 
 def canonical_rows(symbol,raw):
     rows=build_announcement_rows(symbol,raw,'parity_probe')
-    return {json.dumps({k:v for k,v in r.items() if k!='source_file'},sort_keys=True) for r in rows}
+    fields = ('symbol', 'seq_id', 'event_date', 'knowledge_date', 'category', 'description', 'sort_timestamp')
+    return {json.dumps({k:r[k] for k in fields},sort_keys=True) for r in rows}
 
 def compare(bulk,per_symbol):
     output={}

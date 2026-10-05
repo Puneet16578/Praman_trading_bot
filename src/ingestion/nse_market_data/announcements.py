@@ -19,6 +19,7 @@ from datetime import date, datetime, timedelta, timezone
 from difflib import SequenceMatcher
 
 import requests
+import json
 
 from ...bitemporal.store import write_facts
 
@@ -60,6 +61,9 @@ def build_announcement_rows(symbol: str, raw_announcements: list[dict], source_f
             "seq_id": str(seq_id), "category": (item.get("desc") or "").strip(),
             "description": item.get("attchmntText") or None, "sort_timestamp": sort_date,
             "source_file": source_file,
+            "isin": None, "reported_symbol": item.get('symbol') or symbol,
+            "identity_date": None, "identity_status": "LEGACY_UNVERIFIED",
+            "raw_json": json.dumps(item, sort_keys=True, ensure_ascii=False),
         })
     return rows
 

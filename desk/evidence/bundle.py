@@ -139,7 +139,8 @@ def _price_volume_delivery(conn, symbol: str, as_of_date: str, hist) -> tuple[Fa
     return price, volume, delivery
 
 
-def _disclosures(conn, symbol: str, as_of_date: str, source_complete_through: str | None = None) -> Fact | Unknown:
+def _disclosures(conn, symbol: str, as_of_date: str, source_complete_through: str | None = None,
+                 market_coverage_start: str | None = None) -> Fact | Unknown:
     """Missing data never reads as "no disclosure" (P8-021): a stale announcement source, a symbol
     with no announcement coverage at all, or too little history to check the window is UNKNOWN."""
     from desk.source_freshness import BACKFILL_COMPLETE_THROUGH, STALENESS_LIMIT_DAYS, required_through
@@ -158,7 +159,8 @@ def _disclosures(conn, symbol: str, as_of_date: str, source_complete_through: st
                        f"Disclosure window not checked ({window.get('coverage')}); its NONE tier is not evidence.")
     covered = conn.execute("SELECT 1 FROM corporate_announcements WHERE symbol=? AND knowledge_date<=? LIMIT 1",
                            (symbol, as_of_date)).fetchone()
-    if covered is None:
+    market_checked = market_coverage_start is not None and window['window_start'] >= market_coverage_start
+    if covered is None and not market_checked:
         return Unknown("disclosures", "measurement",
                        "No announcement has ever been stored for this symbol as of the decision: coverage is "
                        "unknown, so an empty window is not 'no disclosure'.")
@@ -238,7 +240,8 @@ def _corporate_actions_and_structural_breaks(conn, symbol: str, as_of_date: str,
 
 
 def assemble_evidence_bundle(conn, symbol: str, as_of_date: str, sector: str | None, *,
-                             disclosure_source_complete_through: str | None = None) -> EvidenceBundle:
+                             disclosure_source_complete_through: str | None = None,
+                             disclosure_market_coverage_start: str | None = None) -> EvidenceBundle:
     """`sector` is user-supplied in Phase 1 (item 5) -- typed as a Fact sourced from the user's own
     input if given, an Unknown otherwise. Never inferred or guessed.
 
@@ -259,7 +262,8 @@ def assemble_evidence_bundle(conn, symbol: str, as_of_date: str, sector: str | N
     hist = build_symbol_history(conn, symbol, extend_with_series=("BE", "BZ"))
 
     price, volume, delivery = _price_volume_delivery(conn, symbol, as_of_date, hist)
-    disclosures = _disclosures(conn, symbol, as_of_date, disclosure_source_complete_through)
+    disclosures = _disclosures(conn, symbol, as_of_date, disclosure_source_complete_through,
+                               disclosure_market_coverage_start)
     surveillance = _surveillance(conn, symbol, as_of_date)
     corporate_actions = _corporate_actions_and_structural_breaks(conn, symbol, as_of_date, hist)
 

@@ -45,7 +45,7 @@ class FreshnessRulesTest(unittest.TestCase):
 
     def test_partial_refresh_keeps_failed_symbols_stale(self):
         record_refresh(self.desk, through_date='2026-10-05', status='PARTIAL', failed_symbols=['BAD'], summary={})
-        self.assertEqual(complete_through(self.desk, 'GOOD'), '2026-10-05')
+        self.assertEqual(complete_through(self.desk, 'GOOD'), BACKFILL_COMPLETE_THROUGH)
         self.assertEqual(complete_through(self.desk, 'BAD'), BACKFILL_COMPLETE_THROUGH)
         record_refresh(self.desk, through_date='2026-10-06', status='COMPLETE', failed_symbols=[], summary={})
         self.assertEqual(complete_through(self.desk, 'BAD'), '2026-10-06')
@@ -111,6 +111,12 @@ class MissingCoverageTest(unittest.TestCase):
         ev = _disclosures(self.conn, 'NOANN', self.days[4], '2026-12-31')
         self.assertIsInstance(ev, Unknown)
         self.assertIn('insufficient_history', ev.detail)
+
+    def test_market_wide_coverage_can_establish_a_genuinely_empty_window(self):
+        ev = _disclosures(self.conn, 'NOANN', self.days[-1], self.days[-1], self.days[0])
+        self.assertIsInstance(ev, Fact)
+        too_late = _disclosures(self.conn, 'NOANN', self.days[-1], self.days[-1], self.days[-2])
+        self.assertIsInstance(too_late, Unknown)
 
 
 @unittest.skipUnless(_PRODUCTION, 'Real Praman production store not found.')

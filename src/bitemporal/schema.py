@@ -40,6 +40,7 @@ class FactTable:
     # provides -- see the note above BHAVCOPY's definition for why this is a derived-structure
     # decision (measured per query shape), not a default every table gets speculatively.
     indices: tuple[str, ...] = ()
+    triggers: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if "event_date" not in self.columns or "knowledge_date" not in self.columns:
@@ -219,20 +220,51 @@ CORPORATE_ANNOUNCEMENTS = FactTable(
             sort_timestamp TEXT NOT NULL,
             source_file TEXT NOT NULL,
             recorded_at TEXT NOT NULL,
-            UNIQUE (symbol, seq_id, knowledge_date)
+            isin TEXT,
+            reported_symbol TEXT,
+            identity_date TEXT,
+            identity_status TEXT,
+            raw_json TEXT,
+            UNIQUE (seq_id, knowledge_date)
         )
     """,
     indices=("CREATE INDEX IF NOT EXISTS idx_corporate_announcements_symbol_event_date "
-             "ON corporate_announcements(symbol, event_date)",),
+             "ON corporate_announcements(symbol, event_date)",
+             "CREATE INDEX IF NOT EXISTS idx_announcements_id ON corporate_announcements(seq_id, knowledge_date)",
+             "CREATE INDEX IF NOT EXISTS idx_announcements_isin ON corporate_announcements(isin, event_date)"),
+    triggers=("""CREATE TRIGGER IF NOT EXISTS announcements_stable_id_insert
+                BEFORE INSERT ON corporate_announcements
+                WHEN EXISTS (SELECT 1 FROM corporate_announcements
+                             WHERE seq_id=NEW.seq_id AND knowledge_date=NEW.knowledge_date)
+                BEGIN SELECT RAISE(ABORT, 'duplicate announcement identity vintage'); END""",),
     columns=frozenset({"row_id", "symbol", "event_date", "knowledge_date", "seq_id", "category",
-                        "description", "sort_timestamp", "source_file", "recorded_at"}),
-    business_key=("symbol", "seq_id"),
+                        "description", "sort_timestamp", "source_file", "recorded_at",
+                        "isin", "reported_symbol", "identity_date", "identity_status", "raw_json"}),
+    business_key=("seq_id",),
     column_types={
         "row_id": INTEGER, "symbol": str, "event_date": str, "knowledge_date": str,
         "seq_id": str, "category": str, "description": str, "sort_timestamp": str,
         "source_file": str, "recorded_at": str,
+        "isin": str, "reported_symbol": str, "identity_date": str, "identity_status": str, "raw_json": str,
     },
-    nullable_columns=frozenset({"description"}),
+    nullable_columns=frozenset({"description", "isin", "reported_symbol", "identity_date", "identity_status", "raw_json"}),
+)
+
+# Additive migration only. Existing rows (including historical alias duplicates)
+# remain byte-for-byte unchanged. The insert trigger prevents any new duplicates.
+ANNOUNCEMENT_METADATA_COLUMNS = ('isin', 'reported_symbol', 'identity_date', 'identity_status', 'raw_json')
+
+SECURITY_IDENTITIES = FactTable(
+    name='security_identities',
+    ddl='''CREATE TABLE security_identities (
+        row_id INTEGER PRIMARY KEY AUTOINCREMENT, symbol TEXT NOT NULL,
+        event_date TEXT NOT NULL, knowledge_date TEXT NOT NULL, isin TEXT NOT NULL,
+        series TEXT NOT NULL, source_file TEXT NOT NULL, recorded_at TEXT NOT NULL,
+        UNIQUE(symbol,event_date,series,knowledge_date))''',
+    columns=frozenset({'row_id','symbol','event_date','knowledge_date','isin','series','source_file','recorded_at'}),
+    business_key=('symbol','event_date','series'),
+    column_types=dict(row_id=INTEGER,symbol=str,event_date=str,knowledge_date=str,isin=str,series=str,source_file=str,recorded_at=str),
+    indices=('CREATE INDEX IF NOT EXISTS idx_identity_isin ON security_identities(isin,event_date)',),
 )
 
 SEBI_ORDERS = FactTable(
@@ -264,7 +296,7 @@ SEBI_ORDERS = FactTable(
 )
 
 BITEMPORAL_TABLES: dict[str, FactTable] = {
-    t.name: t for t in (BHAVCOPY, CORPORATE_ACTIONS, SURVEILLANCE_FLAGS, SEBI_ORDERS, CORPORATE_ANNOUNCEMENTS)
+    t.name: t for t in (BHAVCOPY, CORPORATE_ACTIONS, SURVEILLANCE_FLAGS, SEBI_ORDERS, CORPORATE_ANNOUNCEMENTS, SECURITY_IDENTITIES)
 }
 
 def get_fact_table(name: str) -> FactTable:

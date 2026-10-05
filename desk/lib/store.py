@@ -54,6 +54,7 @@ PRAMAN_FACT_TABLES = (
     "surveillance_flags",
     "corporate_announcements",
     "sebi_orders",
+    "security_identities",
 )
 
 
@@ -84,7 +85,10 @@ def get_replay_connection(watermark: str) -> sqlite3.Connection:
             "parameters inside a view definition)."
         )
     conn = get_live_connection()
+    existing = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     for table in PRAMAN_FACT_TABLES:
+        if table not in existing:  # pre-migration stores have no dated identity facts
+            continue
         conn.execute(
             f"CREATE TEMP VIEW {table} AS SELECT * FROM main.{table} WHERE recorded_at <= '{watermark}'"
         )
@@ -98,7 +102,10 @@ def max_recorded_at(conn: sqlite3.Connection) -> str:
     own bound, not production's current one; on a live connection there is no shadow and it reads
     main.<table> directly, identically either way."""
     values = []
+    existing = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     for table in PRAMAN_FACT_TABLES:
+        if table not in existing:
+            continue
         row = conn.execute(f"SELECT MAX(recorded_at) AS m FROM {table}").fetchone()
         if row["m"] is not None:
             values.append(row["m"])

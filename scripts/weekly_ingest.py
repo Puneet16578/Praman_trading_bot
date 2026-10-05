@@ -107,14 +107,16 @@ def step_bhavcopy() -> None:
 
 
 def step_announcements() -> None:
+    from src.config.settings import get_settings
+    if get_settings().announcement_fetch_mode == 'bulk':
+        print('Announcements: per-symbol backfill disabled; market-wide refresh runs in announcements_recent.')
+        return
     from ingest_announcements_full_history import main as announcements_main
     announcements_main()
 
 
 def step_announcements_recent() -> None:
-    """Refresh recent announcements, then record the Desk's freshness watermark (P8-021): the source
-    is complete through the run date except the symbols that failed. Nothing is recorded when the
-    refresh did not run, so the Desk keeps treating later disclosures as UNKNOWN."""
+    """Append a refresh receipt; only complete market-wide runs advance freshness."""
     from ingest_announcements_recent import main as refresh_main
     summary = refresh_main()
     if summary.get('status') in ('COMPLETE', 'PARTIAL'):
@@ -126,8 +128,8 @@ def step_announcements_recent() -> None:
                            failed_symbols=summary['failed_symbols'], summary=summary)
         finally:
             desk.close()
-        print(f"[ANNOUNCEMENTS] freshness recorded through {summary['end_date']} "
-              f"({len(summary['failed_symbols'])} failed symbols stay stale)")
+        print(f"[ANNOUNCEMENTS] refresh {summary['status']}; "
+              f"{len(summary.get('failed_windows', []))} failed windows; market-wide watermark advances only on COMPLETE")
 
 
 def step_isin_map() -> None:

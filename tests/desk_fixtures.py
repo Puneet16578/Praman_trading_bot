@@ -23,7 +23,10 @@ def copy_symbol_rows(prod_conn, scratch_conn, symbol: str, *, through_event_date
     HAS an event_date column) -- used to simulate "this date hasn't been ingested yet" with REAL
     data that already exists in production, rather than fabricating a not-yet-real future date."""
     for table in PRAMAN_FACT_TABLES:
-        cols = sorted(BITEMPORAL_TABLES[table].columns - {"row_id"})
+        available = {r['name'] for r in prod_conn.execute(f'PRAGMA table_info({table})')}
+        if not available:  # optional additive table absent from an older source store
+            continue
+        cols = sorted((BITEMPORAL_TABLES[table].columns - {"row_id"}) & available)
         if through_event_date is not None and "event_date" in cols:
             rows = prod_conn.execute(
                 f"SELECT {', '.join(cols)} FROM {table} WHERE symbol = ? AND event_date <= ?",

@@ -15,6 +15,7 @@ class Settings:
     sebi_orders_base_url: str = os.getenv("PRAMAN_SEBI_ORDERS_BASE_URL", "https://www.sebi.gov.in/enforcement/orders.html")
     sebi_request_delay_seconds: float = float(os.getenv("PRAMAN_SEBI_REQUEST_DELAY_SECONDS", "2.0"))
     request_timeout_seconds: float = float(os.getenv("PRAMAN_REQUEST_TIMEOUT_SECONDS", "30.0"))
+    announcement_fetch_mode: str = os.getenv('PRAMAN_ANNOUNCEMENTS_MODE', 'bulk')
 
 def get_settings() -> Settings:
     return Settings()
