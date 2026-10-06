@@ -2054,8 +2054,9 @@ to the log and to the day's brief (`desk.brief.record_skipped_run`, never replac
 health line reports the skip without counting it as a run. Exactly 30%, AC power, or an unreadable
 status all run. Tests: `tests/test_ingestion_progress.py::LowBatteryGuardTest` (skip, threshold
 and unknown cases, health line, Windows structure parsing) and
-`tests/test_desk_brief.py::SkippedRunBriefTest`. Residual, unchanged by request: "stop if the
-computer switches to battery power" remains on, so unplugging mid-run still stops a run.
+`tests/test_desk_brief.py::SkippedRunBriefTest`. Follow-up the same day (user approval): "stop if
+the computer switches to battery power" turned off too (`StopIfGoingOnBatteries` true -> false, the
+only XML change), so a run started on AC power is no longer stopped when the charger is pulled.
 
 ## P8-050 - the nightly brief reports its own run as never finished
 

@@ -18,6 +18,8 @@
   logged, isin_map=WARN) and the Open risk by book block; `desk status` shows v3's line.
 - P8-053 fixed after the checks (user approval): task may start on battery (only XML change);
   weekly_ingest skips below 30% on battery with a WARN in the log and the brief. Tests added.
+- Then (user approval) "stop if the computer switches to battery power" turned off as well
+  (StopIfGoingOnBatteries false, only XML change): a run started on AC continues if unplugged.
 - Next run 2026-10-07 18:00: first monitoring of 5PAISA and AUBANK (MONITORED events, version 2);
   if on battery below 30% at start, expect the skip WARN instead of a run.
 

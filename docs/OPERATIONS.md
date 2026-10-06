@@ -17,8 +17,10 @@ below 30%: no step runs, a `weekly_ingest skipped: WARN ...` line goes to `logs/
 and a WARN to that day's brief (appended if a brief exists), the exit code is 0, and the next run
 catches up on the data. The health line in `desk status` and the brief reports the skip without
 counting it as a run, so staleness keeps counting from the last real run. An unreadable power
-status never skips. "Stop if the computer switches to battery power" stays on, so a run started on
-AC power is still stopped if the charger is pulled mid-run (it then shows as unfinished).
+status never skips. "Stop if the computer switches to battery power" was then also turned off
+(user approval, 2026-10-07; `StopIfGoingOnBatteries` false, again the only XML difference), so a run
+that started on AC power continues if the charger is pulled; the under-30% check applies at start
+only, and the next run catches up on anything a later failure leaves behind.
 
 **Why this is not an amendment.** Amendment 2 §5's schedule is unchanged; this only makes the
 scheduled run start in more conditions and makes a deliberate skip visible.
@@ -176,11 +178,12 @@ $Settings = New-ScheduledTaskSettingsSet `
     -WakeToRun `
     -StartWhenAvailable `
     -AllowStartIfOnBatteries `
+    -DontStopIfGoingOnBatteries `
     -ExecutionTimeLimit (New-TimeSpan -Hours 3) `
     -DontStopOnIdleEnd
-# -AllowStartIfOnBatteries added 2026-10-07 (user approval; P8-053): the script itself skips the
-# run with a WARN when on battery below 30%. "Stop if the computer switches to battery power"
-# (StopIfGoingOnBatteries) was left at its default, true.
+# -AllowStartIfOnBatteries and -DontStopIfGoingOnBatteries added 2026-10-07 (user approval;
+# P8-053): the script itself skips the run with a WARN when on battery below 30% at start, and a
+# run that started on AC power continues if the charger is pulled.
 
 Register-ScheduledTask `
     -TaskName "PramanDailyIngest" `
