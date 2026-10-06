@@ -60,6 +60,12 @@ ephemeral and not something a scheduled task can depend on existing. This script
 `fetch_and_ingest_asm_range`/`fetch_and_ingest_gsm_range` directly, which fetch the circular index
 live over the network for the given date range -- no cached-index dependency at all.
 
+Low-battery guard (user decision 2026-10-07; P8-053): the scheduled task may now start on battery,
+but if Windows reports the machine on battery below MIN_BATTERY_PERCENT, no step runs. The skip is a
+WARN line in `logs/weekly_ingest.log` and in that day's brief, exit code 0, and the next run catches
+up, since every step re-reads an overlapping window or everything not yet stored. An unreadable
+power status never skips.
+
 Every step's stdout is captured (not just its exit status) so this script can surface the two
 things a human running this unattended actually needs to see without reading the full log every
 week: any bhavcopy GAP, and specifically any GAP whose reason names NSE's fallback-window mismatch
@@ -377,6 +383,43 @@ def _append_log(text: str) -> None:
     print(text.rstrip("\n"), flush=True)
 
 
+MIN_BATTERY_PERCENT = 30  # user decision 2026-10-07: on battery below this, the run is skipped
+
+
+class _SystemPowerStatus(ctypes.Structure):
+    _fields_ = [("ACLineStatus", ctypes.c_ubyte), ("BatteryFlag", ctypes.c_ubyte),
+                ("BatteryLifePercent", ctypes.c_ubyte), ("SystemStatusFlag", ctypes.c_ubyte),
+                ("BatteryLifeTime", ctypes.c_ulong), ("BatteryFullLifeTime", ctypes.c_ulong)]
+
+
+def power_status() -> tuple[bool, int | None]:
+    """(on battery, battery percent) from Windows GetSystemPowerStatus. Anything unreadable is
+    (False, None): the guard skips only on a definite low-battery reading."""
+    if sys.platform != "win32":
+        return False, None
+    status = _SystemPowerStatus()
+    if not ctypes.windll.kernel32.GetSystemPowerStatus(ctypes.byref(status)):
+        return False, None
+    percent = None if status.BatteryLifePercent == 255 else int(status.BatteryLifePercent)
+    return status.ACLineStatus == 0, percent
+
+
+def _skip_low_battery(started: str, percent: int) -> int:
+    """No step runs. The WARN goes to the log (which the health line reports without treating it as
+    a finished run, so staleness keeps counting from the last real run) and to today's brief."""
+    reason = f"on battery at {percent}% (below {MIN_BATTERY_PERCENT}%)"
+    _append_log(f"=== {started} weekly_ingest skipped: WARN {reason}; no step ran; the next run catches up ===")
+    try:
+        from desk.brief import record_skipped_run
+        record_skipped_run(market_today().isoformat(),
+                           f"WARN {started}: nightly run skipped, {reason}. No step ran: no ingestion, desk scan, "
+                           "Strategy 0 run or backup. The next run catches up on the data; this date gets no "
+                           "Strategy 0 decisions unless a run completes today.")
+    except Exception as exc:  # the log line is the durable record; a brief problem must not hide it
+        _append_log(f"  [power] WARN the skip could not be recorded in the brief ({type(exc).__name__})")
+    return 0
+
+
 @contextlib.contextmanager
 def _prevent_sleep():
     """Hold a Windows system-awake request on this thread; restore its previous state."""
@@ -399,6 +442,9 @@ def _prevent_sleep():
 def main() -> int:
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
     started = datetime.now(IST).isoformat(timespec="microseconds")
+    on_battery, percent = power_status()
+    if on_battery and percent is not None and percent < MIN_BATTERY_PERCENT:
+        return _skip_low_battery(started, percent)
     _append_log(f"=== {started} weekly_ingest started ===")
     with _prevent_sleep():
         return _run_steps_and_summarize(started)

@@ -1,5 +1,28 @@
 # Operations
 
+## Missed nightly run 2026-10-06 and the battery policy (P8-053) — operational change, not a pre-registration amendment
+
+**What happened.** The 2026-10-06 18:00 run did not start. The laptop was in Modern Standby from
+15:41 to 19:26 and on battery from 13:23. The task kept Windows' default "start only on AC power",
+so neither the 18:00 start nor missed-start recovery after the 19:26 and 20:43 wakes could run.
+Nothing recorded the miss: the Task Scheduler history log is disabled, and `weekly_ingest.py`
+writes nothing until it starts. An on-demand start at 20:55 was held Queued until AC power returned;
+the run started 21:02:22, finished 21:43:15 (overall WARN: two historical ISIN snapshots returned
+HTTP errors, as before) and decided 2026-10-06 normally. No data or decision date was lost.
+
+**Change (user approval, 2026-10-07).** The task may start on battery (`DisallowStartIfOnBatteries`
+false; the only difference in the exported task XML). Wake-to-run and missed-start recovery are
+unchanged. `scripts/weekly_ingest.py` skips the run when Windows reports the machine on battery
+below 30%: no step runs, a `weekly_ingest skipped: WARN ...` line goes to `logs/weekly_ingest.log`
+and a WARN to that day's brief (appended if a brief exists), the exit code is 0, and the next run
+catches up on the data. The health line in `desk status` and the brief reports the skip without
+counting it as a run, so staleness keeps counting from the last real run. An unreadable power
+status never skips. "Stop if the computer switches to battery power" stays on, so a run started on
+AC power is still stopped if the charger is pulled mid-run (it then shows as unfinished).
+
+**Why this is not an amendment.** Amendment 2 §5's schedule is unchanged; this only makes the
+scheduled run start in more conditions and makes a deliberate skip visible.
+
 ## Known limitation for the June 2027 evaluation: disclosure tiers of renamed securities (P8-046) — not a pre-registration amendment
 
 Recorded 2026-10-06 at the user's direction, as a known limitation, not an amendment.
@@ -152,8 +175,12 @@ $Trigger = New-ScheduledTaskTrigger -Weekly `
 $Settings = New-ScheduledTaskSettingsSet `
     -WakeToRun `
     -StartWhenAvailable `
+    -AllowStartIfOnBatteries `
     -ExecutionTimeLimit (New-TimeSpan -Hours 3) `
     -DontStopOnIdleEnd
+# -AllowStartIfOnBatteries added 2026-10-07 (user approval; P8-053): the script itself skips the
+# run with a WARN when on battery below 30%. "Stop if the computer switches to battery power"
+# (StopIfGoingOnBatteries) was left at its default, true.
 
 Register-ScheduledTask `
     -TaskName "PramanDailyIngest" `

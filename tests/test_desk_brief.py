@@ -108,6 +108,22 @@ class BriefTest(EngineFixture):
         self.store.conn = __import__('sqlite3').connect(':memory:')
 
 
+class SkippedRunBriefTest(unittest.TestCase):
+    """P8-053: a low-battery skip leaves its WARN in the day's brief and never replaces a brief."""
+
+    def test_notice_written_or_appended(self):
+        from desk.brief import record_skipped_run
+        with tempfile.TemporaryDirectory() as out:
+            out = Path(out)
+            path = record_skipped_run('2026-10-07', 'WARN first skip', out_dir=out)
+            self.assertEqual(path.read_text(encoding='utf-8'), 'PRAMAN - DAILY DECISION DESK  2026-10-07\n\nWARN first skip\n')
+            existing = out / 'brief_2026-10-08.txt'
+            existing.write_text('PRAMAN - DAILY DECISION DESK  2026-10-08\nreal brief\n', encoding='utf-8')
+            record_skipped_run('2026-10-08', 'WARN later skip', out_dir=out)
+            self.assertEqual(existing.read_text(encoding='utf-8'),
+                             'PRAMAN - DAILY DECISION DESK  2026-10-08\nreal brief\n\nWARN later skip\n')
+
+
 class BriefNightlyTest(unittest.TestCase):
     def test_brief_follows_auto_paper_in_nightly_run(self):
         sys.path.insert(0, str(ROOT/'scripts'))

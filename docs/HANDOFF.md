@@ -1,3 +1,26 @@
+## 2026-10-07: first Strategy 0 v3 run verified; battery policy (P8-053) (Claude)
+
+- The 2026-10-06 18:00 run was missed (asleep and on battery; the task was AC-only): P8-053. Started
+  on demand at the user's request; held Queued until AC power, ran 21:02:22-21:43:15, task result 0,
+  overall=WARN (isin_map: historical snapshots 2020-06-15 and 2021-06-15 HTTP errors, as on an
+  earlier run; map rebuilt, age 0). All other 11 steps OK, GAPs 0.
+- Registry: S0 v2 revision 2 SUPERSEDED_AFTER_ONE_RUN and v3 revision 1 PAPER_BURN_IN (both
+  2026-10-06 21:40 IST). strategy_runs run 2: v3, 2026-10-06, code c76f544; seed
+  211cd6834da9a787... from "S0-v3-candidate-order|2026-10-06", 58 candidates ranked.
+- Entries (version 2 events, written by v3's run 2): 5PAISA FILL_OPEN on 2026-10-06, 135 shares,
+  open 358.10 under the 367.90 limit; AUBANK FILL_OPEN, 47 shares, open 1034.70 under the 1042.08
+  limit; basis factor 1.0, no cap breach at fill. Both OPEN. All 58 new candidates rejected on
+  OPEN_RISK_BUDGET (Rs 24,764.32 of 25,000 held). No kill switch.
+- Freshness row 3: COMPLETE through 2026-10-06, recorded 21:11 IST, certifies 2026-10-05 (P8-049);
+  2026-10-06 decisions read disclosures as FACT. Refresh: 8 requests as predicted (cookie, the
+  2026-10-05 identity file, two windows with split checks), 759 inserted.
+- logs/brief_2026-10-06.txt shows version 3, the seed, the in-progress health line (10 steps
+  logged, isin_map=WARN) and the Open risk by book block; `desk status` shows v3's line.
+- P8-053 fixed after the checks (user approval): task may start on battery (only XML change);
+  weekly_ingest skips below 30% on battery with a WARN in the log and the brief. Tests added.
+- Next run 2026-10-07 18:00: first monitoring of 5PAISA and AUBANK (MONITORED events, version 2);
+  if on battery below 30% at start, expect the skip WARN instead of a run.
+
 ## 2026-10-06 (from 01:11 IST): approved fixes P8-049/050/051, Strategy 0 v3, P8-046 follow-ups (Claude)
 
 - Root verified; clean start at 9a24f1c (= origin/master); no Python running; PramanDailyIngest

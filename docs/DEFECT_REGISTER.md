@@ -2036,6 +2036,27 @@ streak trips the switch. The in-code v1 and v2 definitions hash exactly as the p
 superseded after one run, v3 registered, 2026-10-05 ALREADY_RUN, 5PAISA and AUBANK in the book as
 v2 PENDING_ENTRY (Rs 24,764.32 of the budget); the production store was unchanged.
 
+## P8-053 - the nightly run could be skipped silently on battery
+
+**Severity.** Low. **Status.** Closed — fixed 2026-10-07 (user approval for both changes).
+
+The 2026-10-06 18:00 run never started: the laptop was asleep (Modern Standby 15:41-19:26) and on
+battery, and the scheduled task kept Windows' default "start only on AC power", which also blocked
+missed-start recovery after the machine woke. Nothing recorded the miss (Task Scheduler's history
+log is disabled; the script logs nothing before it starts); it was found only because the user asked.
+Low: the data catch up on the next run, and a manual run that evening decided 2026-10-06 normally;
+without one, that date would have had no desk scan, no Strategy 0 decisions and no brief.
+
+Fix: the task may start on battery (`DisallowStartIfOnBatteries` true -> false, the only change in
+the exported XML; wake-to-run and missed-start recovery unchanged). `scripts/weekly_ingest.py` skips
+the run on battery below 30% (`MIN_BATTERY_PERCENT`, read with GetSystemPowerStatus), writing a WARN
+to the log and to the day's brief (`desk.brief.record_skipped_run`, never replacing a brief); the
+health line reports the skip without counting it as a run. Exactly 30%, AC power, or an unreadable
+status all run. Tests: `tests/test_ingestion_progress.py::LowBatteryGuardTest` (skip, threshold
+and unknown cases, health line, Windows structure parsing) and
+`tests/test_desk_brief.py::SkippedRunBriefTest`. Residual, unchanged by request: "stop if the
+computer switches to battery power" remains on, so unplugging mid-run still stops a run.
+
 ## P8-050 - the nightly brief reports its own run as never finished
 
 **Severity.** Low. **Status.** Open. Found 2026-10-05 in the first brief written by the nightly.

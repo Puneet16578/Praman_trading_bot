@@ -107,6 +107,20 @@ def health_lines(praman_conn, run_date, current_run_start=None):
             isin_map_health_line(praman_conn, run_date)]
 
 
+def record_skipped_run(day, notice, *, out_dir=ROOT/'logs'):
+    """A nightly run skipped before any step (low battery, P8-053) still leaves its WARN in that
+    day's brief: a short brief if none exists for the day, otherwise the notice is appended. An
+    existing brief is never replaced."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / f'brief_{day}.txt'
+    if path.exists():
+        with path.open('a', encoding='utf-8', newline='\n') as stream:
+            stream.write(f'\n{notice}\n')
+    else:
+        path.write_text(f'PRAMAN - DAILY DECISION DESK  {day}\n\n{notice}\n', encoding='utf-8', newline='\n')
+    return path
+
+
 def write_brief(run_date=None, *, out_dir=ROOT/'logs', current_run_start=None):
     """`current_run_start`: the nightly run writing this brief, reported as in progress (P8-050)."""
     from desk.lib.connection import get_desk_connection

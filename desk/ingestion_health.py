@@ -19,6 +19,7 @@ _SUMMARY_RE = re.compile(
 _GAPS_RE = re.compile(r"^\s*GAPs: (?P<n>\d+)")
 _START_RE = re.compile(r"^=== (?P<start>\S+) weekly_ingest started ===\s*$")
 _STEP_RE = re.compile(r"^=== (?P<start>\S+) weekly_ingest step=(?P<label>\S+) status=(?P<status>\w+) completed=\S+ ===\s*$")
+_SKIP_RE = re.compile(r"^=== (?P<start>\S+) weekly_ingest skipped: (?P<detail>.*?) ===\s*$")
 
 STALE_AFTER_DAYS = 7  # PROPOSED, matching the roughly-weekly cadence weekly_ingest.py's own name implies
 
@@ -49,7 +50,8 @@ def ingestion_health_line(current_run_start: str | None = None) -> str:
     """`current_run_start` is the start stamp of the run asking for this line, i.e. the nightly
     brief, which is written before its own run finishes (P8-050): that run is reported as in
     progress, with the steps it has logged so far, never as unfinished. Every other unmatched start
-    keeps P8-045's rule."""
+    keeps P8-045's rule. A run skipped for low battery (P8-053) is reported when it is later than
+    the last finished run; it never counts as a run, so staleness is unaffected."""
     if not LOG_PATH.exists():
         return "Ingestion health: UNKNOWN (logs/weekly_ingest.log not found)."
 
@@ -59,12 +61,17 @@ def ingestion_health_line(current_run_start: str | None = None) -> str:
         last_gaps = None
         unfinished = {}
         steps = {}
+        last_skip = None
         last_successful_start = None
         from shared.market_time import parse_logged_timestamp
         for line in text.splitlines():
             started = _START_RE.match(line)
             if started:
                 unfinished[started.group("start")] = None
+                continue
+            skipped = _SKIP_RE.match(line)
+            if skipped:
+                last_skip = skipped.groupdict()
                 continue
             step = _STEP_RE.match(line)
             if step:
@@ -102,8 +109,12 @@ def ingestion_health_line(current_run_start: str | None = None) -> str:
                                + (", ".join(problems) if problems else "all OK")
                                + "; later steps run after this line is written")
 
+        skip_notice = (f"latest attempt {last_skip['start']} skipped: {last_skip['detail']}"
+                       if last_skip and (last_summary is None or parse_logged_timestamp(last_skip["start"])
+                                         > parse_logged_timestamp(last_summary["start"])) else "")
+
         if last_summary is None:
-            notices = [n for n in (progress_notice, unfinished_notice) if n]
+            notices = [n for n in (progress_notice, skip_notice, unfinished_notice) if n]
             if notices:
                 return f"Ingestion health: {'; '.join(notices)}."
             return "Ingestion health: UNKNOWN (no run summary found in the log)."
@@ -113,11 +124,12 @@ def ingestion_health_line(current_run_start: str | None = None) -> str:
         staleness = f"STALE ({age_days}d ago)" if age_days > STALE_AFTER_DAYS else f"{age_days}d ago"
         summary = (f"{last_summary['start']} ({staleness}), overall={last_summary['overall']}, "
                    f"gaps={last_gaps if last_gaps is not None else '?'}")
+        tail = [n for n in (skip_notice, unfinished_notice) if n]
 
         return (
             (f"Ingestion health: {progress_notice}. Previous finished run {summary}" if progress_notice
              else f"Ingestion health: last run {summary}")
-            + (f"; {unfinished_notice}." if unfinished_notice else "")
+            + (f"; {'; '.join(tail)}." if tail else "")
         )
     except Exception as exc:  # best-effort only -- never lets a log-parsing problem break `desk status`
         return f"Ingestion health: UNKNOWN (could not parse log: {exc})."
