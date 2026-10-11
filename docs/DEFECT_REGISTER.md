@@ -2036,6 +2036,44 @@ streak trips the switch. The in-code v1 and v2 definitions hash exactly as the p
 superseded after one run, v3 registered, 2026-10-05 ALREADY_RUN, 5PAISA and AUBANK in the book as
 v2 PENDING_ENTRY (Rs 24,764.32 of the budget); the production store was unchanged.
 
+## P8-054 - desk monitor checked a manual stop on the run date's session only
+
+**Severity.** Medium. **Status.** Closed — fixed 2026-10-11 (user approval); no record affected.
+
+Raised by the user: manual positions were monitored only when someone ran `desk monitor`, and
+`run_monitor` checked each open trade's stop against one session, the run date's
+(`check_stop_on_session(..., run_date, ...)`). After a forgotten evening, a stop hit on the missed
+day was never found if the next session recovered above the stop, and was filled on the wrong day
+at the wrong price if it did not. The time exit (horizon) was never automated at all. Medium: a risk
+control could silently fail; no manual trade has existed yet (production `paper_trade_events` has 0
+rows), so nothing was affected.
+
+Fix: `desk.monitor.first_mechanical_exit` checks every session from the entry session through the
+run date in date order, with the stop in force on each date, and returns the first mechanical exit:
+the stop (gap at the open, else touch at the stop, the existing rule) or the time exit at the open
+of the first session after both the thesis horizon and the entry session (only that open counts on
+that session; an open through the stop is reported as a stop gap). A trade with no linked thesis
+keeps its stop and has no time exit. The nightly gained a `manual_monitor` step (after
+`auto_paper`, before `brief`) running `desk monitor` for the latest session; the brief shows its
+report (exits, pending opens/closes, open positions, what changed). Targets and the evidence, risk
+and portfolio exits stay the user's judgement. Tests: `tests/test_desk_monitor_catchup.py` (8 cases;
+all 7 behavioural ones fail with the old one-session rule restored), `tests/test_desk_brief.py`
+(nightly step order and call, brief section). `tests/test_share_basis_structural.py`'s fixture thesis
+horizon moved from 2021-12-31 to 2026-12-31: that share-basis scenario is set in 2026 and the
+stale fixture date now (correctly) triggers the time exit it does not exercise.
+
+## P8-055 - nightly tests depended on the machine's real battery level
+
+**Severity.** Low. **Status.** Closed — introduced by P8-053 (2026-10-07), fixed 2026-10-11.
+
+P8-053's guard reads the live power status in `weekly_ingest.main()`. Three test harnesses that
+call `main()` did not isolate it, so they passed while the laptop was on AC power and, on
+2026-10-11 with it on battery at 21%, five tests failed (four in `test_ingestion_progress.py`, one
+in `test_desk_brief.py`; the guard correctly skipped every step). Fixed by patching
+`power_status` in those harnesses (`tests/test_ingestion_progress.py`, `tests/test_desk_brief.py`,
+`tests/test_isin_map_operations.py`); the affected modules (95 tests) then passed with the laptop
+still on battery at 21%.
+
 ## P8-053 - the nightly run could be skipped silently on battery
 
 **Severity.** Low. **Status.** Closed — fixed 2026-10-07 (user approval for both changes).

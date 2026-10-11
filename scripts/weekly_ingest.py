@@ -304,6 +304,27 @@ def step_auto_paper() -> None:
         f"kill switches active {ops['kill_switches_active']}"))
 
 
+def step_manual_monitor() -> None:
+    """The manual paper book's mechanical exits every night (user approval 2026-10-11, P8-054):
+    `desk monitor` for the latest stored session, which checks the stop and the time exit on every
+    session since entry, in date order, and completes pending approved opens and closes. Targets and
+    the evidence, risk and portfolio exits stay the user's judgement. Its report feeds the brief."""
+    from desk.lib.connection import get_desk_connection
+    from desk.lib.store import get_live_connection
+    from desk.monitor import run_monitor
+    praman, desk = get_live_connection(), get_desk_connection()
+    try:
+        run_date = praman.execute("SELECT MAX(event_date) FROM bhavcopy").fetchone()[0]
+        report = run_monitor(praman, desk, run_date)
+    finally:
+        desk.close()
+        praman.close()
+    print(f"[MANUAL_MONITOR] {run_date}: {len(report['positions'])} open positions checked, "
+          f"{len(report['exits_triggered'])} mechanical exits, "
+          f"{len(report['pending_opens_completed'])} pending opens and "
+          f"{len(report['pending_closes_completed'])} pending closes processed")
+
+
 def step_brief() -> None:
     """Daily decision desk after the automatic paper run; written to logs/brief_<date>.txt. The
     brief is written before this run finishes, so it reports this run as in progress (P8-050)."""
@@ -330,6 +351,7 @@ STEPS = [
     ("circuit_bands", step_circuit_bands),
     ("desk_scan", step_desk_scan),
     ("auto_paper", step_auto_paper),
+    ("manual_monitor", step_manual_monitor),
     ("brief", step_brief),
     ("backups", step_backups),
 ]

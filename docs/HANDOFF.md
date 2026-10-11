@@ -1,3 +1,22 @@
+## 2026-10-11: manual-book monitoring catch-up and nightly mechanical exits (Claude)
+
+- Start: root verified, clean at 5882b92; no repo file changed since 2026-10-09 and no Codex session
+  record in the last 3 days (a Codex VS Code app-server process started 23:40 but no session was
+  active). GitHub unreachable at start (connection timeout to github.com:443).
+- ABC (the user's thesis example) was invented: no thesis file created, no dry run. Standing
+  preferences for future theses (saved to Claude's memory): sector = NSE's own industry
+  classification; time exit = "exit at the next session open after the horizon".
+- Confirmed: `desk monitor` did NOT catch up missed sessions (stop checked on the run date only):
+  P8-054 (Medium). Fixed: every session since entry, in date order, stop in force per date; plus the
+  mechanical time exit (open of the first session after the horizon and the entry session). New
+  nightly step `manual_monitor` (after auto_paper, before brief); the brief shows the manual report.
+  Targets and evidence/risk/portfolio exits stay manual. No manual trade exists yet.
+- P8-055 (Low, my own from P8-053): three test harnesses read the machine's real battery; on
+  battery at 21% five tests failed. Isolated; affected modules pass on battery.
+- Docs: HOW_TO_PAPER_TRADE.md exits section, theses/_template.yaml exit comment, OPERATIONS.md.
+- Next run 2026-10-12 18:00: expect a manual_monitor step line in the log and "Manual book
+  monitoring ... Open positions: 0" in the brief (nothing to check yet).
+
 ## 2026-10-07: first Strategy 0 v3 run verified; battery policy (P8-053) (Claude)
 
 - The 2026-10-06 18:00 run was missed (asleep and on battery; the task was AC-only): P8-053. Started

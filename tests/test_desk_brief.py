@@ -38,6 +38,30 @@ class BriefTest(EngineFixture):
         self.assertNotIn(f'Candidate {last}', text)
         self.assertNotIn('NO TRADE', text)
 
+    def test_manual_monitor_report_is_in_the_brief(self):
+        """P8-054: the nightly desk monitor's manual what-changed report appears in the brief."""
+        from desk.journal import store as jstore
+        self.store.market(DAYS[0])
+        self.run_day(DAYS[0])
+        self.assertIn('Manual book monitoring: no desk monitor run recorded for this date.', self.brief(DAYS[0]))
+        jstore.record_monitor_run(self.desk, run_date=DAYS[0], report=dict(
+            run_date=DAYS[0],
+            exits_triggered=[dict(trade_id='MANU:3', reason='stop_touch', price=92.0, event_date=DAYS[0], trigger='price')],
+            pending_opens_completed=[dict(decision_id=7, status='FILLED', event_date=DAYS[0], price=101.5)],
+            pending_closes_completed=[],
+            positions={'OPEN:4': dict(symbol='OPEN', stop=50.0, target=70.0, horizon='2026-11-06',
+                                      surveillance='No ASM/GSM stage', disclosures='Disclosure tier: NONE')},
+            what_changed=['OPEN:4: disclosures changed: a -> b']))
+        text = self.brief(DAYS[0])
+        for expected in (f'Manual book monitoring (desk monitor for {DAYS[0]}; mechanical exits only: stop and time):',
+                         '  Mechanical exits: 1', f'    MANU:3: price exit (stop_touch) on {DAYS[0]} at 92.00',
+                         '  Pending opens processed: 1', f'    7: FILLED on {DAYS[0]} at 101.50',
+                         '  Pending closes processed: 0', '  Open positions: 1',
+                         '    OPEN:4: stop 50.00, target 70.00, horizon 2026-11-06', '      disclosures: Disclosure tier: NONE',
+                         '  What changed:', '    OPEN:4: disclosures changed: a -> b',
+                         '  Targets and the evidence, risk and portfolio exits remain your judgement.'):
+            self.assertIn(expected, text)
+
     def test_status_shows_both_books_labelled_without_pnl(self):
         """P8-051: `desk status` showed only the manual book, unlabelled."""
         from desk import cli
@@ -129,13 +153,32 @@ class BriefNightlyTest(unittest.TestCase):
         sys.path.insert(0, str(ROOT/'scripts'))
         import weekly_ingest
         labels = [label for label, _ in weekly_ingest.STEPS]
-        self.assertEqual(labels.index('brief'), labels.index('auto_paper') + 1)
+        # P8-054: the manual book's monitor runs between Strategy 0 and the brief, which reports it.
+        self.assertEqual(labels.index('manual_monitor'), labels.index('auto_paper') + 1)
+        self.assertEqual(labels.index('brief'), labels.index('manual_monitor') + 1)
         self.assertLess(labels.index('brief'), labels.index('backups'))
         with patch('desk.brief.write_brief', return_value=(Path('logs/brief_2026-10-05.txt'), '')) as called, \
              contextlib.redirect_stdout(io.StringIO()) as out:
             weekly_ingest.step_brief()
         called.assert_called_once_with(current_run_start=None)     # outside a run
         self.assertIn('brief_2026-10-05.txt', out.getvalue())
+
+    def test_nightly_manual_monitor_runs_desk_monitor_for_the_latest_session(self):
+        sys.path.insert(0, str(ROOT/'scripts'))
+        import sqlite3
+        import weekly_ingest
+        praman = sqlite3.connect(':memory:')
+        praman.execute('CREATE TABLE bhavcopy (event_date TEXT)')
+        praman.executemany('INSERT INTO bhavcopy VALUES (?)', [('2026-10-08',), ('2026-10-09',)])
+        desk = sqlite3.connect(':memory:')
+        report = dict(positions={'A:1': {}}, exits_triggered=[], pending_opens_completed=[], pending_closes_completed=[])
+        with patch('desk.lib.store.get_live_connection', return_value=praman), \
+             patch('desk.lib.connection.get_desk_connection', return_value=desk), \
+             patch('desk.monitor.run_monitor', return_value=report) as called, \
+             contextlib.redirect_stdout(io.StringIO()) as out:
+            weekly_ingest.step_manual_monitor()
+        called.assert_called_once_with(praman, desk, '2026-10-09')
+        self.assertIn('[MANUAL_MONITOR] 2026-10-09: 1 open positions checked, 0 mechanical exits', out.getvalue())
 
     def test_nightly_brief_is_told_which_run_is_writing_it(self):
         """P8-050: inside the nightly, the brief knows its own run's start, so it can report that
@@ -147,6 +190,7 @@ class BriefNightlyTest(unittest.TestCase):
             with patch.object(weekly_ingest, 'LOG_PATH', log), \
                  patch.object(weekly_ingest, 'STEPS', [('brief', weekly_ingest.step_brief)]), \
                  patch.object(weekly_ingest, '_prevent_sleep', contextlib.nullcontext), \
+                 patch.object(weekly_ingest, 'power_status', return_value=(False, None)), \
                  patch('desk.brief.write_brief', return_value=(Path('logs/brief_x.txt'), '')) as called, \
                  contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(weekly_ingest.main(), 0)

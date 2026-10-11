@@ -83,7 +83,10 @@ class ShareBasisStructuralTest(unittest.TestCase):
             self.bar(symbol, day, *SESSION[day])
 
     def manual_decision(self, symbol):
-        thesis = dict(COMPLETE_AXISBANK_THESIS, planned_entry=100.0, planned_stop=92.0, planned_target=120.0)
+        # Horizon inside this scenario's own window (the shared fixture's 2021 date would now trigger
+        # the mechanical time exit, P8-054, which this share-basis test does not exercise).
+        thesis = dict(COMPLETE_AXISBANK_THESIS, planned_entry=100.0, planned_stop=92.0, planned_target=120.0,
+                      horizon='2026-12-31')
         thesis_id = jstore.record_thesis(self.desk, symbol=symbol, evidence_cutoff=D,
                                          **{k: v for k, v in thesis.items() if k != 'thesis_id'})
         decision_id = jstore.record_decision(

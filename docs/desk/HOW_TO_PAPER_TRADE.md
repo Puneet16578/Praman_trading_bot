@@ -84,12 +84,17 @@ policy blocking local scripts). Prices, dates and IDs below are examples to repl
 
 The five thesis triggers are **price** (stop/target), **time** (horizon), **evidence**
 (invalidation), **risk** (budget breach), and **portfolio** (allocation change).
-**Current limitation:** `desk monitor`, also called by `desk evening`, automatically
-fills **stop exits only**: at the session open if it gaps below the stop, otherwise
-at the stop if touched. It does not automatically execute targets or the other four
-triggers — you judge those yourself, from `desk evening`'s "what changed" line (new
-disclosures/surveillance for `evidence`), your thesis's own horizon date (`time`),
-`desk status`'s open-risk line (`risk`), or your own judgment (`portfolio`).
+**Mechanical exits (since 2026-10-11, P8-054):** `desk monitor` runs every night as part
+of the scheduled ingestion (and whenever you run `desk monitor` or `desk evening`). It fills
+the **stop**, at the session open if it gaps below the stop, otherwise at the stop if
+touched, and the **time** exit, at the open of the first session after your thesis
+horizon (never the entry session's own open). It checks every session since entry in date
+order, so a stop hit on an evening nobody ran it is still filled on that day at that day's
+price. Its report (exits, pending opens and closes, open positions, what changed) is in the
+daily brief. It does not execute **targets** or the **evidence**, **risk** and **portfolio**
+triggers: you judge those yourself, from the brief's "What changed" lines (new
+disclosures/surveillance for `evidence`), `desk status`'s open-risk lines (`risk`), or your
+own judgment (`portfolio`).
 
 When one of those four applies, close the position **manually — but there is no
 `--price` or `--event-date` flag, on purpose**: exactly like `paper open`, a manual

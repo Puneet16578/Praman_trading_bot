@@ -1,5 +1,14 @@
 # Operations
 
+## Nightly manual-book monitoring (P8-054, 2026-10-11) — operational change, not a pre-registration amendment
+
+The nightly ingestion gained a `manual_monitor` step after `auto_paper` and before `brief`: it
+runs `desk monitor` for the latest stored session, which fills the manual book's mechanical exits
+(the stop, and the time exit at the next session open after the thesis horizon), checking every
+session since entry in date order, and completes pending approved opens and closes. The brief
+shows its report. Targets and the evidence, risk and portfolio exits stay manual. Running
+`desk monitor` or `desk evening` by hand is still safe: a session already checked never changes.
+
 ## Missed nightly run 2026-10-06 and the battery policy (P8-053) — operational change, not a pre-registration amendment
 
 **What happened.** The 2026-10-06 18:00 run did not start. The laptop was in Modern Standby from

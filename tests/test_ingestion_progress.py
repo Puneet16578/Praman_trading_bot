@@ -21,7 +21,8 @@ class IngestionProgressTest(unittest.TestCase):
         with patch.object(weekly_ingest, "LOG_PATH", self.log), \
                 patch.object(weekly_ingest, "STEPS", steps), \
                 patch.object(weekly_ingest, "_prevent_sleep", contextlib.nullcontext), \
-                contextlib.redirect_stdout(io.StringIO()):
+                patch.object(weekly_ingest, "power_status", return_value=(False, None)), \
+                contextlib.redirect_stdout(io.StringIO()):   # P8-055: never the machine's real battery
             return weekly_ingest.main()
 
     def health(self):

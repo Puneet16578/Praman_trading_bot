@@ -70,9 +70,51 @@ def build_brief(praman_conn, desk_conn, run_date, *, rulebook, health_lines=()):
         lines += ['NO TRADE - no candidate passed every check today. This is a normal outcome.']
     lines += ['', 'Kill switches:'] + kill_switches.display_lines(desk_conn, 'S0')
     lines += [''] + open_risk_lines(desk_conn, rulebook, run)
+    lines += [''] + manual_monitor_lines(desk_conn, run_date)
     if health_lines:
         lines += ['', 'Data health:'] + [f'  {h}' for h in health_lines]
     return '\n'.join(lines) + '\n'
+
+
+def manual_monitor_lines(desk_conn, run_date):
+    """The manual book's what-changed report from the latest `desk monitor` run for this date (the
+    nightly runs one, P8-054). The manual book is the user's own and is shown in full."""
+    row = desk_conn.execute('SELECT report, recorded_at FROM monitor_runs WHERE run_date=? ORDER BY run_id DESC LIMIT 1',
+                            (run_date,)).fetchone()
+    if row is None:
+        return ['Manual book monitoring: no desk monitor run recorded for this date.']
+    report = json.loads(row['report'])
+    lines = [f"Manual book monitoring (desk monitor for {run_date}; mechanical exits only: stop and time):"]
+    exits = report.get('exits_triggered', [])
+    lines.append(f'  Mechanical exits: {len(exits)}')
+    for e in exits:
+        when = f" on {e['event_date']}" if e.get('event_date') else ''
+        lines.append(f"    {e['trade_id']}: {e.get('trigger', 'price')} exit ({e['reason']}){when} at {e['price']:.2f}")
+    for label, key in (('Pending opens processed', 'pending_opens_completed'), ('Pending closes processed', 'pending_closes_completed')):
+        done = report.get(key, [])
+        lines.append(f'  {label}: {len(done)}')
+        for d in done:
+            what = d.get('decision_id', d.get('trade_id'))
+            detail = f" on {d['event_date']}" if d.get('event_date') else ''
+            price = f" at {d['price']:.2f}" if d.get('price') is not None else ''
+            lines.append(f"    {what}: {d['status']}{detail}{price}")
+    positions = report.get('positions', {})
+    lines.append(f'  Open positions: {len(positions)}')
+    for trade_id, p in sorted(positions.items()):
+        lines.append(f"    {trade_id}: stop {p['stop']:.2f}, target {p['target']:.2f}, horizon {p.get('horizon') or 'none'}")
+        if p.get('unadjustable'):
+            lines.append(f"      {p['unadjustable']}")
+        else:
+            lines.append(f"      surveillance: {p.get('surveillance')}")
+            lines.append(f"      disclosures: {p.get('disclosures')}")
+    changed = report.get('what_changed')
+    if isinstance(changed, list):
+        lines.append('  What changed:' + (' nothing since the previous monitor run' if not changed else ''))
+        lines += [f'    {c}' for c in changed]
+    else:
+        lines.append(f'  What changed: {changed}')
+    lines.append('  Targets and the evidence, risk and portfolio exits remain your judgement.')
+    return lines
 
 
 def open_risk_lines(desk_conn, rulebook, run):

@@ -108,7 +108,9 @@ class IsinRefreshTest(unittest.TestCase):
         for steps, status, exit_code in [([], "OK", 0), ([("isin_map", warn)], "WARN", 0),
                                          ([("isin_map", warn), ("other", fail)], "ERROR", 1)]:
             with self.subTest(status=status), patch.object(weekly_ingest, "LOG_PATH", log), \
-                    patch.object(weekly_ingest, "STEPS", steps), contextlib.redirect_stdout(io.StringIO()):
+                    patch.object(weekly_ingest, "STEPS", steps), \
+                    patch.object(weekly_ingest, "power_status", return_value=(False, None)), \
+                    contextlib.redirect_stdout(io.StringIO()):   # P8-055: never the machine's real battery
                 self.assertEqual(weekly_ingest.main(), exit_code)
             with patch("desk.ingestion_health.LOG_PATH", log):
                 self.assertIn(f"overall={status}", ingestion_health_line())

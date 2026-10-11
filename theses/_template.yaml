@@ -25,7 +25,8 @@ planned_stop: 950.0
 planned_target: 1150.0
 
 # All five exit fields are required. These are written instructions, not executable
-# rules. Currently monitor fills ONLY stops; review the rest and close manually.
+# rules. The nightly monitor fills only the stop and the time exit (next session open
+# after the horizon); review the target and the other three yourself and close manually.
 exit_price: "Exit at the 950 stop or take profit when the 1150 target is reached."
 exit_time: "Exit at the next session open after the 2026-12-31 horizon."
 exit_evidence: "Exit at the next session open after an invalidation condition is confirmed."

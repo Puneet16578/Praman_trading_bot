@@ -4,12 +4,61 @@ closes gained the identical anti-hindsight design), marks open positions against
 triggers, and reports what changed (new disclosures, surveillance changes, corporate actions,
 volume/delivery changes) since the previous monitor run, by diffing against the most recent
 monitor_runs report.
+
+Mechanical exits (P8-054): the stop, and the time exit at the open of the first session after the
+thesis horizon, are checked on EVERY session from the entry session through the run date, in date
+order, so a stop hit on an evening nobody ran the monitor is still found and filled at that
+session's own price. The nightly ingestion runs this every evening. Targets and the evidence, risk
+and portfolio exits stay the user's judgement.
 """
 from __future__ import annotations
 
 from desk.evidence.bundle import assemble_evidence_bundle
 from desk.journal import store as jstore
-from desk.paper.execution import check_stop_on_session
+from desk.paper.execution import Fill, basis_factor, check_stop_on_session, session_ohlc
+
+
+def trade_horizon(desk_conn, trade_id: str) -> str | None:
+    """The opening decision's thesis horizon, or None when the trade has no linked thesis."""
+    row = desk_conn.execute(
+        "SELECT t.horizon FROM paper_trade_events e JOIN decisions d ON d.decision_id = e.decision_id "
+        "JOIN theses t ON t.thesis_id = d.thesis_id WHERE e.trade_id = ? AND e.event_type = 'OPEN'",
+        (trade_id,)).fetchone()
+    return row[0] if row else None
+
+
+def first_mechanical_exit(praman_conn, desk_conn, trade_id: str, run_date: str):
+    """(Fill, trigger) for the first mechanical exit from the entry session through `run_date`, in
+    date order, or None. trigger 'price': the stop (gap at the open, else touch at the stop, the
+    existing conservative rule). trigger 'time': the open of the first session after both the
+    horizon and the entry session; on that session only its open counts (the position is gone
+    afterwards), and an open at or below the stop is reported as the stop gap it also is. Each
+    session uses the stop in force on that date. Raises UnadjustableWindowError where no adjustment
+    factor exists."""
+    from desk.paper.close import trade_basis_date
+    from src.signals.event_catalogue import build_symbol_history
+
+    events = [dict(r) for r in desk_conn.execute(
+        'SELECT event_type, event_date, stop FROM paper_trade_events WHERE trade_id=? ORDER BY event_id', (trade_id,))]
+    opened = next(e for e in events if e['event_type'] == 'OPEN')
+    symbol = trade_id.split(':')[0]
+    basis = trade_basis_date(desk_conn, trade_id)
+    horizon = trade_horizon(desk_conn, trade_id)
+    sessions = [d for d in build_symbol_history(praman_conn, symbol).trading_days if opened['event_date'] <= d <= run_date]
+    for day in sessions:
+        stop = [e['stop'] for e in events if e['event_date'] <= day][-1]
+        # Never the entry session's own open: a limit entry fills after that open.
+        if horizon is not None and day > horizon and day > opened['event_date']:
+            row = session_ohlc(praman_conn, symbol, day, run_date)
+            if row is None:
+                return None          # the first session after the horizon is not known yet
+            opening = row['open_price'] * basis_factor(praman_conn, symbol, basis, day)
+            return (Fill(event_date=day, price=opening, kind='stop_gap'), 'price') if opening <= stop else \
+                   (Fill(event_date=day, price=opening, kind='time_exit_open'), 'time')
+        fill = check_stop_on_session(praman_conn, symbol, day, stop, run_date, basis_date=basis)
+        if fill is not None:
+            return fill, 'price'
+    return None
 
 
 def complete_pending_paper_opens(praman_conn, desk_conn, loaded_costs=None) -> list[dict]:
@@ -88,30 +137,32 @@ def run_monitor(praman_conn, desk_conn, run_date: str) -> dict:
     for trade_id in jstore.open_trade_ids(desk_conn):
         latest = jstore.latest_trade_event(desk_conn, trade_id)
         symbol = trade_id.split(":")[0]
+        horizon = trade_horizon(desk_conn, trade_id)
 
-        from desk.paper.close import trade_basis_date
         from src.signals.price_adjustment import UnadjustableWindowError
         try:
-            stop_fill = check_stop_on_session(praman_conn, symbol, run_date, latest["stop"], run_date,
-                                              basis_date=trade_basis_date(desk_conn, trade_id))
+            found = first_mechanical_exit(praman_conn, desk_conn, trade_id, run_date)
         except UnadjustableWindowError as exc:
             # No adjustment factor exists, so the stop cannot be checked: report it, never guess.
             report["positions"][trade_id] = {"symbol": symbol, "stop": latest["stop"], "target": latest["target"],
+                                             "horizon": horizon,
                                              "unadjustable": f"stop not checked: {exc}; review and close by hand"}
             continue
-        if stop_fill is not None:
+        if found is not None:
             # Decision-basis fill price, exactly like a manual close -- the round-trip SELL-side cost is its
             # own explicit field, computed the same way `paper close` computes it, never folded into
             # the price. Two identical trades therefore show identical P&L (desk/risk/officer.py:
-            # realized_pnl_inr) whether a stop or a manual close ended them.
-            sell_cost_inr = round_trip_cost_inr(stop_fill.price, latest["quantity"], loaded_costs.costs, "sell")
+            # realized_pnl_inr) whichever exit ended them.
+            fill, trigger = found
+            reason = f"stop ({fill.kind})" if trigger == "price" else f"time (first session after the {horizon} horizon)"
+            sell_cost_inr = round_trip_cost_inr(fill.price, latest["quantity"], loaded_costs.costs, "sell")
             jstore.record_journal_event(desk_conn, event_type='EXIT_TRIGGER', trade_id=trade_id,
-                                       detail={'trigger': 'price', 'event_date': stop_fill.event_date},
-                                       reason=f'stop ({stop_fill.kind})')
-            jstore.close_paper_trade(desk_conn, trade_id=trade_id, event_date=stop_fill.event_date,
-                                      price=stop_fill.price, reason=f"stop ({stop_fill.kind})",
+                                       detail={'trigger': trigger, 'event_date': fill.event_date}, reason=reason)
+            jstore.close_paper_trade(desk_conn, trade_id=trade_id, event_date=fill.event_date,
+                                      price=fill.price, reason=reason,
                                       sell_cost_inr=sell_cost_inr, cost_config_hash=loaded_costs.sha256)
-            report["exits_triggered"].append({"trade_id": trade_id, "reason": stop_fill.kind, "price": stop_fill.price})
+            report["exits_triggered"].append({"trade_id": trade_id, "reason": fill.kind, "price": fill.price,
+                                              "event_date": fill.event_date, "trigger": trigger})
             continue
 
         from desk.source_freshness import complete_through, market_coverage_from, required_through
@@ -119,7 +170,7 @@ def run_monitor(praman_conn, desk_conn, run_date: str) -> dict:
                                           disclosure_source_complete_through=complete_through(desk_conn, symbol),
                                           disclosure_market_coverage_start=market_coverage_from(desk_conn, required_through(run_date)))
         report["positions"][trade_id] = {
-            "symbol": symbol, "stop": latest["stop"], "target": latest["target"],
+            "symbol": symbol, "stop": latest["stop"], "target": latest["target"], "horizon": horizon,
             "surveillance": _fact_or_unknown_repr(bundle.surveillance),
             "disclosures": _fact_or_unknown_repr(bundle.disclosures),
         }
