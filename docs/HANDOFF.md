@@ -35,7 +35,10 @@
 - Logs backup added (user request): `desk/backups.py` kind `logs`, daily, `desk_keep` retention;
   snapshot copy first, manifest from the copies, restore check against the archive's own manifest
   only; in the nightly backup step, `desk backup verify` and `desk status`. Tests in
-  tests/test_backups.py.
+  tests/test_backups.py. First logs archive made at 22:26 with `python scripts/backup_stores.py`
+  (desk and Praman already backed up tonight, re-verified only): logs_20261012T165644157156Z.zip,
+  99 files, 2,421,495 bytes, 218,575 compressed. `desk backup verify` then exited 0: desk, Praman
+  and logs all integrity ok.
 
 ## 2026-10-11: manual-book monitoring catch-up and nightly mechanical exits (Claude)
 
