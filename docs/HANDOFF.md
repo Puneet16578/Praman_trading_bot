@@ -1,3 +1,24 @@
+## 2026-10-12 (morning): nightly runs 6-9 October and the burn-in record (Claude, read-only check)
+
+| Weekday | Run | Started | Finished | Result |
+|---|---|---|---|---|
+| Tue 6 Oct | missed at 18:00 (asleep, on battery, task AC-only: P8-053); run on demand | 21:02 | 21:43 | WARN |
+| Wed 7 Oct | late: laptop in standby at 18:00, missed-start recovery on waking 19:05 | 19:06 | 21:26 | WARN |
+| Thu 8 Oct | late: standby at 18:00, recovery on waking 18:53 | 18:54 | 19:27 | WARN |
+| Fri 9 Oct | late: standby until 19:43 | 19:44 | 20:26 | WARN |
+
+- No run was skipped and none failed. Every WARN is the isin_map step's historical-snapshot HTTP
+  errors (map rebuilt each time). On 7 Oct the laptop re-entered standby at 19:09 and the first
+  step only completed at 20:55, consistent with the run pausing during standby.
+- Burn-in record: every stored session has a desk scan and a Strategy 0 run (5 Oct 45 events, run 1
+  v2; 6 Oct 66, run 2 v3; 7 Oct 43, run 3; 8 Oct 56, run 4; 9 Oct 40, run 5). **No gaps since
+  6 October.** No kill switch triggered.
+- Strategy 0 positions (status only): 5PAISA OPEN (v2); AUBANK CLOSED (v2); its exit trigger, date
+  and price were neither read nor shown (sealed until 2027-06-01). JINDALSTEL: v3's first
+  acceptance (decided 8 Oct, 48 shares, limit 1027.52), FILL_OPEN on 9 Oct at 1014.70, OPEN.
+- `logs/brief_2026-10-11.txt` is not a run: six skip notices written at 23:53-23:54 on Sunday 11 Oct
+  by the battery-dependent tests (P8-055). Left in place for the user to decide.
+
 ## 2026-10-11: manual-book monitoring catch-up and nightly mechanical exits (Claude)
 
 - Start: root verified, clean at 5882b92; no repo file changed since 2026-10-09 and no Codex session

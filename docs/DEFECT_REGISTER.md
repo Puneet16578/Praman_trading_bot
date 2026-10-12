@@ -2072,7 +2072,11 @@ call `main()` did not isolate it, so they passed while the laptop was on AC powe
 in `test_desk_brief.py`; the guard correctly skipped every step). Fixed by patching
 `power_status` in those harnesses (`tests/test_ingestion_progress.py`, `tests/test_desk_brief.py`,
 `tests/test_isin_map_operations.py`); the affected modules (95 tests) then passed with the laptop
-still on battery at 21%.
+still on battery at 21%. Found 2026-10-12: those failing tests' skip notices also reached the real
+`logs/brief_2026-10-11.txt` (the default folder of `record_skipped_run`, which they did not patch),
+six WARN notices dated a Sunday on which no run happened; their log lines went to the tests'
+temporary log, so `logs/weekly_ingest.log` is clean. The isolation fix prevents a recurrence; the
+file is left in place for the user to decide.
 
 ## P8-053 - the nightly run could be skipped silently on battery
 
