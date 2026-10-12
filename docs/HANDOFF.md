@@ -24,9 +24,18 @@
   fails the suite if the real folder changed (the suite's own redirected output file excepted).
   Do not run the suite while a nightly is running: that check would (correctly) flag the nightly's
   writes.
-- Still to do after tonight's 18:00 run (user request): confirm a `manual_monitor` step line in
-  logs/weekly_ingest.log and "Open positions: 0" with nothing changed in the brief's "Manual book
-  monitoring" section; show the brief in full.
+- Tonight's run (2026-10-12): the laptop was in standby 17:41-21:08; missed-start recovery started
+  the task at 21:08:42 (on battery at 38%, above the 30% guard). 21:09:46-22:03:08, task result 0,
+  overall OK, all 13 steps OK (isin_map without WARN), `manual_monitor` OK at 21:52:50. Brief
+  "Manual book monitoring": Mechanical exits 0, Pending opens/closes 0, Open positions 0, and
+  "What changed: no prior run to diff against" (this was the first monitor run ever; from the next
+  run, with no positions, it reads "nothing since the previous monitor run"). Strategy 0: 46 passed
+  evidence, 0 accepted (budget: Rs 24,798.64 of 25,000 held by 5PAISA and JINDALSTEL), seed
+  a8944467c5f0ead0.
+- Logs backup added (user request): `desk/backups.py` kind `logs`, daily, `desk_keep` retention;
+  snapshot copy first, manifest from the copies, restore check against the archive's own manifest
+  only; in the nightly backup step, `desk backup verify` and `desk status`. Tests in
+  tests/test_backups.py.
 
 ## 2026-10-11: manual-book monitoring catch-up and nightly mechanical exits (Claude)
 

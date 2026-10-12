@@ -251,6 +251,13 @@ to the configured OneDrive destination occurs while disabled. No encryption.
 
 - Desk: one backup per IST calendar day, retain 14 locally (14 in cloud when enabled).
 - Praman: one backup per ISO calendar week, retain 8 locally (2 in cloud when enabled).
+- Logs (`logs/`: briefs, run history, backup events, quarantine; added 2026-10-12 at the user's
+  request, since these existed only on this laptop): one compressed `logs_<timestamp>.zip` per
+  IST calendar day, with the desk backups' retention (`desk_keep`). The folder is still written
+  while the nightly runs, so every file is first copied into a temporary snapshot; the manifest
+  records each copied file's size and SHA-256. The restore check unpacks into a temporary folder
+  and compares the archive only with its own manifest (names, sizes, hashes, ZIP CRCs), never with
+  the live folder, which keeps growing.
 - The ingestion entry point calls backups after the same-day bhavcopy step, including
   when an earlier ingestion step failed, so an ingestion failure does not prevent
   protecting the journal. The foreground run started before this code change needs
@@ -266,9 +273,9 @@ to the configured OneDrive destination occurs while disabled. No encryption.
 - Archives publish by a same-directory atomic rename. A temporary restore verifies
   integrity, row counts, journal hashes, and the database hash before any retention
   removal. Re-running within the same period verifies the existing latest archive.
-- `desk backup verify` restores the latest archive for each store and enabled
-  destination into temporary folders and repeats all checks. It never restores over
-  a live store. `desk status` shows last backup and last successful restore times
+- `desk backup verify` restores the latest archive for each store, and for the logs
+  folder, in each enabled destination into temporary folders and repeats all checks.
+  It never restores over a live store or the live logs folder. `desk status` shows last backup and last successful restore times
   from the append-only operational log `logs/backups.jsonl`.
 
 Retention only removes recognized archives directly inside the configured backup

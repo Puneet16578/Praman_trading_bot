@@ -1,5 +1,6 @@
 """Recovery proof, read-only WAL snapshots, corruption detection, cadence and retention."""
 import json
+import shutil
 import sqlite3
 import tempfile
 import unittest
@@ -27,6 +28,11 @@ class BackupTest(unittest.TestCase):
         self.conn.executemany("INSERT INTO journal_events VALUES (?, ?)", [(1, "first"), (2, "second")])
         self.conn.commit()
         self.now = datetime(2026, 9, 28, 18, 0, tzinfo=IST)
+        self.logs = self.root / "logs"                       # a stand-in logs/ folder
+        (self.logs / "_quarantine").mkdir(parents=True)
+        (self.logs / "weekly_ingest.log").write_bytes(b"=== run 1 ===\n")
+        (self.logs / "brief_2026-09-28.txt").write_bytes(b"PRAMAN - DAILY DECISION DESK\n")
+        (self.logs / "_quarantine" / "NOTE.txt").write_bytes(b"note\n")
         self.local = self.root / "local"
         self.cloud = self.root / "cloud"
         self.config_path = self.root / "config.json"
@@ -42,7 +48,8 @@ class BackupTest(unittest.TestCase):
         self.config_path.write_text(json.dumps(self.config), encoding="utf-8")
 
     def run_backup(self, now=None):
-        return backups.run_backups(self.config_path, sources={"desk": self.source, "praman": self.source},
+        return backups.run_backups(self.config_path, sources={"desk": self.source, "praman": self.source,
+                                                              "logs": self.logs},
                                    event_path=self.event_path, now=now or self.now)
 
     def test_online_readonly_snapshot_includes_committed_wal_and_restores(self):
@@ -100,19 +107,22 @@ class BackupTest(unittest.TestCase):
     def test_verify_latest_records_proof_and_status_without_cloud_access(self):
         self.run_backup()
         proofs = backups.verify_latest(self.config_path, event_path=self.event_path)
-        self.assertEqual({proof["kind"] for proof in proofs}, {"desk", "praman"})
+        self.assertEqual({proof["kind"] for proof in proofs}, {"desk", "praman", "logs"})
         self.assertFalse(self.cloud.exists())
         line = backups.status_line(self.event_path)
         self.assertIn("last backup 2026-09-28", line)
         self.assertIn("last successful restore check", line)
+        self.assertIn("logs: last backup 2026-09-28", line)
 
     def test_daily_and_weekly_cadence(self):
-        self.assertEqual([r["event"] for r in self.run_backup()], ["backup", "backup"])
-        self.assertEqual([r["event"] for r in self.run_backup()], ["already_backed_up"] * 2)
+        events = lambda reports: [(r["kind"], r["event"]) for r in reports]
+        self.assertEqual(events(self.run_backup()), [("desk", "backup"), ("praman", "backup"), ("logs", "backup")])
+        self.assertEqual(events(self.run_backup()), [("desk", "already_backed_up"), ("praman", "already_backed_up"),
+                                                     ("logs", "already_backed_up")])
         next_day = self.run_backup(self.now + timedelta(days=1))
-        self.assertEqual([r["event"] for r in next_day], ["backup", "already_backed_up"])
+        self.assertEqual(events(next_day), [("desk", "backup"), ("praman", "already_backed_up"), ("logs", "backup")])
         next_week = self.run_backup(self.now + timedelta(days=7))
-        self.assertEqual([r["event"] for r in next_week], ["backup", "backup"])
+        self.assertEqual(events(next_week), [("desk", "backup"), ("praman", "backup"), ("logs", "backup")])
 
     def test_retention_keeps_14_daily_and_8_local_2_cloud_weekly(self):
         self.config["cloud"]["enabled"] = True
@@ -121,6 +131,8 @@ class BackupTest(unittest.TestCase):
             self.run_backup(self.now + timedelta(days=day))
         self.assertEqual(len(backups.archives(self.local, "desk")), 14)
         self.assertEqual(len(backups.archives(self.cloud, "desk")), 14)
+        self.assertEqual(len(backups.archives(self.local, "logs")), 14)    # the desk backups' retention
+        self.assertEqual(len(backups.archives(self.cloud, "logs")), 14)
         for week in range(3, 10):
             self.run_backup(self.now + timedelta(weeks=week))
         self.assertEqual(len(backups.archives(self.local, "praman")), 8)
@@ -149,6 +161,60 @@ class BackupTest(unittest.TestCase):
         self.write_config()
         with self.assertRaisesRegex(ValueError, "outside the repository"):
             backups.load_config(self.config_path)
+
+    def test_logs_backup_restores_the_snapshot_not_the_live_folder(self):
+        path = backups.create_logs_backup(self.logs, self.local, self.now)
+        with zipfile.ZipFile(path) as archive:
+            manifest = json.loads(archive.read("manifest.json"))
+            self.assertEqual(archive.getinfo("logs/weekly_ingest.log").compress_type, zipfile.ZIP_DEFLATED)
+        self.assertEqual(sorted(manifest["files"]), ["_quarantine/NOTE.txt", "brief_2026-09-28.txt", "weekly_ingest.log"])
+        # The live folder keeps growing after the snapshot; the restore check never looks at it.
+        with (self.logs / "weekly_ingest.log").open("ab") as stream:
+            stream.write(b"=== run 2 ===\n")
+        (self.logs / "brief_2026-09-29.txt").write_bytes(b"later\n")
+        proof = backups.verify_archive(path)
+        self.assertEqual((proof["kind"], proof["integrity_check"], proof["file_count"]), ("logs", "ok", 3))
+        self.assertEqual(manifest["files"]["weekly_ingest.log"]["size"], len(b"=== run 1 ===\n"))
+        shutil.rmtree(self.logs)                         # even with the live folder gone
+        self.assertEqual(backups.verify_archive(path)["integrity_check"], "ok")
+
+    def test_logs_manifest_describes_the_copies_while_the_live_log_grows(self):
+        real_copy = shutil.copy2
+        def copy_then_grow(source, target):
+            result = real_copy(source, target)
+            if Path(source).name == "weekly_ingest.log":
+                with open(source, "ab") as stream:                     # the nightly appends mid-backup
+                    stream.write(b"=== written during the backup ===\n")
+            return result
+        with patch("desk.backups.shutil.copy2", side_effect=copy_then_grow):
+            path = backups.create_logs_backup(self.logs, self.local, self.now)
+        with zipfile.ZipFile(path) as archive:
+            manifest = json.loads(archive.read("manifest.json"))
+            archived = archive.read("logs/weekly_ingest.log")
+        self.assertEqual(archived, b"=== run 1 ===\n")
+        self.assertEqual(manifest["files"]["weekly_ingest.log"]["size"], len(archived))
+        self.assertGreater((self.logs / "weekly_ingest.log").stat().st_size, len(archived))
+        self.assertEqual(backups.verify_archive(path)["integrity_check"], "ok")
+
+    def test_logs_restore_rejects_an_archive_that_differs_from_its_manifest(self):
+        for minute, change in enumerate(("content", "missing", "extra"), start=1):
+            with self.subTest(change=change):
+                path = backups.create_logs_backup(self.logs, self.local, self.now + timedelta(minutes=minute))
+                with zipfile.ZipFile(path) as archive:
+                    manifest = json.loads(archive.read("manifest.json"))
+                    members = {n: archive.read(n) for n in archive.namelist() if n != "manifest.json"}
+                if change == "content":
+                    members["logs/brief_2026-09-28.txt"] = b"PRAMAN - DAILY DECISION DESK, edited\n"
+                elif change == "missing":
+                    del members["logs/_quarantine/NOTE.txt"]
+                else:
+                    members["logs/unexpected.txt"] = b"x"
+                with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+                    archive.writestr("manifest.json", json.dumps(manifest))
+                    for name, data in members.items():
+                        archive.writestr(name, data)
+                with self.assertRaisesRegex(ValueError, "differ"):
+                    backups.verify_archive(path)
 
     def test_missing_backup_cannot_record_success(self):
         with self.assertRaises(FileNotFoundError):

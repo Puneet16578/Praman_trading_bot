@@ -2,6 +2,12 @@
 
 These are whole-store recovery snapshots, not as-of research queries. Every Desk
 table is journal content for verification, including tables added in later phases.
+
+The logs/ folder (briefs and run history) is backed up too (user decision 2026-10-12): daily, with
+the desk backups' retention. It is still being written while the backup runs, so every file is
+copied into a temporary snapshot first and the manifest (size and sha256 per file) describes the
+copies; the restore check compares an archive only with its own manifest, never with the live
+folder, which keeps growing.
 """
 from __future__ import annotations
 
@@ -23,8 +29,15 @@ from shared.sqlite_readonly import open_readonly
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG_PATH = ROOT / "config" / "backup_stores.json"
 EVENT_PATH = logs_dir() / "backups.jsonl"   # a temporary folder under tests (shared/log_paths.py)
-SOURCES = {"desk": ROOT / "data/desk/desk.sqlite", "praman": ROOT / "data/processed/praman.db"}
-ARCHIVE_RE = re.compile(r"^(desk|praman)_\d{8}T\d{12}Z\.zip$")
+SOURCES = {"desk": ROOT / "data/desk/desk.sqlite", "praman": ROOT / "data/processed/praman.db", "logs": logs_dir()}
+KINDS = ("desk", "praman", "logs")
+DAILY = {"desk", "logs"}            # praman is weekly
+ARCHIVE_RE = re.compile(r"^(desk|praman|logs)_\d{8}T\d{12}Z\.zip$")
+
+
+def _keep(destination: dict, kind: str) -> int:
+    """Retention per destination; logs keep exactly as many as the desk backups."""
+    return destination["desk_keep" if kind == "logs" else f"{kind}_keep"]
 
 
 def load_config(path: Path = CONFIG_PATH) -> dict:
@@ -101,7 +114,7 @@ def _manifest(path: Path) -> dict:
         if archive.getinfo("manifest.json").file_size > 2 * 1024 * 1024:
             raise ValueError("Oversized backup manifest")
         manifest = json.loads(archive.read("manifest.json"))
-    if manifest["version"] != 1 or manifest["kind"] not in SOURCES:
+    if manifest["version"] != 1 or manifest["kind"] not in KINDS:
         raise ValueError("Unsupported backup manifest")
     return manifest
 
@@ -134,9 +147,83 @@ def create_backup(source: Path, folder: Path, kind: str, now: datetime) -> Path:
     return target
 
 
+def _snapshot_logs(source: Path, target: Path) -> dict:
+    """Copy every file under `source` into `target`, then describe the COPIES: the live folder can
+    grow while this runs. A file removed between listing and copying is simply not in the snapshot."""
+    files = {}
+    for path in sorted(p for p in source.rglob("*") if p.is_file()):
+        relative = path.relative_to(source).as_posix()
+        copy = target / relative
+        copy.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            shutil.copy2(path, copy)
+        except FileNotFoundError:
+            continue
+        files[relative] = {"size": copy.stat().st_size, "sha256": _sha256(copy)}
+    return files
+
+
+def create_logs_backup(source: Path, folder: Path, now: datetime) -> Path:
+    if now.utcoffset() is None:
+        raise ValueError("Backup requires an aware timestamp")
+    folder.mkdir(parents=True, exist_ok=True)
+    timestamp = now.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    target = folder / f"logs_{timestamp}.zip"
+    if target.exists():
+        raise FileExistsError("Backup archive already exists")
+    with tempfile.TemporaryDirectory(prefix="praman_logs_backup_") as temporary:
+        snapshot = Path(temporary) / "logs"
+        snapshot.mkdir()
+        files = _snapshot_logs(source, snapshot)
+        manifest = {"version": 1, "kind": "logs", "created_at": now.isoformat(),
+                    "market_date": now.astimezone(IST).date().isoformat(), "files": files,
+                    "file_count": len(files), "total_bytes": sum(f["size"] for f in files.values())}
+        partial = target.with_suffix(".zip.partial")
+        try:
+            with partial.open("xb") as output:
+                with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
+                    for relative in files:
+                        archive.write(snapshot / relative, f"logs/{relative}")
+                    archive.writestr("manifest.json", json.dumps(manifest, sort_keys=True))
+                output.flush()
+                os.fsync(output.fileno())
+            partial.replace(target)
+        finally:
+            partial.unlink(missing_ok=True)
+    return target
+
+
+def _verify_logs_archive(path: Path, manifest: dict) -> dict:
+    """Unpack into a temporary folder and compare with the archive's OWN manifest only."""
+    expected = manifest["files"]
+    if manifest["file_count"] != len(expected) or manifest["total_bytes"] != sum(f["size"] for f in expected.values()):
+        raise ValueError("Logs manifest totals are inconsistent")
+    with tempfile.TemporaryDirectory(prefix="praman_logs_restore_") as temporary, zipfile.ZipFile(path) as archive:
+        if archive.testzip() is not None:
+            raise ValueError("Logs archive failed its CRC check")
+        names = sorted(n for n in archive.namelist() if n != "manifest.json")
+        if names != sorted(f"logs/{relative}" for relative in expected):
+            raise ValueError("Logs archive contents differ from its manifest")
+        root = Path(temporary).resolve()
+        for name in names:
+            restored = (root / name).resolve()
+            if not restored.is_relative_to(root):
+                raise ValueError("Unsafe path in logs archive")
+            restored.parent.mkdir(parents=True, exist_ok=True)
+            with archive.open(name) as source, restored.open("xb") as target:
+                shutil.copyfileobj(source, target, length=1024 * 1024)
+            entry = expected[name[len("logs/"):]]
+            if restored.stat().st_size != entry["size"] or _sha256(restored) != entry["sha256"]:
+                raise ValueError("Restored log file differs from the archive's manifest")
+    return {"kind": "logs", "archive": str(path), "integrity_check": "ok",
+            "file_count": manifest["file_count"], "total_bytes": manifest["total_bytes"]}
+
+
 def verify_archive(path: Path) -> dict:
     manifest = _manifest(path)
     kind = manifest["kind"]
+    if kind == "logs":
+        return _verify_logs_archive(path, manifest)
     with tempfile.TemporaryDirectory(prefix="praman_restore_") as temporary:
         restored = Path(temporary) / f"{kind}.sqlite"
         with zipfile.ZipFile(path) as archive, archive.open(f"{kind}.sqlite") as source, restored.open("xb") as target:
@@ -166,15 +253,16 @@ def run_backups(config_path: Path = CONFIG_PATH, *, sources: dict | None = None,
     now = now or datetime.now(IST)
     today = now.astimezone(IST).date()
     reports = []
-    for kind in ("desk", "praman"):
+    for kind in (k for k in KINDS if k in sources):
         local = Path(config["local"]["folder"])
         existing = archives(local, kind)
         previous = _manifest(existing[-1]) if existing else None
         last_date = datetime.fromisoformat(previous["created_at"]).astimezone(IST).date() if previous else None
-        due = last_date is None or (last_date != today if kind == "desk"
+        due = last_date is None or (last_date != today if kind in DAILY
                                    else last_date.isocalendar()[:2] != today.isocalendar()[:2])
         if due:
-            path = create_backup(sources[kind], local, kind, now)
+            path = (create_logs_backup(sources[kind], local, now) if kind == "logs"
+                    else create_backup(sources[kind], local, kind, now))
             proof = verify_archive(path)
             report = {"event": "backup", "at": now.isoformat(), "kind": kind,
                       "archive": str(path), "compressed_bytes": path.stat().st_size}
@@ -204,14 +292,14 @@ def run_backups(config_path: Path = CONFIG_PATH, *, sources: dict | None = None,
                         partial.unlink(missing_ok=True)
                 proof = verify_archive(copied)
                 _record({"event": "restore_ok", "at": datetime.now(IST).isoformat(), **proof}, event_path)
-            _prune(folder, kind, destination[f"{kind}_keep"])
+            _prune(folder, kind, _keep(destination, kind))
     return reports
 
 
 def verify_latest(config_path: Path = CONFIG_PATH, *, event_path: Path = EVENT_PATH) -> list[dict]:
     reports = []
     for destination in destinations(load_config(config_path)):
-        for kind in ("desk", "praman"):
+        for kind in KINDS:
             available = archives(Path(destination["folder"]), kind)
             if not available:
                 raise FileNotFoundError(f"No {kind} backup found")
@@ -227,7 +315,7 @@ def status_line(event_path: Path = EVENT_PATH) -> str:
     try:
         events = [json.loads(line) for line in event_path.read_text(encoding="utf-8").splitlines()]
         lines = []
-        for kind in ("desk", "praman"):
+        for kind in KINDS:
             backup = next((e for e in reversed(events) if e["event"] == "backup" and e["kind"] == kind), None)
             restore = next((e for e in reversed(events) if e["event"] == "restore_ok" and e["kind"] == kind), None)
             lines.append(f"{kind}: last backup {backup['at'] if backup else 'none'}, "
