@@ -10,7 +10,9 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-LOG_PATH = Path(__file__).resolve().parents[1] / "logs" / "weekly_ingest.log"
+from shared.log_paths import logs_dir
+
+LOG_PATH = logs_dir() / "weekly_ingest.log"   # a temporary folder under tests (shared/log_paths.py)
 
 _SUMMARY_RE = re.compile(
     r"^=== (?P<start>\S+) weekly_ingest \(finished (?P<finish>\S+)\) overall=(?P<overall>\w+) "

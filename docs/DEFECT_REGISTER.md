@@ -2078,6 +2078,18 @@ six WARN notices dated a Sunday on which no run happened; their log lines went t
 temporary log, so `logs/weekly_ingest.log` is clean. The isolation fix prevents a recurrence; the
 file is left in place for the user to decide.
 
+**Follow-up, 2026-10-12 (user direction).** The file was moved, not deleted, to
+`logs/_quarantine/brief_2026-10-11.txt` with a one-line `NOTE.txt` citing P8-055. Tests now never
+write into the real `logs/` folder, the same rule the databases follow: `shared/log_paths.py` is the
+one place the folder is resolved (`weekly_ingest.LOG_PATH`, `desk.backups.EVENT_PATH`,
+`desk.ingestion_health.LOG_PATH`, and the brief writers' default folder), and `tests/__init__.py`
+points it at a fresh temporary directory before any test module imports a writer (discovery
+imports `tests/test_000_logs_isolation.py` first). `tests/test_zzz_real_logs_untouched.py`, last in
+discovery, fails if the real folder changed during the run, excluding only the file this process's
+own output is redirected into. Checked: a probe file written into the real folder during a run makes
+it fail; the P8-055 scenario (a low-battery skip with only the log path patched) now lands in the
+temporary folder, and that regression test fails with the isolation switched off.
+
 ## P8-053 - the nightly run could be skipped silently on battery
 
 **Severity.** Low. **Status.** Closed — fixed 2026-10-07 (user approval for both changes).

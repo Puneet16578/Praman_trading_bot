@@ -149,10 +149,12 @@ def health_lines(praman_conn, run_date, current_run_start=None):
             isin_map_health_line(praman_conn, run_date)]
 
 
-def record_skipped_run(day, notice, *, out_dir=ROOT/'logs'):
+def record_skipped_run(day, notice, *, out_dir=None):
     """A nightly run skipped before any step (low battery, P8-053) still leaves its WARN in that
     day's brief: a short brief if none exists for the day, otherwise the notice is appended. An
-    existing brief is never replaced."""
+    existing brief is never replaced. Default folder: logs/ (a temporary folder under tests)."""
+    from shared.log_paths import logs_dir
+    out_dir = out_dir or logs_dir()
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / f'brief_{day}.txt'
     if path.exists():
@@ -163,8 +165,11 @@ def record_skipped_run(day, notice, *, out_dir=ROOT/'logs'):
     return path
 
 
-def write_brief(run_date=None, *, out_dir=ROOT/'logs', current_run_start=None):
-    """`current_run_start`: the nightly run writing this brief, reported as in progress (P8-050)."""
+def write_brief(run_date=None, *, out_dir=None, current_run_start=None):
+    """`current_run_start`: the nightly run writing this brief, reported as in progress (P8-050).
+    Default folder: logs/ (a temporary folder under tests, shared/log_paths.py)."""
+    from shared.log_paths import logs_dir
+    out_dir = out_dir or logs_dir()
     from desk.lib.connection import get_desk_connection
     from desk.lib.rulebook import load_active_rulebook
     from desk.lib.store import get_live_connection

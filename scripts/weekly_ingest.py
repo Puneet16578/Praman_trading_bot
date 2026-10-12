@@ -86,10 +86,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))    # this script's own dir (scripts/ has no __init__.py)
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # project root, for `src.*` imports
 
+from shared.log_paths import logs_dir  # noqa: E402
 from shared.market_time import IST, market_today  # noqa: E402 (needs the project root on sys.path)
 
 ROOT = Path(__file__).resolve().parents[1]
-LOG_PATH = ROOT / "logs" / "weekly_ingest.log"
+LOG_PATH = logs_dir() / "weekly_ingest.log"   # a temporary folder under tests (shared/log_paths.py)
 ASM_GSM_LOOKBACK_DAYS = 30  # widened from 10 (P8-007 scoping, docs/phase10_p8007_scoping.md): a
                             # single circular-index call was observed to return an incomplete
                             # result once; fetch_and_ingest_{asm,gsm}_range now union two index

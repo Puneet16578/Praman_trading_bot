@@ -15,13 +15,14 @@ import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 
+from shared.log_paths import logs_dir
 from shared.market_time import IST
 from shared.sqlite_backup import online_backup
 from shared.sqlite_readonly import open_readonly
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG_PATH = ROOT / "config" / "backup_stores.json"
-EVENT_PATH = ROOT / "logs" / "backups.jsonl"
+EVENT_PATH = logs_dir() / "backups.jsonl"   # a temporary folder under tests (shared/log_paths.py)
 SOURCES = {"desk": ROOT / "data/desk/desk.sqlite", "praman": ROOT / "data/processed/praman.db"}
 ARCHIVE_RE = re.compile(r"^(desk|praman)_\d{8}T\d{12}Z\.zip$")
 

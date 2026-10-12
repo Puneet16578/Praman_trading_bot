@@ -17,7 +17,16 @@
   and price were neither read nor shown (sealed until 2027-06-01). JINDALSTEL: v3's first
   acceptance (decided 8 Oct, 48 shares, limit 1027.52), FILL_OPEN on 9 Oct at 1014.70, OPEN.
 - `logs/brief_2026-10-11.txt` is not a run: six skip notices written at 23:53-23:54 on Sunday 11 Oct
-  by the battery-dependent tests (P8-055). Left in place for the user to decide.
+  by the battery-dependent tests (P8-055). Moved (user direction) to
+  `logs/_quarantine/brief_2026-10-11.txt` with a one-line NOTE.txt; not deleted.
+- Tests can no longer write into the real logs/ folder: `shared/log_paths.py` resolves it for every
+  writer, tests/__init__.py points it at a temporary folder, and tests/test_zzz_real_logs_untouched.py
+  fails the suite if the real folder changed (the suite's own redirected output file excepted).
+  Do not run the suite while a nightly is running: that check would (correctly) flag the nightly's
+  writes.
+- Still to do after tonight's 18:00 run (user request): confirm a `manual_monitor` step line in
+  logs/weekly_ingest.log and "Open positions: 0" with nothing changed in the brief's "Manual book
+  monitoring" section; show the brief in full.
 
 ## 2026-10-11: manual-book monitoring catch-up and nightly mechanical exits (Claude)
 
