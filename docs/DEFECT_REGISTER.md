@@ -2470,3 +2470,40 @@ distinct synthetic secrets and request headers do not escape into logs/output;
 file/folder access guards remain untriggered. The downloaded pinned SDK wheel's
 actual import/construction also passed an audit-hook ban on network/filesystem
 writes with optional logging/feed modules stubbed. Full suite in HANDOFF.md.
+
+## P8-069 - a filing landing during the refresh voids the whole night's disclosure certification
+
+**Severity.** Medium. **Status.** Open — found 2026-10-13 from that night's WARN; fix awaits the user.
+The 13 Oct nightly's `announcements_recent` step reported "WARN announcements bulk
+2026-10-12..2026-10-13: AnnouncementFetchError". Not a timeout or an HTTP failure: the run's own
+request trace (`data/raw/announcement_runs/20261013T123643127766/requests.json`) shows all 8
+requests (cookie, identity, two whole windows, four split checks) returned HTTP 200 in 0.18-1.79 s.
+Re-running the checks on the saved responses, without any request, shows the cause:
+`fetch_checked_window` compares a whole window with the same dates fetched in halves. The whole
+12-13 Oct response (requested 18:06:58 IST) held 965 announcements, the two single-day responses
+576 + 388 = 964. The one difference is a 13 Oct filing published at 18:06:54, four seconds before
+the whole request, missing from the 13 Oct response requested two seconds after it (whose latest
+filing was 18:05:15). No row differed in content. The check raised "Whole/split announcement
+windows differ", the window failed and the receipt was PARTIAL.
+
+Effect: a decision for D needs the source complete through D-1 (`required_through`), and a receipt
+recorded on D certifies at most D-1 (P8-049). The 12 Oct half matched exactly, so a COMPLETE
+receipt would have certified 12 Oct; the PARTIAL one certified nothing. All 52 candidates of
+13 Oct failed G2 ("disclosures is UNKNOWN"), Strategy 0 had nothing to decide, and the brief said
+only "NO TRADE ... a normal outcome". It is not a burn-in gap: Strategy 0 ran and decided.
+13 Oct's announcements were not stored (the failed window is not ingested).
+
+Catch-up: the data, yes. The bulk state keeps `last_complete` at 2026-10-12, so the 14 Oct run
+re-reads 5-14 Oct and stores 13 Oct's filings if its own checks pass. The decisions, no: 13 Oct is
+decided once. The same race can recur on any night: the current IST day's filings keep arriving
+during an evening run (P8-049 measured 25-38% after 18:07), and the single-day query evidently
+lagged the whole-window query by several seconds. First occurrence in eight bulk refreshes.
+
+New failure mode: the consistency check cannot tell a still-open day's late arrivals from a real
+inconsistency, and one current-day difference fails earlier, completed days. Proposed fix (not
+implemented): compare whole and split responses only for completed IST days (publication before
+the current day), which is all a receipt recorded tonight can certify anyway; ingest the current
+day's rows without certifying them; keep the check's failure for any difference on a completed
+day. Optionally retry a failed comparison once after a pause. The brief should also say why no
+candidate passed (G2 UNKNOWN from a PARTIAL receipt) instead of only "a normal outcome".
+No request was made to test any of this.

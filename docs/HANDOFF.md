@@ -1,3 +1,13 @@
+## 2026-10-14 (from 00:37): announcements failure, T1 probe and addendum 2, P8-064 implementation (Claude)
+
+- Item 1 (P8-069, Medium, open): 13 Oct's announcements were incomplete because the bulk refresh's
+  whole/split check failed on one 13 Oct filing published at 18:06:54, four seconds before the
+  whole-window request and missing from the single-day request two seconds later. All 8 requests
+  were HTTP 200 in 0.18-1.79 s: no timeout, no HTTP failure (the documentation-read timeouts were
+  the fetch tool, unrelated). The 12 Oct half matched, but the whole window failed, the receipt was
+  PARTIAL, 13 Oct's G2 had disclosures UNKNOWN for all 52 candidates. The data catch up on the next
+  run (last_complete stays 12 Oct); the 13 Oct decisions do not. Fix proposed, not implemented.
+
 ## 2026-10-13/14 (night): after-run checks; T1 addendum and sourcing; R1 probe; P8-064 buy side (Claude)
 
 - 13 Oct nightly 18:00:02-18:39:05, overall=WARN. New WARNs, neither from today's changes (the two
