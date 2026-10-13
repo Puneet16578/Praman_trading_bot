@@ -303,6 +303,7 @@ def spells(states: list, gap: int = 20) -> list[dict]:
 
 
 def refuse_outside_study(end: str) -> None:
+    from desk.outcome_firewall import FORWARD_START, OUTCOMES_OPEN     # the one owner of that boundary
     if end > STUDY_END:
         raise StudyWindowRefused(f"T1 features end at {STUDY_END}; {end} is outside the study (and nothing on or after "
-                                 "2026-09-16 may be evaluated before 2027-06-01).")
+                                 f"{FORWARD_START} may be evaluated before {OUTCOMES_OPEN}).")
