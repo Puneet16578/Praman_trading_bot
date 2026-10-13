@@ -54,3 +54,9 @@ position/risk while deferred; no duplicate events and no forward outcome display
 
 Evidence: synthetic call above executed locally and source traced through both
 callers. No network requests, production writes, new fills or engine changes.
+
+Subsequent user-requested operational fill screen (counts only, no outcome
+access): docs/desk/locked_fill_audit_20261013.md. Zero exactly-flat bars among
+four recorded Strategy 0 fills; manual book has no fills. The full tick-tolerant
+classification remains unresolved without authoritative historical tick/limit
+inputs. This does not amend the proposed detector or certify past liquidity.
