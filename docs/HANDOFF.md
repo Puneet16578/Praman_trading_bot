@@ -1,3 +1,28 @@
+## 2026-10-13 (16:46): Claude takes over from Codex: pending commits, before the nightly
+
+- Root verified (D:/Agentic_ai_project/praman), master; task Ready, next run 18:00, no run in
+  progress, so items 1-4 were done before 17:45. Codex's report not relied on; each item verified.
+- Uncommitted at start: CLAUDE.md (Angel rule moved), the P8-064 fill audit plus a pointer to it in
+  locked_circuit_review_20261013.md, the connection setup guide plus a link in
+  angel_market_data.md. No code or config was dirty.
+- CLAUDE.md (f310045, on its own): the Angel rule appears once, at the start of the
+  non-negotiables, byte-identical to the previously committed copy and to AGENTS.md's; the only
+  other change is removing the old end-of-file section that held it.
+- P8-064 audit (09705aa): recounted read-only with SQL returning counts only: 4 Strategy 0 fills,
+  each with its EQ bar, 0 exactly flat; 0 manual fills. Desk stores band % for 1-12 Oct but no
+  tick sizes or absolute lower limits, so all four stay unclassified under the full test. No
+  prices, symbols or results. P8-064 stays open.
+- Setup guide (this commit): hidden prompt sets ANGEL_API_KEY for the current process only (no
+  setx), removed afterwards; Python313 python.exe 3.13.6 verified (the task runs the adjacent
+  pythonw.exe); smartapi-python pinned 1.5.5; now states plainly that it is not verified whether
+  Angel accepts 127.0.0.1 in the IP headers. The guide's True/False visibility check is for the
+  user's own terminal; no agent has read the key.
+- Full suite before this commit: 858 tests in 433.756s, OK, exit 0. Pushed (user approval).
+- After tonight's run (not yet run): confirm "nothing since the previous monitor run"; previous
+  finished run 12 Oct, OK/WARN, not called stale; own verified logs archive; gap table exists and
+  empty; ten ISIN snapshots cached; no skip or new WARN from today's changes; then the full brief.
+  R1 stays design-only.
+
 ## 2026-10-13 Codex: follow-up 1, SDK side effects
 
 - Original nine commits pushed to origin/master (through 31cdbe0), as approved.

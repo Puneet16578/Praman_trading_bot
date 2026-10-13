@@ -115,6 +115,9 @@ Part C is a design only; no live watcher or additional store exists.
 
 ## User-terminal connection check (B3)
 
+Exact Python path, private environment setup and expected output:
+[connection setup](angel_connection_setup.md).
+
 After installing the optional requirements and privately setting ANGEL_API_KEY,
 run `python -B scripts/angel_connection_test.py` in your own interactive terminal.
 It prompts privately, prints one SBIN quote, then raw OHLC prices/timestamps for
