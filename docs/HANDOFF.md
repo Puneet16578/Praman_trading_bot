@@ -18,6 +18,18 @@
   market of eligible stocks from Praman's own store (breadth universe, focal stock excluded);
   sector-relative strength dropped; family stays three. Index/VIX close for D known from D+1,
   labelled ASSUMPTION, with the probe's header evidence; V1 at D uses closes through D-1.
+- Item 4 (P8-064 closed, both books, no new S0 version, DESIGN.md changelog): desk/paper/locks.py.
+  No sell on a session locked all day at the lower limit (stop, pending exit, manual close tried
+  again next session under the same rule, reason recorded and in the brief); no buy at an upper
+  lock (normal no-fill, counted as an attempt); flat bar with band/tick/reference unknown = assumed
+  locked both ways; buy limit capped at the next session's upper limit when that band was recorded
+  before the decision; limit above a band unknown at decision = rejected, normal no-fill. Tick sizes:
+  new nightly step tick_sizes (after circuit_bands) records Angel's public scrip master ticks
+  (paise; master generated ~08:00 IST, dated to that session) into the new tick_sizes table; plain
+  HTTPS, no SDK. Records change only when a rule binds. Replay of all 7 S0 runs (with each run's
+  visible band reports): identical. 16 tests in tests/test_paper_locks.py; 13 behavioural ones fail
+  with the checks off. Tonight's run is the first to record ticks.
+- Item 5: R1 untouched until the user has run the connection test and the capacity probe.
 
 ## 2026-10-13/14 (night): after-run checks; T1 addendum and sourcing; R1 probe; P8-064 buy side (Claude)
 

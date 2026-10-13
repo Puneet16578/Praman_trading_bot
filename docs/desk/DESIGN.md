@@ -114,6 +114,17 @@ accuracy bar and zero unverified numbers in any output. A persistent edge is a b
 
 ## Changelog
 
+**2026-10-14 — execution at the daily circuit limits, both books; no new Strategy 0 version (user
+approval in their message of 2026-10-14, P8-064).** Before: a stop or exit order filled on a session
+locked all day at its lower limit, and a limit buy filled at the open of a session locked at its
+upper limit, though neither side had a counterparty. After: no sell on a session locked at the
+lower limit, no buy at the upper limit, and when the band or tick size is unknown a flat bar is
+assumed locked (no buy and no sell that session); a blocked stop or exit is tried again on the next
+session under the same rule. The buy limit is capped at the next session's upper limit when that
+band is known at decision time; a limit above a band not known then is a rejected order, a normal
+no-fill. Tick sizes are recorded daily from the public scrip master from now on. Replay of every
+Strategy 0 run so far: identical records.
+
 **2026-10-13 — Strategy 0 v3 runs only what live trading could have done; no new version (user
 decisions in their message of 2026-10-13, P8-057 and P8-056).** One principle: a stop sits at the
 broker and fires whether or not the laptop ran; an entry needs an order placed before the next open.

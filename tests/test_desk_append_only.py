@@ -79,6 +79,11 @@ _SAMPLE_INSERT = {
         "INSERT INTO strategy_gaps (strategy_id,decision_date,reason,detail,run_id,recorded_at) "
         "VALUES ('S0','2026-01-01','NO_RUN','{}',1,'2026-01-01T00:00:00+00:00')"
     ),
+    "tick_sizes": (
+        "INSERT INTO tick_sizes (symbol,event_date,knowledge_date,recorded_at,tick_rupees,tick_paise,source_url,"
+        "source_last_modified,source_sha256) VALUES ('X','2026-01-01','2026-01-01','2026-01-01T12:00:00+00:00',"
+        "0.05,5,'fixture','Thu, 01 Jan 2026 02:30:00 GMT','h')"
+    ),
     "source_freshness": (
         "INSERT INTO source_freshness (source,through_date,status,detail,recorded_at) "
         "VALUES ('nse_corporate_announcements','2026-01-01','COMPLETE','{}','2026-01-01T00:00:00+00:00')"

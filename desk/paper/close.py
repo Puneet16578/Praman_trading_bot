@@ -19,6 +19,7 @@ computed by the one shared `desk/risk/officer.py:realized_pnl_inr`, never by com
 from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import json
 
 from shared.market_time import market_date
 from src.signals.event_catalogue import build_symbol_history
@@ -62,7 +63,11 @@ def _attempt_close_fill(praman_conn, desk_conn, trade_id: str, quantity: float, 
     from desk.risk.officer import round_trip_cost_inr
 
     symbol = trade_id.split(":")[0]
-    fill_date = first_session_strictly_after(praman_conn, symbol, not_before_date)
+    # P8-064: sessions already found locked at the lower limit are skipped; the close stays pending.
+    deferred = [json.loads(r["detail"])["session"] for r in desk_conn.execute(
+        "SELECT detail FROM journal_events WHERE trade_id=? AND event_type='PAPER_CLOSE_DEFERRED' "
+        "ORDER BY journal_event_id", (trade_id,))]
+    fill_date = first_session_strictly_after(praman_conn, symbol, max([not_before_date, *deferred]))
     if fill_date is None:
         return PendingClose(trade_id=trade_id, not_before_date=not_before_date, reason=reason)
 
@@ -79,6 +84,13 @@ def _attempt_close_fill(praman_conn, desk_conn, trade_id: str, quantity: float, 
         raise PaperCloseRefused(f"An unadjustable corporate action falls inside this position ({exc}); "
                                 "its exit cannot be priced automatically -- review the entitlement and "
                                 "record the exit by hand.") from exc
+    from desk.paper.locks import lock_state
+    lock = lock_state(praman_conn, desk_conn, symbol, fill_date, row, fill_date)
+    if lock.blocks_sell:
+        jstore.record_journal_event(desk_conn, event_type="PAPER_CLOSE_DEFERRED", trade_id=trade_id,
+                                    detail={"session": fill_date, **lock.evidence()},
+                                    reason="no buyers at a lower lock (P8-064); retried next session")
+        return PendingClose(trade_id=trade_id, not_before_date=not_before_date, reason=reason)
     fill_price = row["open_price"] * factor  # decision share basis -- never cost-adjusted
     sell_cost_inr = round_trip_cost_inr(fill_price, quantity, costs, "sell")
 

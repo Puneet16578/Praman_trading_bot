@@ -13,6 +13,17 @@ reads), or git cannot run, it runs nothing and writes a WARN naming the files to
 clean whenever a session stops (CLAUDE.md session rule). A skipped date's data catch up on the next
 run; its desk scan and brief do not, and it becomes a Strategy 0 burn-in gap (next section).
 
+## Tick sizes and circuit-limit fills (P8-064, 2026-10-14) — operational change, not a pre-registration amendment
+
+A new nightly step, `tick_sizes`, after `circuit_bands`, downloads Angel One's public scrip master
+(one HTTPS request, no login, no SDK; allowed by CLAUDE.md's read-only broker rule) and records each
+unique NSE EQ tick size for the session the master was generated for. A failure is a WARN; that
+session's ticks stay UNKNOWN. Both paper books now refuse a sell on a session locked all day at the
+lower limit and a buy at the upper limit, treat a flat bar with unknown band or tick as locked both
+ways, cap a buy limit at the next session's upper limit when that band is known at decision time,
+and treat a limit above a band not known then as a rejected order. A blocked stop or exit is tried
+again on the next session; the brief says so.
+
 ## Strategy 0 after a skipped night: stops catch up, entries do not (P8-056, P8-057, 2026-10-13) — operational change, not a pre-registration amendment
 
 Paper only does what live trading could have done (user decision). A stop would sit at the broker,

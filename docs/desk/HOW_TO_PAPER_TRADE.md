@@ -57,6 +57,16 @@ policy blocking local scripts). Prices, dates and IDs below are examples to repl
    binds, about 20% where the per-trade budget binds. The assessment prints the
    price it sized at.
 
+   **Circuit limits (since 2026-10-14, P8-064).** The exchange rejects prices
+   outside a stock's daily band, so when the next session's band is already
+   published at your decision, the limit is capped at that session's upper limit;
+   if it was not published yet and your limit turns out above it, the order counts
+   as rejected (NO FILL). A session locked all day at its upper limit is NO FILL
+   (no sellers); one locked at its lower limit does not fill a stop, time exit or
+   close (no buyers): the monitor tries again the next session under the same rule
+   and says why. If the band or tick size is unknown and the bar is flat, it is
+   treated as locked both ways.
+
    `PENDING` is normal: the next session's data has not arrived. The next evening's
    monitor completes that approved entry at the first available session after the
    original request date, under the same limit rule (it can also end as NO FILL).

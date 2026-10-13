@@ -156,10 +156,34 @@ def _attempt_fill(praman_conn, desk_conn, decision: dict, thesis: dict, not_befo
     opening = row["open_price"] * factor if row["open_price"] is not None else None
     low = row["low_price"] * factor if row["low_price"] is not None else None
     fill = limit_fill(dict(decision_price=thesis["planned_entry"], atr20=atr), opening, low)
+    # P8-064: the exchange rejects a price above the band. Cap the limit at the fill session's upper
+    # limit when that band was known at decision time (the fill session follows the decision
+    # session); otherwise a limit found above it is a rejected order. No buy at an upper lock.
+    from desk.paper.execution import limit_order_fill
+    from desk.paper.locks import buy_cap_at_decision, buy_rejected, lock_state, previous_session
+    cap = None
+    if previous_session(praman_conn, fill_date, fill_date) == decision["as_of_date"]:
+        known = buy_cap_at_decision(praman_conn, desk_conn, decision["symbol"], decision["as_of_date"],
+                                    decision["recorded_at"])
+        if known is not None and known["cap"] < limit:
+            cap = known
+            fill = limit_order_fill(cap["cap"], opening, low)
+    lock, blocked = lock_state(praman_conn, desk_conn, decision["symbol"], fill_date, row, fill_date), None
+    if cap is None and buy_rejected(limit, lock):
+        blocked = "REJECTED: limit above the session upper limit, whose band was not known at decision (P8-064)"
+    elif fill["fill"] is not None and lock.blocks_buy:
+        blocked = ("LOCKED_UPPER: no sellers at an upper lock (P8-064)" if lock.state == "LOCKED_UPPER" else
+                   "POSSIBLY_LOCKED: flat bar with its limits unknown (P8-064)")
+    if blocked:
+        fill = dict(limit=fill["limit"], fill=None, status="NO_FILL", reason=blocked)
     if fill["fill"] is None:
-        jstore.record_journal_event(desk_conn, event_type=NO_FILL_EVENT, decision_id=decision["decision_id"], detail={
-            "session": fill_date, "limit": limit, "open": opening, "low": low, "basis_factor": factor,
-            "status": fill["status"], "reason": fill["reason"]})
+        detail = {"session": fill_date, "limit": limit, "open": opening, "low": low, "basis_factor": factor,
+                  "status": fill["status"], "reason": fill["reason"]}
+        if cap is not None:
+            detail["limit_cap"] = cap
+        if blocked:
+            detail.update(lock.evidence())
+        jstore.record_journal_event(desk_conn, event_type=NO_FILL_EVENT, decision_id=decision["decision_id"], detail=detail)
         return NoFill(decision_id=decision["decision_id"], session=fill_date, limit=limit,
                       status=fill["status"], reason=fill["reason"])
     fill_price = fill["fill"]  # decision share basis -- never cost-adjusted
@@ -171,7 +195,7 @@ def _attempt_fill(praman_conn, desk_conn, decision: dict, thesis: dict, not_befo
         desk_conn, trade_id=trade_id, decision_id=decision["decision_id"], event_date=fill_date,
         price=fill_price, quantity=quantity, stop=thesis["planned_stop"],
         target=thesis["planned_target"], buy_cost_inr=buy_cost_inr, cost_config_hash=cost_config_hash,
-        reason=f"entry: {fill['status']} (limit {limit:.2f})",
+        reason=f"entry: {fill['status']} (limit {fill['limit']:.2f}" + (f", capped from {limit:.2f})" if cap else ")"),
     )
     return Fill(event_date=fill_date, price=fill_price, kind="entry")
 

@@ -49,6 +49,10 @@ def build_brief(praman_conn, desk_conn, run_date, *, rulebook, health_lines=()):
         if late:     # P8-057: the run on the limit session was missed; ordered at this run, as live would
             lines += [f"Time-limit exits ordered late because a run was missed: {len(late)} "
                       f"({', '.join(str(x['sessions_late']) for x in late)} session(s) late)"]
+        blocked = ops.get('sells_blocked_by_lock') or []
+        if blocked:  # P8-064: no buyers at a lower lock; the stop or exit order stands for the next session
+            lines += [f"Sells not filled at a lower lock (retried next session): {len(blocked)} "
+                      f"({', '.join(x['session'] for x in blocked)})"]
         if ops.get('gap') == 'DECIDED_TOO_LATE':     # P8-056
             lines += [f'NO DECISIONS for {run_date}: Strategy 0 ran after the 09:00 IST cut-off before the next open, '
                       'when no entry order could still have been placed (a burn-in gap); entries, stops and exits '
@@ -130,6 +134,9 @@ def manual_monitor_lines(desk_conn, run_date):
         lines.append(f"  {order['trade_id']}: time exit ordered {order['not_before_date']}; "
                      f"awaiting the next session open; {order['ordered_late_by_sessions']} session(s) late "
                      f"after horizon {order['horizon']}")
+    for d in report.get('sells_blocked_by_lock', []):        # P8-064
+        lines.append(f"  {d['trade_id']}: {d['exit']} exit not filled on {d['session']}: "
+                     f"{d['lock_state']} (no buyers at a lower lock); tried again next session")
     lines.append(f'  Mechanical exits: {len(exits)}')
     for e in exits:
         when = f" on {e['event_date']}" if e.get('event_date') else ''

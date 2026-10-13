@@ -197,6 +197,26 @@ CIRCUIT_BANDS = DeskTable(
     indices=("CREATE INDEX IF NOT EXISTS idx_circuit_bands_asof ON circuit_bands(symbol,event_date,knowledge_date)",),
 )
 
+TICK_SIZES = DeskTable(
+    name="tick_sizes",
+    ddl="""
+        CREATE TABLE tick_sizes (
+            row_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            symbol TEXT NOT NULL,              -- NSE EQ symbol, exact unique match in the master
+            event_date TEXT NOT NULL,          -- the session the master was generated for (IST date of Last-Modified)
+            knowledge_date TEXT NOT NULL,      -- public from Last-Modified; the same IST date
+            recorded_at TEXT NOT NULL,         -- download time (UTC)
+            tick_rupees REAL NOT NULL CHECK(tick_rupees > 0),
+            tick_paise REAL NOT NULL CHECK(tick_paise > 0),   -- the master's own field, in paise
+            source_url TEXT NOT NULL,
+            source_last_modified TEXT NOT NULL,
+            source_sha256 TEXT NOT NULL,
+            UNIQUE(symbol, event_date, source_sha256)
+        )
+    """,
+    indices=("CREATE INDEX IF NOT EXISTS idx_tick_sizes_asof ON tick_sizes(symbol,event_date,knowledge_date)",),
+)
+
 OPPORTUNITY_LOG = DeskTable(
     name="opportunity_log",
     ddl="""CREATE TABLE opportunity_log (
@@ -395,7 +415,7 @@ DESK_TABLES: dict[str, DeskTable] = {
     t.name: t for t in (DECISIONS, THESES, PAPER_TRADE_EVENTS, JOURNAL_EVENTS, OPPORTUNITIES, MONITOR_RUNS, CIRCUIT_BANDS,
                         OPPORTUNITY_LOG, OPPORTUNITY_EXECUTIONS, KILL_SWITCH_EVENTS, TRADING_STRATEGIES,
                         STRATEGY_RUNS, STRATEGY_PAPER_EVENTS, DECISION_CONTRACTS, SOURCE_FRESHNESS, RECORD_ANNOTATIONS,
-                        STRATEGY_GAPS)
+                        STRATEGY_GAPS, TICK_SIZES)
 }
 
 

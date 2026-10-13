@@ -63,6 +63,22 @@ def fill_entry(conn, symbol: str, decision_date: str, slippage_pct: float, as_of
     return Fill(event_date=next_date, price=price, kind="entry")
 
 
+def limit_order_fill(limit: float, opening, low) -> dict:
+    """The registered day-limit rule (`desk.shadow_followup2.limit_fill`) for an explicit limit, used
+    when the limit is capped at the session's upper limit (P8-064): fill at the open if at or below
+    the limit, else at the limit if the low reaches it, else NO_FILL."""
+    import math
+    if not isinstance(opening, (float, int)) or not math.isfinite(opening) or opening <= 0:
+        return dict(limit=limit, fill=None, status='UNKNOWN', reason='Opening price unavailable')
+    if opening <= limit:
+        return dict(limit=limit, fill=opening, status='FILL_OPEN', reason='')
+    if not isinstance(low, (float, int)) or not math.isfinite(low) or low <= 0 or low > opening:
+        return dict(limit=limit, fill=None, status='UNKNOWN', reason='Usable session low unavailable')
+    if low <= limit:
+        return dict(limit=limit, fill=limit, status='FILL_LIMIT', reason='')
+    return dict(limit=limit, fill=None, status='NO_FILL', reason='Session low above limit')
+
+
 def stop_rule(opening: float, low: float, stop: float) -> tuple[str, float] | None:
     """THE stop rule, shared by the manual monitor and Strategy 0 (P8-057): if the session's open
     already gapped through the stop, fill there (worse for a long than the stop itself); otherwise,

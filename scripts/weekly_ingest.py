@@ -288,6 +288,22 @@ def step_circuit_bands() -> None:
     print(run())
 
 
+def step_tick_sizes() -> None:
+    """NSE EQ tick sizes from Angel One's public scrip master, recorded point-in-time for the
+    session the master was generated for (P8-064; user decision 2026-10-14). Plain HTTPS, no login
+    and no SDK. A failure is a WARN: that session's ticks stay UNKNOWN, and the lock rule then
+    treats a flat bar as possibly locked."""
+    from desk.lib.connection import get_desk_connection
+    from desk.tick_sizes import fetch_and_record
+    desk = get_desk_connection()
+    try:
+        print(fetch_and_record(desk))
+    except Exception as exc:
+        print(f"WARN tick sizes not recorded ({type(exc).__name__}); this session's ticks stay UNKNOWN")
+    finally:
+        desk.close()
+
+
 def step_desk_scan() -> None:
     from desk.scan import run_scan
     
@@ -363,6 +379,7 @@ STEPS = [
     ("asm_gsm", step_asm_gsm),
     ("bhavcopy_today", step_bhavcopy_today),
     ("circuit_bands", step_circuit_bands),
+    ("tick_sizes", step_tick_sizes),
     ("desk_scan", step_desk_scan),
     ("auto_paper", step_auto_paper),
     ("manual_monitor", step_manual_monitor),

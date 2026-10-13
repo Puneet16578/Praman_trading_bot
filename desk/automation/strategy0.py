@@ -41,7 +41,8 @@ from desk.risk.officer import compute_position_size, planned_loss_inr, round_tri
 from desk.shadow_followup import cap_measurements
 from desk.shadow_followup2 import LIMIT_ATR, limit_fill
 from src.bitemporal.guard import latest_as_of
-from desk.paper.execution import basis_factor, stop_rule
+from desk.paper.execution import basis_factor, limit_order_fill, stop_rule
+from desk.paper.locks import buy_cap_at_decision, buy_rejected, lock_state
 from shared.market_time import IST
 from src.signals.price_adjustment import UnadjustableWindowError
 
@@ -91,7 +92,7 @@ def load_book(conn, version=None, *, through_run_id=None):
         p = positions.setdefault(row['position_id'], dict(symbol=row['symbol'], decision_date=row['decision_date'],
                                                           version=row['strategy_version'], accepted=None, entry=None,
                                                           entry_outcome=None, exit_order=None, exit=None,
-                                                          last_monitored=None))
+                                                          last_monitored=None, last_exit_deferral=None))
         if row['strategy_version'] != p['version']:
             raise EngineRefused(f"{row['position_id']}: events under more than one strategy version; book inconsistent.")
         record = dict(detail, event_date=row['event_date'], event_id=row['event_id'], recorded_at=row['recorded_at'])
@@ -103,6 +104,8 @@ def load_book(conn, version=None, *, through_run_id=None):
                 p['entry'] = record
         elif row['event_type'] == 'MONITORED':
             p['last_monitored'] = max(p['last_monitored'] or '', row['event_date'])   # sessions already checked
+            if detail.get('exit_deferred'):                                      # P8-064: a locked session
+                p['last_exit_deferral'] = max(p['last_exit_deferral'] or '', row['event_date'])
         elif row['event_type'] == 'EXIT_ORDERED':
             p['exit_order'] = record
         elif row['event_type'] == 'EXIT_FILLED':
@@ -288,7 +291,7 @@ def run(praman_conn, desk_conn, run_date, *, rulebook, costs, rulebook_file, rul
             ops['entries_cancelled'] += 1
             continue
         try:
-            event = _settle_entry(praman_conn, p, pid, acc, day, run_date, use_limit, costs, per_trade)
+            event = _settle_entry(praman_conn, desk_conn, p, pid, acc, day, run_date, use_limit, costs, per_trade)
         except Exception as exc:  # an engine error is an operational failure, never a crash of the whole run
             event = _event('ENTRY_FILL_FAILED', p, day, dict(session=day, failure='ENGINE_ERROR',
                            error_type=type(exc).__name__, reason='Engine error while settling the entry.'),
@@ -306,28 +309,37 @@ def run(praman_conn, desk_conn, run_date, *, rulebook, costs, rulebook_file, rul
     #    decision's share basis (P8-044), so stop, fills and exits share one basis with the entry.
     for pid, p in sorted(positions.items()):
         if p['status'] == 'EXIT_PENDING':
-            sessions = sessions_between(praman_conn, p['exit_order']['event_date'], run_date)
-            if not sessions:
-                continue
-            bar = session_bar(praman_conn, p['symbol'], sessions[0], run_date)
-            if bar is None or not _finite(bar['open_price']) or bar['open_price'] <= 0:
-                ops['missing_bars'] += 1
-                plan.events.append((_event('MONITORED', p, run_date, dict(note='Exit pending: no usable bar.',
-                                    session=sessions[0]), position_id=pid), None))
-                continue
-            try:
-                factor = basis_factor(praman_conn, p['symbol'], p['decision_date'], sessions[0])
-            except UnadjustableWindowError as exc:
-                ops['unpriceable_exits'] += 1
-                plan.events.append((_event('MONITORED', p, run_date, dict(
-                    note=f'Exit pending: unadjustable corporate action ({exc}); not priced automatically.',
-                    session=sessions[0]), position_id=pid), None))
-                continue
-            price, qty = bar['open_price'] * factor, p['entry']['quantity']
-            plan.events.append((_event('EXIT_FILLED', p, sessions[0], dict(
-                price=price, quantity=qty, reason=p['exit_order']['reason'], kind='exit_open', basis_factor=factor,
-                raw_open=bar['open_price'], sell_cost_inr=round_trip_cost_inr(price, qty, costs, 'sell'),
-                row_id=bar['row_id']), position_id=pid), None))
+            # P8-064: a session locked all day at its lower limit (or flat with its limits unknown)
+            # has no buyers; the order waits for the next session under the same rule.
+            start = max(p['exit_order']['event_date'], p['last_exit_deferral'] or '')
+            for session in sessions_between(praman_conn, start, run_date):
+                bar = session_bar(praman_conn, p['symbol'], session, run_date)
+                if bar is None or not _finite(bar['open_price']) or bar['open_price'] <= 0:
+                    ops['missing_bars'] += 1
+                    plan.events.append((_event('MONITORED', p, run_date, dict(note='Exit pending: no usable bar.',
+                                        session=session), position_id=pid), None))
+                    break
+                try:
+                    factor = basis_factor(praman_conn, p['symbol'], p['decision_date'], session)
+                except UnadjustableWindowError as exc:
+                    ops['unpriceable_exits'] += 1
+                    plan.events.append((_event('MONITORED', p, run_date, dict(
+                        note=f'Exit pending: unadjustable corporate action ({exc}); not priced automatically.',
+                        session=session), position_id=pid), None))
+                    break
+                lock = lock_state(praman_conn, desk_conn, p['symbol'], session, bar, run_date)
+                if lock.blocks_sell:
+                    ops.setdefault('sells_blocked_by_lock', []).append(dict(position_id=pid, session=session))
+                    plan.events.append((_event('MONITORED', p, session, dict(
+                        note='Exit order not filled: no buyers at a lower lock (P8-064); retried next session.',
+                        session=session, exit_deferred=True, **lock.evidence()), position_id=pid), None))
+                    continue
+                price, qty = bar['open_price'] * factor, p['entry']['quantity']
+                plan.events.append((_event('EXIT_FILLED', p, session, dict(
+                    price=price, quantity=qty, reason=p['exit_order']['reason'], kind='exit_open', basis_factor=factor,
+                    raw_open=bar['open_price'], sell_cost_inr=round_trip_cost_inr(price, qty, costs, 'sell'),
+                    row_id=bar['row_id']), position_id=pid), None))
+                break
             continue
         if p['status'] != 'OPEN' or p['entry']['event_date'] >= run_date:
             continue
@@ -360,9 +372,15 @@ def run(praman_conn, desk_conn, run_date, *, rulebook, costs, rulebook_file, rul
             outcome = None
             opening, low = bar['open_price'] * factor, bar['low_price'] * factor
             hit = stop_rule(opening, low, stop)
-            plan.events.append((_event('MONITORED', p, day, dict(stop=stop, open=opening, low=low, factor=factor,
-                                raw_open=bar['open_price'], raw_low=bar['low_price'], sessions_held=held,
-                                row_id=bar['row_id']), position_id=pid), None))
+            monitored = dict(stop=stop, open=opening, low=low, factor=factor, raw_open=bar['open_price'],
+                             raw_low=bar['low_price'], sessions_held=held, row_id=bar['row_id'])
+            if hit:
+                lock = lock_state(praman_conn, desk_conn, p['symbol'], day, bar, run_date)
+                if lock.blocks_sell:          # P8-064: no buyers; the stop stands for the next session
+                    monitored.update(stop_hit_not_filled=hit[0], **lock.evidence())
+                    ops.setdefault('sells_blocked_by_lock', []).append(dict(position_id=pid, session=day))
+                    hit = None
+            plan.events.append((_event('MONITORED', p, day, monitored, position_id=pid), None))
             if hit:
                 plan.events.append((_event('EXIT_FILLED', p, day, dict(
                     price=hit[1], quantity=qty, reason='STOP', kind=hit[0], basis_factor=factor,
@@ -418,11 +436,17 @@ def run(praman_conn, desk_conn, run_date, *, rulebook, costs, rulebook_file, rul
                                        opportunity_id=c['opportunity_id'], decision_date=run_date), contract))
             continue
         limit = p['decision_price'] + LIMIT_ATR * p['atr20'] if use_limit else None
-        plan.events.append((_event('CANDIDATE_ACCEPTED', c['symbol'], run_date, dict(
+        accepted = dict(
             decision_price=p['decision_price'], atr20=p['atr20'], stop_level=p['stop_level'], quantity=quantity,
             screening_quantity=p['quantity'], sizing='LIMIT_PRICE' if limit_sizing else 'DECISION_PRICE',
             sizing_price=sizing_price, stress_loss_inr=stress, limit_price=limit,
-            entry_policy=definition['entry']['policy'], budget_used_before_inr=sum(used.values()), budget_inr=budget),
+            entry_policy=definition['entry']['policy'], budget_used_before_inr=sum(used.values()), budget_inr=budget)
+        if use_limit:      # P8-064: the exchange rejects a price above the band known for the next session
+            cap = buy_cap_at_decision(praman_conn, desk_conn, c['symbol'], run_date,
+                                      decided_at.astimezone(timezone.utc).isoformat())
+            if cap is not None and cap['cap'] < limit:
+                accepted['limit_cap'] = cap        # recorded only when it binds; sizing stays at the limit
+        plan.events.append((_event('CANDIDATE_ACCEPTED', c['symbol'], run_date, accepted,
             position_id=pid, opportunity_id=c['opportunity_id'], decision_date=run_date), contract))
         used[pid] = stress
         held_symbols.add(c['symbol'])
@@ -439,7 +463,7 @@ def run(praman_conn, desk_conn, run_date, *, rulebook, costs, rulebook_file, rul
     return ops
 
 
-def _settle_entry(praman_conn, p, pid, acc, day, run_date, use_limit, costs, per_trade):
+def _settle_entry(praman_conn, desk_conn, p, pid, acc, day, run_date, use_limit, costs, per_trade):
     """One entry attempt on its single eligible session. Missing or unusable data is an operational
     failure (MISSING_DATA); an untouched limit is a normal NO_FILL. Session prices are put on the
     decision's share basis first (P8-044), so a bonus or split between decision and fill cannot
@@ -454,8 +478,21 @@ def _settle_entry(praman_conn, p, pid, acc, day, run_date, use_limit, costs, per
                       reason=f'UNADJUSTABLE_CORPORATE_ACTION between decision and fill: {exc}'), position_id=pid)
     opening = raw_open * factor if _finite(raw_open) else raw_open
     low = raw_low * factor if _finite(raw_low) else raw_low
+    lock, blocked = None, None
     if use_limit:
+        cap = (acc.get('limit_cap') or {}).get('cap')
         fill = limit_fill(dict(decision_price=acc['decision_price'], atr20=acc['atr20']), opening, low)
+        if cap is not None and cap < fill['limit']:
+            fill = limit_order_fill(cap, opening, low) | dict(uncapped_limit=fill['limit'])
+        if bar is not None:
+            lock = lock_state(praman_conn, desk_conn, p['symbol'], day, bar, run_date)
+            if cap is None and buy_rejected(fill['limit'], lock):
+                blocked = 'REJECTED: limit above the session upper limit, whose band was not known at decision (P8-064)'
+            elif fill['fill'] is not None and lock.blocks_buy:
+                blocked = ('LOCKED_UPPER: no sellers at an upper lock (P8-064)' if lock.state == 'LOCKED_UPPER' else
+                           'POSSIBLY_LOCKED: flat bar with its limits unknown (P8-064)')
+        if blocked:
+            fill = dict(limit=fill['limit'], fill=None, status='NO_FILL', reason=blocked)
     else:
         usable = _finite(opening) and opening > 0
         fill = dict(limit=None, fill=opening if usable else None, status='FILL_OPEN' if usable else 'UNKNOWN',
@@ -463,6 +500,10 @@ def _settle_entry(praman_conn, p, pid, acc, day, run_date, use_limit, costs, per
     evidence = dict(session=day, open=opening, low=low, raw_open=raw_open, raw_low=raw_low, basis_factor=factor,
                     series=(bar or {}).get('series'), knowledge_date=(bar or {}).get('knowledge_date'),
                     row_id=(bar or {}).get('row_id'), limit=fill['limit'], status=fill['status'], reason=fill['reason'])
+    if 'uncapped_limit' in fill:
+        evidence['uncapped_limit'] = fill['uncapped_limit']
+    if blocked:
+        evidence.update(lock.evidence())
     if fill['fill'] is not None:
         price, qty = fill['fill'], acc['quantity']
         loss = planned_loss_inr(price, min(acc['stop_level'], price), qty, costs)

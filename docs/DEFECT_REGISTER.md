@@ -2401,7 +2401,7 @@ UTC/IST finish dates: 35 targeted tests in 1.049s, OK. Full suite in HANDOFF.md.
 
 ## P8-064 - paper exits can fill on an all-day locked lower circuit
 
-**Severity.** Medium. **Status.** Open ? engine unchanged, review requested in Part A5 (2026-10-13).
+**Severity.** Medium. **Status.** Closed — fixed 2026-10-14 (user approval), both books; see the fix below.
 The shared stop_rule(opening, low, stop) has no execution-availability input. Both
 manual monitoring and Strategy 0 accept its fill without consulting bands/queues.
 Verified synthetic example: previous close 100, band 5%, OHLC all 95, stop 98;
@@ -2421,6 +2421,41 @@ limit is at or above the locked price; synthetic calls with limit 102 filled at 
 and at 101 on flat bars. Proposed detection (POSSIBLY_LOCKED_UPPER, no fill, reason
 LOCKED_UPPER; unverifiable band on a flat bar = LOCK_STATUS_UNKNOWN) in the same
 review document. Document only; engine unchanged.
+
+**Fix, 2026-10-14 (user approval: "approved for implementation, both books. No new Strategy 0
+version").** `desk/paper/locks.py` holds the rule for both books. The band in force on session S
+is the price-band report dated the session before S, the reference price is that session's raw
+close of the same series, and the limits are reference x (1 -/+ band %). A bar is LOCKED_LOWER or
+LOCKED_UPPER when all four raw prices sit within one tick of that limit; that needs a FIXED band,
+the reference, S's tick size and no corporate action with ex-date S. When any of those is unknown
+and the bar is exactly flat, it is FLAT_UNKNOWN and assumed locked (user rule: "no buy, and no sell
+that session").
+- Sells: a stop hit, a pending exit order (time limit, kill switch, unadjustable action) or a
+  manual close on a session that blocks sells does not fill; the stop or order is tried again on
+  the next session under the same rule. Strategy 0 records why on that session's MONITORED event
+  (`stop_hit_not_filled`, or `exit_deferred` with the lock evidence) and in the brief; the manual
+  monitor lists it in its report and the brief; a manual close appends PAPER_CLOSE_DEFERRED.
+- Buys: no fill at an upper lock (or a flat bar with its limits unknown); a normal no-fill
+  (`LOCKED_UPPER`/`POSSIBLY_LOCKED`), which the fill-failure switch counts as an attempt.
+- The limit is capped at the next session's upper limit when that band was recorded before the
+  decision (Strategy 0: `limit_cap` on the acceptance, only when it binds; sizing stays at the
+  uncapped limit, so quantity is unchanged or smaller in effect). When the band was not known at
+  decision time and the limit turns out above it, the order is rejected: a normal no-fill
+  (`REJECTED`). The capped order follows the same day-limit rule (`limit_order_fill`).
+- Tick sizes are recorded daily, point-in-time, from Angel One's public scrip master
+  (`desk/tick_sizes.py`, table `tick_sizes`, nightly step `tick_sizes` after `circuit_bands`): the
+  master's `tick_size` is in paise and it is generated each morning (Last-Modified 08:00 IST), so
+  a copy is dated to that session. Plain HTTPS, no login, no SDK. Nothing before the first
+  recording is known, so until then any flat bar is treated as possibly locked.
+- Records change only when a rule binds: every new field is written only on a blocked, capped or
+  rejected fill. Replay of all seven Strategy 0 runs on temporary copies, with the band reports
+  each run could see: identical (the only difference is run 1's missing `candidate_order` key,
+  pre-existing since v3).
+- Tests: `tests/test_paper_locks.py` (14: tick master; lower, upper, touch-only and flat-elsewhere
+  bars; unknown band, dynamic band, unknown tick, ex-date reset; the buy cap's decision-time rule;
+  Strategy 0 stop at a lower lock then re-checked, flat-unknown sell, pending exit deferred then
+  filled, upper-lock no-fill counted as an attempt, the cap, the rejection; manual monitor, close
+  and open). The 13 behavioural tests fail with the lock and cap checks switched off.
 
 ## P8-065 - draft broker guard rejected an unrelated local variable
 

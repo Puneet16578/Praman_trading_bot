@@ -35,14 +35,17 @@ def _time_exit_order(desk_conn, trade_id: str):
     return json.loads(row['detail']) if row else None
 
 
-def first_mechanical_exit(praman_conn, desk_conn, trade_id: str, run_date: str):
+def first_mechanical_exit(praman_conn, desk_conn, trade_id: str, run_date: str, deferrals: list | None = None):
     """(Fill, trigger) for the first mechanical exit from the entry session through `run_date`, in
     date order, or None. trigger 'price': the stop (gap at the open, else touch at the stop, the
     existing conservative rule). trigger 'time': the open of the first session after the recorded
     time-exit order; on that session only its open counts (the position is gone
     afterwards), and an open at or below the stop is reported as the stop gap it also is. Each
     session uses the stop in force on that date. Raises UnadjustableWindowError where no adjustment
-    factor exists."""
+    factor exists. P8-064: a sell that would fill on a session locked all day at its lower limit (or
+    flat with its limits unknown) does not; the stop or time order is tried again on the next
+    session under the same rule, and each such session is appended to `deferrals` with the reason."""
+    from desk.paper.locks import lock_state
     from desk.paper.close import trade_basis_date
     from src.signals.event_catalogue import build_symbol_history
 
@@ -61,10 +64,20 @@ def first_mechanical_exit(praman_conn, desk_conn, trade_id: str, run_date: str):
             if row is None:
                 return None          # the first session after the order is not known yet
             opening = row['open_price'] * basis_factor(praman_conn, symbol, basis, day)
+            lock = lock_state(praman_conn, desk_conn, symbol, day, row, run_date)
+            if lock.blocks_sell:
+                if deferrals is not None:
+                    deferrals.append(dict(trade_id=trade_id, session=day, exit='time', **lock.evidence()))
+                continue
             return (Fill(event_date=day, price=opening, kind='stop_gap'), 'price') if opening <= stop else \
                    (Fill(event_date=day, price=opening, kind='time_exit_open'), 'time')
         fill = check_stop_on_session(praman_conn, symbol, day, stop, run_date, basis_date=basis)
         if fill is not None:
+            lock = lock_state(praman_conn, desk_conn, symbol, day, session_ohlc(praman_conn, symbol, day, run_date), run_date)
+            if lock.blocks_sell:
+                if deferrals is not None:
+                    deferrals.append(dict(trade_id=trade_id, session=day, exit=f'stop ({fill.kind})', **lock.evidence()))
+                continue
             return fill, 'price'
     return None
 
@@ -148,14 +161,17 @@ def run_monitor(praman_conn, desk_conn, run_date: str) -> dict:
         horizon = trade_horizon(desk_conn, trade_id)
 
         from src.signals.price_adjustment import UnadjustableWindowError
+        deferrals = []
         try:
-            found = first_mechanical_exit(praman_conn, desk_conn, trade_id, run_date)
+            found = first_mechanical_exit(praman_conn, desk_conn, trade_id, run_date, deferrals)
         except UnadjustableWindowError as exc:
             # No adjustment factor exists, so the stop cannot be checked: report it, never guess.
             report["positions"][trade_id] = {"symbol": symbol, "stop": latest["stop"], "target": latest["target"],
                                              "horizon": horizon,
                                              "unadjustable": f"stop not checked: {exc}; review and close by hand"}
             continue
+        if deferrals:                 # P8-064: why a stop or time exit did not fill on those sessions
+            report.setdefault('sells_blocked_by_lock', []).extend(deferrals)
         if found is not None:
             # Decision-basis fill price, exactly like a manual close -- the round-trip SELL-side cost is its
             # own explicit field, computed the same way `paper close` computes it, never folded into
