@@ -22,7 +22,8 @@ class IngestionProgressTest(unittest.TestCase):
                 patch.object(weekly_ingest, "STEPS", steps), \
                 patch.object(weekly_ingest, "_prevent_sleep", contextlib.nullcontext), \
                 patch.object(weekly_ingest, "power_status", return_value=(False, None)), \
-                contextlib.redirect_stdout(io.StringIO()):   # P8-055: never the machine's real battery
+                patch.object(weekly_ingest, "uncommitted_nightly_inputs", return_value=[]), \
+                contextlib.redirect_stdout(io.StringIO()):   # P8-055/059: never the machine's battery or tree
             return weekly_ingest.main()
 
     def health(self):
@@ -129,6 +130,7 @@ class LowBatteryGuardTest(unittest.TestCase):
                 patch.object(weekly_ingest, "STEPS", steps), \
                 patch.object(weekly_ingest, "_prevent_sleep", contextlib.nullcontext), \
                 patch.object(weekly_ingest, "power_status", return_value=power), \
+                patch.object(weekly_ingest, "uncommitted_nightly_inputs", return_value=[]), \
                 patch("desk.brief.record_skipped_run") as brief, \
                 contextlib.redirect_stdout(io.StringIO()):
             return weekly_ingest.main(), brief

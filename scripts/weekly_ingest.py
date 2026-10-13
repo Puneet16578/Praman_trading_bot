@@ -63,8 +63,16 @@ live over the network for the given date range -- no cached-index dependency at 
 Low-battery guard (user decision 2026-10-07; P8-053): the scheduled task may now start on battery,
 but if Windows reports the machine on battery below MIN_BATTERY_PERCENT, no step runs. The skip is a
 WARN line in `logs/weekly_ingest.log` and in that day's brief, exit code 0, and the next run catches
-up, since every step re-reads an overlapping window or everything not yet stored. An unreadable
-power status never skips.
+up on the data. An unreadable power status never skips.
+
+Working-tree guard (user decision 2026-10-13; P8-059): the nightly runs the working-tree code and
+records the commit with each decision, and it usually starts the moment the laptop wakes, so an
+interrupted session could leave it half-finished code. If any file it runs or reads (code and
+config under NIGHTLY_INPUT_DIRS, plus NIGHTLY_INPUT_FILES; tracked or untracked) differs from HEAD,
+or git cannot run, no step runs and the skip is recorded exactly like the low-battery one.
+`git --no-optional-locks status` never writes to the repository. Other docs and theses never trip it.
+A skipped date gets no desk scan, circuit bands, Strategy 0 decisions or brief of its own (P8-056);
+the data steps catch up.
 
 Every step's stdout is captured (not just its exit status) so this script can surface the two
 things a human running this unattended actually needs to see without reading the full log every
@@ -77,6 +85,8 @@ import ctypes
 import io
 import os
 import re
+import shutil
+import subprocess
 import sys
 import time
 import traceback
@@ -427,10 +437,56 @@ def power_status() -> tuple[bool, int | None]:
     return status.ACLineStatus == 0, percent
 
 
+# Everything the nightly runs or reads (P8-059): code and config directories, plus the few files
+# elsewhere that it reads at run time. Other docs and theses never trip the working-tree guard.
+NIGHTLY_INPUT_DIRS = ("src/", "desk/", "scripts/", "shared/", "config/", "rulebook/")
+NIGHTLY_INPUT_FILES = ("docs/DEFECT_REGISTER.md",                          # OPEN_CRITICAL_DEFECT switch
+                       "docs/desk/shadow_replay_followup_results.json",   # volatility context
+                       "docs/desk/shadow_replay_followup2_results.json")  # Strategy 0's entry policy
+GIT_FALLBACK = Path(r"C:\Program Files\Git\cmd\git.exe")   # the machine-wide install, if PATH lacks git
+
+
+def _git() -> str | None:
+    found = shutil.which("git")
+    return found or (str(GIT_FALLBACK) if GIT_FALLBACK.exists() else None)
+
+
+def uncommitted_nightly_inputs(root: Path = ROOT) -> list[str] | None:
+    """Nightly inputs that differ from HEAD, tracked or untracked, from
+    `git --no-optional-locks status --porcelain -z --untracked-files=all` (never writes to the
+    repository; renames report both paths). None if git cannot run: the caller then skips."""
+    git = _git()
+    if git is None:
+        return None
+    try:
+        done = subprocess.run([git, "--no-optional-locks", "status", "--porcelain", "-z", "--untracked-files=all"],
+                              cwd=root, capture_output=True, timeout=120,
+                              creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if done.returncode != 0:
+        return None
+    tokens, paths = done.stdout.decode("utf-8", "surrogateescape").split("\0"), []
+    i = 0
+    while i < len(tokens):
+        entry, i = tokens[i], i + 1
+        if len(entry) < 4:
+            continue
+        paths.append(entry[3:])
+        if "R" in entry[:2] or "C" in entry[:2]:          # rename/copy: the original path follows
+            if i < len(tokens):
+                paths.append(tokens[i])
+            i += 1
+    return sorted({p for p in paths if p.startswith(NIGHTLY_INPUT_DIRS) or p in NIGHTLY_INPUT_FILES})
+
+
 def _skip_low_battery(started: str, percent: int) -> int:
+    return _skip(started, f"on battery at {percent}% (below {MIN_BATTERY_PERCENT}%)")
+
+
+def _skip(started: str, reason: str) -> int:
     """No step runs. The WARN goes to the log (which the health line reports without treating it as
     a finished run, so staleness keeps counting from the last real run) and to today's brief."""
-    reason = f"on battery at {percent}% (below {MIN_BATTERY_PERCENT}%)"
     _append_log(f"=== {started} weekly_ingest skipped: WARN {reason}; no step ran; the next run catches up ===")
     try:
         from desk.brief import record_skipped_run
@@ -468,6 +524,12 @@ def main() -> int:
     on_battery, percent = power_status()
     if on_battery and percent is not None and percent < MIN_BATTERY_PERCENT:
         return _skip_low_battery(started, percent)
+    dirty = uncommitted_nightly_inputs()
+    if dirty is None:
+        return _skip(started, "git status could not run, so the working tree could not be checked")
+    if dirty:
+        shown = ", ".join(dirty[:10]) + (f" and {len(dirty) - 10} more" if len(dirty) > 10 else "")
+        return _skip(started, f"uncommitted changes in files the nightly runs or reads: {shown}")
     _append_log(f"=== {started} weekly_ingest started ===")
     with _prevent_sleep():
         return _run_steps_and_summarize(started)

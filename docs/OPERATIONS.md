@@ -1,5 +1,17 @@
 # Operations
 
+## Working-tree guard for the nightly (P8-059, 2026-10-13) — operational change, not a pre-registration amendment
+
+Before any step, the nightly runs `git --no-optional-locks status --porcelain` (which never writes
+to the repository). If a file it runs or reads has an uncommitted change (code and config under
+`src/`, `desk/`, `scripts/`, `shared/`, `config/`, `rulebook/`, tracked or untracked, plus
+`docs/DEFECT_REGISTER.md` and the two `docs/desk/shadow_replay_followup*_results.json` files it
+reads), or git cannot run, it runs nothing and writes a WARN naming the files to
+`logs/weekly_ingest.log` and that day's brief. Other docs and theses never trip it. Leave the tree
+clean whenever a session stops (CLAUDE.md session rule). A skipped date's data catch up on the next
+run; its desk scan, Strategy 0 decisions and brief do not (P8-056), nor Strategy 0's stop checks for
+that session (P8-057).
+
 ## Nightly manual-book monitoring (P8-054, 2026-10-11) — operational change, not a pre-registration amendment
 
 The nightly ingestion gained a `manual_monitor` step after `auto_paper` and before `brief`: it

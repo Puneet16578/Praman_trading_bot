@@ -191,6 +191,7 @@ class BriefNightlyTest(unittest.TestCase):
                  patch.object(weekly_ingest, 'STEPS', [('brief', weekly_ingest.step_brief)]), \
                  patch.object(weekly_ingest, '_prevent_sleep', contextlib.nullcontext), \
                  patch.object(weekly_ingest, 'power_status', return_value=(False, None)), \
+                 patch.object(weekly_ingest, 'uncommitted_nightly_inputs', return_value=[]), \
                  patch('desk.brief.write_brief', return_value=(Path('logs/brief_x.txt'), '')) as called, \
                  contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(weekly_ingest.main(), 0)

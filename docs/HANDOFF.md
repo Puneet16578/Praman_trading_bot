@@ -1,3 +1,17 @@
+## 2026-10-13: working-tree guard (P8-059) and manual open-risk measure (Claude)
+
+- Start 08:39: task Ready, no run in progress, no Python running; tree clean at fc39780
+  (`git --no-optional-locks status --porcelain --untracked-files=all` empty), so the guard could be
+  turned on. git: `C:\Program Files\Git\cmd\git.exe`, on the machine PATH the task inherits.
+- Item 1 (user approval): the nightly skips with a WARN (log and brief) when a file it runs or
+  reads has an uncommitted change or git cannot run; docs and theses do not trip it, except the
+  three docs it reads at run time (DEFECT_REGISTER.md and the two shadow_replay_followup*_results.json).
+  CLAUDE.md session rule added (user-approved wording). Catch-up check: the data steps catch up;
+  a skipped date's bands, scan, Strategy 0 decisions and brief do not (P8-056, open, awaiting the
+  user), and Strategy 0 checks stops on the run date only (P8-057, open, awaiting the user).
+- Before stopping any session: leave the tree clean (commit, or `git stash push -u`); otherwise the
+  next nightly skips.
+
 ## 2026-10-12 (morning): nightly runs 6-9 October and the burn-in record (Claude, read-only check)
 
 | Weekday | Run | Started | Finished | Result |

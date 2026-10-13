@@ -2036,6 +2036,60 @@ streak trips the switch. The in-code v1 and v2 definitions hash exactly as the p
 superseded after one run, v3 registered, 2026-10-05 ALREADY_RUN, 5PAISA and AUBANK in the book as
 v2 PENDING_ENTRY (Rs 24,764.32 of the budget); the production store was unchanged.
 
+## P8-059 - the nightly could run half-finished working-tree code
+
+**Severity.** Medium. **Status.** Closed — guard added 2026-10-13 (user approval); never occurred.
+
+The scheduled task runs `scripts/weekly_ingest.py` from the working tree and records `code_commit`
+(HEAD) with every decision, and since P8-053 it usually starts the moment the laptop wakes. A
+session interrupted by sleep would leave it uncommitted, possibly unfinished code, and its
+decisions would cite a commit that is not the code that ran. Guard: before any step,
+`git --no-optional-locks status --porcelain -z --untracked-files=all` (which never writes to the
+repository: a test shows plain `git status` rewrites the index where this does not). If any file
+the nightly runs or reads differs from HEAD, tracked or untracked (code and config under `src/`,
+`desk/`, `scripts/`, `shared/`, `config/`, `rulebook/`, plus the three docs it reads at run time:
+`docs/DEFECT_REGISTER.md` for the open-critical-defect switch and the two
+`docs/desk/shadow_replay_followup*_results.json` files), or git cannot run, no step runs and the
+skip is a WARN in the log and that day's brief naming the files, exactly like the low-battery skip.
+Other docs and theses never trip it. git comes from PATH (the machine PATH holds `C:\Program
+Files\Git\cmd`, which the scheduled task inherits) with that install path as a fallback. The normal
+state was checked first: the porcelain status was empty. Tests: `tests/test_nightly_tree_guard.py`
+(a real temporary repository: clean, tracked/untracked/renamed code and config, the read docs,
+ignored docs and theses, no index write, git missing or failing; `main()` runs on a clean tree and
+skips on a dirty one). The nightly harnesses in other tests now isolate the check, as they do the
+battery (P8-055 lesson). Catch-up: the data steps catch up; the skipped date's scan, Strategy 0
+decisions and brief do not (P8-056), nor do Strategy 0's stop checks for that session (P8-057).
+
+## P8-056 - a skipped night loses that date's scan, Strategy 0 decisions and brief
+
+**Severity.** Medium. **Status.** Open — found 2026-10-13; the fix awaits the user's decision.
+
+After a skipped or missed night the next run catches up the data steps: bhavcopy fills missing
+dates, announcements re-read a seven-day overlap, corporate actions 60 days, ASM/GSM 30 days, and
+the manual monitor checks every session since entry (P8-054). But the circuit bands, the desk scan,
+Strategy 0's run and the brief all work on the latest stored session only
+(`ingest_price_bands.run()`, `run_scan(latest)`, `run_auto_paper()`, `write_brief()`), so the
+skipped date gets no bands, no opportunity log, no Strategy 0 decisions and no brief of its own. A
+Strategy 0 run for a past date would also trip DATA_STALE_OR_INCONSISTENT by design ("Run date ...
+is not the latest stored session"), which blocks new entries. Nothing affected yet: every session
+since Strategy 0 began (2026-10-05) had its own run. The P8-053 and P8-059 guards make skipped
+nights more likely. Options: (a) on the next run, process each missed session in date order with
+only the data known by that session (needs a stated exception to the stale-data switch for
+catch-up dates, and a rule for an entry whose next session is already in the store); or (b) keep
+recording the date as a burn-in gap and say so in the brief.
+
+## P8-057 - Strategy 0 checks stops on the run date's session only
+
+**Severity.** Medium. **Status.** Open — found 2026-10-13; the fix awaits the user's decision.
+
+`strategy0.run` monitors each open position against `session_bar(..., run_date)` only. After a
+skipped run date (P8-056), a stop touched on the skipped session is never seen if the next session
+recovers, and a time-limit exit is ordered one session late (the session count itself is right).
+The same defect class as P8-054 in the manual book. Nothing affected: every session since
+2026-10-05 had its own run, so every Strategy 0 position was checked on every session. Proposed
+fix: check every session since the fill in date order, as P8-054 does; it changes the registered
+engine's implementation, not its rule ("monitoring starts the session after the fill").
+
 ## P8-054 - desk monitor checked a manual stop on the run date's session only
 
 **Severity.** Medium. **Status.** Closed — fixed 2026-10-11 (user approval); no record affected.
