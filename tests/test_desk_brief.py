@@ -29,7 +29,7 @@ class BriefTest(EngineFixture):
                          f'Strategy 0 version 3; candidate order SEEDED_RANDOM, seed {seed[:16]}',
                          f'Candidate {first}', f'Candidate {second}', 'Calibrated P(profitable): UNKNOWN (T4)',
                          'Expected value: UNKNOWN (T4)', 'Execution: limit order at 102.00', 'Final state: WATCH',
-                         'Kill switches:', 'Open risk by book (Strategy 0: stress loss; manual: entry-to-stop risk):',
+                         'Kill switches:', 'Open risk by book (stress loss, the rulebook measure):',
                          f'Strategy 0 (after its {DAYS[0]} run, version 3): Rs 24,480.00 of Rs 25,000.00; '
                          f'2 positions open, pending or exiting: ',
                          f'{first} PENDING_ENTRY (v3, decided {DAYS[0]})', 'Manual (strategy_id=manual)',
@@ -76,7 +76,7 @@ class BriefTest(EngineFixture):
              contextlib.redirect_stdout(io.StringIO()) as out:
             cli.cmd_status(None)
         text = out.getvalue()
-        for expected in ('Open risk by book (Strategy 0: stress loss; manual: entry-to-stop risk):',
+        for expected in ('Open risk by book (stress loss, the rulebook measure):',
                          f'Strategy 0 (after its {DAYS[0]} run, version 3): Rs 24,480.00 of Rs 25,000.00; 2 positions',
                          f'AAA PENDING_ENTRY (v3, decided {DAYS[0]})', f'BBB PENDING_ENTRY (v3, decided {DAYS[0]})',
                          'Manual (strategy_id=manual): Rs 0.00 of Rs 25,000.00; open trades []',

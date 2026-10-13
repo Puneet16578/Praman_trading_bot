@@ -11,6 +11,7 @@ all, since there is no live decision left to evaluate.
 """
 from __future__ import annotations
 import json
+import math
 from dataclasses import dataclass, field
 
 from src.bitemporal.guard import read_as_of
@@ -65,19 +66,32 @@ def _average_daily_volume_and_turnover(conn, symbol: str, as_of_date: str, lookb
     return sum(volumes) / len(volumes), sum(turnovers) / len(turnovers)
 
 
-def _open_risk_used_inr(desk_conn) -> float:
-    """Sum of stress loss recorded on the decision that opened each currently-open paper trade.
-    Approximated from the ORIGINAL planned loss at open (stored on the OPEN event's price/quantity/
-    stop) recomputed via planned_loss_inr with today's cost config -- Phase 1 does not persist a
-    stress-loss figure on the trade event itself (see docs/desk/phase1.md for this as a named gap)."""
-    from desk.journal.store import open_trade_ids, latest_trade_event
+class OpenRiskUnknown(ValueError):
+    """An open manual trade has no recorded stress loss, so the manual book's open risk is unknown."""
 
-    total = 0.0
+
+def _open_risk_used_inr(desk_conn) -> float:
+    """The manual paper book's open risk on the rulebook's measure: `risk.max_open_risk_pct` caps
+    STRESS loss, so each currently-open manual trade counts at the stress loss recorded on the
+    decision that opened it (`decisions.stress_loss_inr`, persisted at assessment), as Strategy 0
+    counts the stress loss recorded at acceptance (P8-058). Before, this summed entry-to-stop risk,
+    which understates a 20%-band stock about fourfold. An open trade with no recorded stress loss
+    raises OpenRiskUnknown: never an understated number."""
+    from desk.journal.store import open_trade_ids
+
+    total, missing = 0.0, []
     for trade_id in open_trade_ids(desk_conn):
-        latest = latest_trade_event(desk_conn, trade_id)
-        if latest is None:
+        row = desk_conn.execute(
+            "SELECT d.stress_loss_inr FROM paper_trade_events e LEFT JOIN decisions d ON d.decision_id = e.decision_id "
+            "WHERE e.trade_id = ? AND e.event_type = 'OPEN'", (trade_id,)).fetchone()
+        stress = row[0] if row else None
+        if not isinstance(stress, (int, float)) or not math.isfinite(stress) or stress < 0:
+            missing.append(trade_id)
             continue
-        total += abs(latest["price"] - latest["stop"]) * latest["quantity"]
+        total += stress
+    if missing:
+        raise OpenRiskUnknown(f"No recorded stress loss for open manual trade(s) {', '.join(missing)}; "
+                              "the manual book's open risk is unknown.")
     return total
 
 
@@ -154,7 +168,12 @@ def run_assessment(conn, desk_conn, *, symbol: str, as_of_date: str, sector: str
     sizing_entry = None
     if thesis is not None:
         entry, stop = thesis["planned_entry"], thesis["planned_stop"]
-        open_risk_used = 0.0 if screening else _open_risk_used_inr(desk_conn)
+        open_risk_used, open_risk_problem = 0.0, None
+        if not screening:
+            try:
+                open_risk_used = _open_risk_used_inr(desk_conn)
+            except OpenRiskUnknown as exc:
+                open_risk_problem = str(exc)
         capital_at_stock, capital_at_sector = ((0.0, 0.0) if screening else
             _capital_at_stock_and_sector(desk_conn, symbol, sector, symbol_to_sector))
         sizing_entry, sizing_problem = entry, None
@@ -172,9 +191,11 @@ def run_assessment(conn, desk_conn, *, symbol: str, as_of_date: str, sector: str
             except (ValueError, UnadjustableWindowError) as exc:
                 sizing_entry, sizing_problem = None, f"ATR20 unavailable ({exc}); the entry limit cannot be set."
 
-    if thesis is not None and sizing_entry is None:
-        gate_results["G5"] = GateResult("G5", UNKNOWN, (sizing_problem,))
-        gate_results["G6"] = GateResult("G6", UNKNOWN, (sizing_problem,))
+    if thesis is not None and (sizing_entry is None or open_risk_problem):
+        # Either the entry limit or the open risk already used is unknown: nothing can be sized.
+        problem = sizing_problem or open_risk_problem
+        gate_results["G5"] = GateResult("G5", UNKNOWN, (problem,))
+        gate_results["G6"] = GateResult("G6", UNKNOWN, (problem,))
     elif thesis is not None:
         entry = sizing_entry
         position_size = compute_position_size(entry, stop, rulebook, open_risk_used, capital_at_stock, capital_at_sector, costs=costs)

@@ -121,10 +121,10 @@ def open_risk_lines(desk_conn, rulebook, run):
     """Both paper books, each labelled (P8-051), shared by the brief and `desk status`: Strategy 0 as
     of `run` (operational only: open risk and the positions held, never prices or P&L) and the
     manual book. Each book has its own budget."""
-    from desk.gates.engine import _open_risk_used_inr
+    from desk.gates.engine import OpenRiskUnknown, _open_risk_used_inr
     from desk.journal.store import open_trade_ids
     budget = rulebook.risk.capital_allocated_inr * rulebook.risk.max_open_risk_pct / 100
-    lines = ['Open risk by book (Strategy 0: stress loss; manual: entry-to-stop risk):']
+    lines = ['Open risk by book (stress loss, the rulebook measure):']
     if run is None:
         lines.append('  Strategy 0: no run')
     else:
@@ -136,8 +136,11 @@ def open_risk_lines(desk_conn, rulebook, run):
         lines.append(f"  Strategy 0 (after its {run['run_date']} run, version {run['strategy_version']}): "
                      f"Rs {ops['open_risk_inr']:,.2f} of Rs {ops['open_risk_budget_inr']:,.2f}; "
                      f"{ops['positions_holding']} positions open, pending or exiting: {listed}")
-    lines.append(f'  Manual (strategy_id=manual): Rs {_open_risk_used_inr(desk_conn):,.2f} of Rs {budget:,.2f}; '
-                 f'open trades {open_trade_ids(desk_conn)}')
+    try:
+        manual = f'Rs {_open_risk_used_inr(desk_conn):,.2f} of Rs {budget:,.2f}'
+    except OpenRiskUnknown as exc:
+        manual = f'UNKNOWN ({exc})'
+    lines.append(f'  Manual (strategy_id=manual): {manual}; open trades {open_trade_ids(desk_conn)}')
     lines.append(f'Strategy 0 profit/loss and outcome metrics: SEALED until {OUTCOMES_OPEN.isoformat()}. '
                  'Only operational metrics are shown.')
     return lines

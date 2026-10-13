@@ -2036,6 +2036,34 @@ streak trips the switch. The in-code v1 and v2 definitions hash exactly as the p
 superseded after one run, v3 registered, 2026-10-05 ALREADY_RUN, 5PAISA and AUBANK in the book as
 v2 PENDING_ENTRY (Rs 24,764.32 of the budget); the production store was unchanged.
 
+## P8-058 - manual open risk was entry-to-stop risk, not the stress loss the rulebook caps
+
+**Severity.** Medium. **Status.** Closed — fixed 2026-10-13 (user approval); no record affected.
+
+Raised by the user. `risk.max_open_risk_pct` caps aggregate STRESS-loss exposure (the rulebook's own
+comment: "measured on stress loss ... not on planned loss alone"), and G6 adds each candidate at its
+stress loss. But the open risk already used by manual trades (`desk.gates.engine._open_risk_used_inr`,
+also the input to position sizing's open-risk room and the brief/`desk status` manual line) summed
+|entry - stop| x quantity: no costs and no gap or locked-circuit stress. Its docstring claimed the
+stress loss recorded on the opening decision and cited a "named gap" in `docs/desk/phase1.md` that
+is not there; no rulebook, DESIGN.md or register text records a decision to use entry-to-stop. Open
+manual trades therefore counted at a fraction of their stress, about a quarter for a 20%-band stock
+with a stop 10% below entry (the locked-circuit scenario is band x 2 lock days = 40% of position),
+so G6 could admit a trade beyond the cap and sizing saw too much room. Medium: a risk cap was
+understated; production has had no manual trade and no manual decision, so nothing was affected and
+no recorded decision replays differently.
+
+Fix: each open manual trade counts at the stress loss recorded on the decision that opened it
+(`decisions.stress_loss_inr`, persisted at assessment and sized at the limit price), as Strategy 0
+counts the stress loss recorded at acceptance. A trade without one makes the open risk unknown
+(`OpenRiskUnknown`): G5 and G6 become UNKNOWN with the reason, so the assessment cannot be
+ELIGIBLE, and the brief and `desk status` show UNKNOWN, never an understated number. The display
+label is now "Open risk by book (stress loss, the rulebook measure)". No rulebook change. Tests:
+`tests/test_manual_open_risk.py` (the rulebook's stress loss for a fixed 20% band, Rs 2,000 against
+Rs 500 entry-to-stop; G6 fails where the old measure passed; an unrecorded stress loss; closed
+trades; a real-data assessment with an unrecorded open trade). All five fail with the old measure
+restored.
+
 ## P8-059 - the nightly could run half-finished working-tree code
 
 **Severity.** Medium. **Status.** Closed — guard added 2026-10-13 (user approval); never occurred.

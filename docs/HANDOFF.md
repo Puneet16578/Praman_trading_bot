@@ -11,6 +11,10 @@
   user), and Strategy 0 checks stops on the run date only (P8-057, open, awaiting the user).
 - Before stopping any session: leave the tree clean (commit, or `git stash push -u`); otherwise the
   next nightly skips.
+- Item 2: G6 and sizing counted open manual trades at entry-to-stop risk although the rulebook caps
+  stress loss (P8-058, Medium; no documented decision for entry-to-stop; no manual trade or
+  decision ever existed, so nothing affected). Fixed: each counts at the stress loss recorded on its
+  opening decision; an unrecorded one makes G5/G6 UNKNOWN. No rulebook change.
 
 ## 2026-10-12 (morning): nightly runs 6-9 October and the burn-in record (Claude, read-only check)
 
