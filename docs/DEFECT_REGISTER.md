@@ -2038,8 +2038,8 @@ v2 PENDING_ENTRY (Rs 24,764.32 of the budget); the production store was unchange
 
 ## P8-060 - the nightly ISIN refresh re-downloads fixed historical snapshots, making WARN routine
 
-**Severity.** Low. **Status.** Open — found 2026-10-13 (the user asked why the ISIN WARN stopped);
-the fix awaits the user's approval.
+**Severity.** Low. **Status.** Closed — fixed 2026-10-13 (user approval); found the same day (the
+user asked why the ISIN WARN stopped).
 
 `scripts/build_isin_map.py` fetches today's CM snapshot plus all ten fixed historical
 `SNAPSHOT_DATES` (2019-11-15 to 2025-10-13) from NSE's archive every night, with no cache. Most nights
@@ -2054,6 +2054,28 @@ and a routine WARN hides a real one. The log keeps only the exception type, not 
 Proposed fix: fetch each fixed historical snapshot once into a checksummed cache and re-use it, so
 the nightly fetches only today's snapshot (ten fewer NSE requests a night), and record the HTTP
 status of any failure; then an ISIN WARN means something real.
+
+**Fix, 2026-10-13 (user approval).** `scripts/build_isin_map.py` reads each fixed historical
+snapshot through `cached_bhavcopy_save`: the raw CSV lives in `data/raw/isin_snapshots/` (with the
+project's other raw data, outside the repository) as `cm_<date>.csv` with a
+`.sha256.json` sidecar (SHA-256, size, NSE file name, download time). Every use re-hashes the file;
+a missing file, missing or unreadable sidecar, or a mismatch is a WARN naming the problem and the
+snapshot is downloaded again into a fresh folder, checked to be a CM bhavcopy with an ISIN column
+and at least one row (an error page is never cached), and replaced whole. Today's snapshot is never
+cached and its handling is unchanged (a 404 is a WARN and keeps the existing map). A failure now
+names the HTTP status ("HTTPError, HTTP 503: ..."). `src/` is unchanged (the cache wraps the
+`bhavcopy_save` that `fetch_isin_snapshot` already takes), and so are the merge and identity
+rules. Check (network, temporary cache; the production map and `data/raw` only read): each of the
+ten snapshots parsed from the cache equals the same snapshot freshly downloaded (1,478 to 2,292
+symbols each), all ten cache reads verified their hash with no download, and the merged historical
+map is identical (2,819 symbols). Against the production map built 12 Oct: all 2,819 present; the 53
+whose ISIN differs there are all explained by that build's own 12 Oct snapshot, which wins on
+conflict by design. The real cache folder does not exist yet: tonight's nightly downloads the ten
+snapshots once (as it does every night now) and caches them; from 14 Oct it fetches only today's.
+Tests: `tests/test_isin_map_operations.py::HistoricalSnapshotCacheTest` (downloaded once then read
+from the cache with the same map, today's never cached; a damaged file, a missing file, a missing
+or unreadable sidecar each re-downloaded with a WARN and then read from the cache again; an HTTP
+503 names the status; an error page is not cached and the next run caches both).
 
 ## P8-058 - manual open risk was entry-to-stop risk, not the stress loss the rulebook caps
 

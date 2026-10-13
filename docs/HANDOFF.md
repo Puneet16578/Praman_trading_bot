@@ -22,7 +22,12 @@
   when HEAD is on another branch or detached, or git cannot read HEAD. Work on a branch now skips
   the nightly just as an unfinished tree does: switch back to master before stopping.
 - DEFECT_REGISTER.md stays a nightly input of the P8-059 guard (agreed with the user, no change).
-- Next: P8-060 (ISIN snapshot cache).
+- P8-060 fixed (user approval): fixed historical ISIN snapshots cached in `data/raw/isin_snapshots/`
+  with SHA-256 sidecars, hash checked on every use, re-downloaded if missing or damaged; failures name
+  the HTTP status; today's snapshot unchanged (404 stays a WARN). Map from the cache = map from fresh
+  downloads (all ten dates, temporary cache). The real cache does not exist yet: tonight's run fills
+  it (expect ten "downloaded and cached" lines in its isin_map output); from 14 Oct expect "cached
+  snapshot, hash verified".
 
 ## 2026-10-13: working-tree guard (P8-059) and manual open-risk measure (Claude)
 

@@ -119,6 +119,90 @@ class IsinRefreshTest(unittest.TestCase):
         self.assertIn("WARN snapshot skipped", log.read_text())
 
 
+class HistoricalSnapshotCacheTest(unittest.TestCase):
+    """P8-060: fixed historical snapshots are downloaded once into a checksummed cache."""
+
+    DATES = [date(2020, 1, 2), date(2022, 6, 15)]
+
+    def setUp(self):
+        from src.ingestion.nse_market_data import isin_mapping
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        root = Path(self.tmp.name)
+        self.cache, self.path, self.today = root / "cache", root / "map.json", date(2026, 9, 28)
+        self.downloads, self.fail, self.html = [], {}, set()
+        real_fetch = isin_mapping.fetch_isin_snapshot
+
+        def fetch(d, bhavcopy_save=None):        # today's (no cache) and the cached path both reach the fake
+            return real_fetch(d, bhavcopy_save or self.download)
+        for name, new in dict(OUTPUT_PATH=self.path, CACHE_DIR=self.cache, SNAPSHOT_DATES=self.DATES,
+                              download_bhavcopy=self.download, market_today=lambda: self.today,
+                              fetch_isin_snapshot=fetch).items():
+            patcher = patch.object(build_isin_map, name, new)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def download(self, d, folder):
+        self.downloads.append(d)
+        if d in self.fail:
+            raise self.fail[d]
+        out = Path(folder) / d.strftime("cm%d%b%Ybhav.csv")
+        out.write_text("<html>busy</html>" if d in self.html else f"SYMBOL,SERIES,ISIN\nS{d:%Y},EQ,INE{d:%Y}00001\n",
+                       encoding="utf-8")
+        return str(out)
+
+    def run_main(self):
+        self.downloads.clear()
+        return weekly_ingest._run_capturing("isin_map", build_isin_map.main)
+
+    def cached(self, d):
+        return self.cache / f"cm_{d.isoformat()}.csv"
+
+    def test_downloaded_once_then_read_from_the_cache_with_the_same_map(self):
+        first = self.run_main()
+        self.assertEqual((first["status"], self.downloads), ("OK", [self.today, *self.DATES]))
+        built = self.path.read_bytes()
+        for d in self.DATES:
+            record = json.loads(self.cached(d).with_name(self.cached(d).name + ".sha256.json").read_text())
+            self.assertEqual(record["sha256"], hashlib.sha256(self.cached(d).read_bytes()).hexdigest())
+        self.assertFalse(self.cached(self.today).exists())               # today's is never cached
+        second = self.run_main()
+        self.assertEqual((second["status"], self.downloads), ("OK", [self.today]))
+        self.assertEqual(second["output"].count("cached snapshot, hash verified"), 2)
+        self.assertEqual(self.path.read_bytes(), built)
+        self.assertEqual(json.loads(built), {"S2020": "INE202000001", "S2022": "INE202200001", "S2026": "INE202600001"})
+
+    def test_a_damaged_or_missing_cached_file_is_downloaded_again(self):
+        self.run_main()
+        sidecar = lambda d: self.cached(d).with_name(self.cached(d).name + ".sha256.json")
+        for damage, words in ((lambda d: self.cached(d).write_text("SYMBOL,SERIES,ISIN\nX,EQ,BAD\n"), "its hash does not match"),
+                              (lambda d: self.cached(d).unlink(), "its file is missing"),
+                              (lambda d: sidecar(d).unlink(), "its hash record is missing or unreadable"),
+                              (lambda d: sidecar(d).write_text("not json"), "its hash record is missing or unreadable")):
+            with self.subTest(words=words):
+                damage(self.DATES[0])
+                result = self.run_main()
+                self.assertEqual((result["status"], self.downloads), ("WARN", [self.today, self.DATES[0]]))
+                self.assertIn(f"WARN {self.DATES[0].isoformat()}: cached snapshot rejected ({words})", result["output"])
+                self.assertIn("S2020", json.loads(self.path.read_text()))
+                again = self.run_main()                                   # repaired: read from the cache again
+                self.assertEqual((again["status"], self.downloads), ("OK", [self.today]))
+
+    def test_failures_name_the_http_status_and_an_unusable_download_is_not_cached(self):
+        response = Response()
+        response.status_code = 503
+        self.fail = {self.DATES[0]: HTTPError("503 Server Error", response=response)}
+        self.html = {self.DATES[1]}
+        result = self.run_main()
+        self.assertEqual(result["status"], "WARN")
+        self.assertIn(f"WARN {self.DATES[0].isoformat()}: snapshot failed (HTTPError, HTTP 503", result["output"])
+        self.assertIn(f"WARN {self.DATES[1].isoformat()}: snapshot failed (ValueError", result["output"])
+        self.assertFalse(any(self.cached(d).exists() for d in self.DATES))
+        self.fail, self.html = {}, set()
+        self.assertEqual(self.run_main()["status"], "OK")              # the next run fetches and caches both
+        self.assertTrue(all(self.cached(d).exists() for d in self.DATES))
+
+
 class IsinAgeTest(unittest.TestCase):
     def setUp(self):
         self.conn = sqlite3.connect(":memory:")

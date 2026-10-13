@@ -457,6 +457,15 @@ inside a savepoint. Real desk migration: **0 rows before, 0 after**. Existing ro
 are never backfilled with a guessed build timestamp. The migration also runs
 idempotently when opening a Desk database. Tests cover a populated legacy table.
 
+### Historical snapshot cache (P8-060, 2026-10-13) — operational change, not a pre-registration amendment
+
+The ten fixed historical snapshots never change, so each is downloaded once into
+`data/raw/isin_snapshots/` (outside the repository) with a SHA-256 sidecar and read
+from there; every use re-checks the hash, and a missing or damaged file is a WARN and
+is downloaded again. Only today's snapshot is fetched every night. A failure names
+its HTTP status. To force a fresh download of every snapshot, move the folder aside;
+the next run rebuilds it. The merge and identity rules are unchanged.
+
 ## ISIN history retention repair - 2026-10-03
 
 P8-034: a recent build timestamp did not establish complete identity coverage.
