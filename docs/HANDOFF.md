@@ -7,6 +7,21 @@
 - 13 Oct note (append-only): scripts/desk_annotate_p8069.py annotates the 52 opportunity rows and
   Strategy 0's 13 Oct run; shown in desk status and every brief. Dry run on a temporary copy
   (production unchanged), then run on production after this commit (see the next entry).
+- 13 Oct note applied in production after b3115c6: 52 opportunity rows + 1 S0 run; desk status shows
+  "Strategy 0 burn-in dates decided on incomplete disclosure data: 1: 2026-10-13 (P8-069; 52 screen
+  results annotated)".
+- T1 phase 2 (user approval, <= 60 requests): 41 used (7ef59e8). NIFTY 50/NIFTY 500/India VIX from
+  niftyindices' historical-data endpoint, one request per series-year (the VIX form's endpoint is
+  gone: 8 requests got a 404 redirect, my error for not testing one first); VIX's 8 missing
+  sessions from dated Daily Snapshot files. Cross-check vs the 16 phase 1 files: index closes
+  identical; VIX O/H/L differ only by rounding. Every URL in data/raw/t1_sources/phase2/requests.jsonl.
+- T1 build (1a3991d; artifact data/t1/build_20261013T202004Z.sqlite, report
+  docs/desk/t1_coverage_20261014.md): no outcome loaded or computed. A first build from uncommitted
+  code (same-day basket knowledge, too strict) is kept in data/t1/_superseded/ with a note.
+  For the user's review: 5 sessions known months later (strict rule leaves 50-session V2 gaps),
+  2022-08-08 missing from the store (P8-070, with four weekend sessions), identity UNKNOWN before
+  2019-11-15 and between sparse snapshots (67k stock-days in 2024). Spells: V1 9 dev / 1 hold-out;
+  V2 13 dev / 2 hold-out. STOP: no outcome until the user has reviewed the report.
 
 ## 2026-10-14 (from 00:37): announcements failure, T1 probe and addendum 2, P8-064 implementation (Claude)
 
