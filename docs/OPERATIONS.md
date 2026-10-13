@@ -9,8 +9,20 @@ to the repository). If a file it runs or reads has an uncommitted change (code a
 reads), or git cannot run, it runs nothing and writes a WARN naming the files to
 `logs/weekly_ingest.log` and that day's brief. Other docs and theses never trip it. Leave the tree
 clean whenever a session stops (CLAUDE.md session rule). A skipped date's data catch up on the next
-run; its desk scan, Strategy 0 decisions and brief do not (P8-056), nor Strategy 0's stop checks for
-that session (P8-057).
+run; its desk scan and brief do not, and it becomes a Strategy 0 burn-in gap (next section).
+
+## Strategy 0 after a skipped night: stops catch up, entries do not (P8-056, P8-057, 2026-10-13) — operational change, not a pre-registration amendment
+
+Paper only does what live trading could have done (user decision). A stop would sit at the broker,
+so the next run checks every session since the last one checked, in date order, and fills a breach
+on the session it happened. An entry needs an order placed before the next open, so a trading date
+with no Strategy 0 run is recorded as a burn-in gap (`strategy_gaps`: battery skip, uncommitted
+code, not on master, git unavailable, run failed, or no run at all) and is never decided later; a
+run that decides after 09:00 IST on the next weekday makes no decisions for its date and records it
+as DECIDED_TOO_LATE, while still processing entries, stops and exits. The brief lists the gaps a run
+recorded and the total; `desk status` counts them. A run after midnight but before 09:00 still
+decides the previous session, but its `bhavcopy_today` step waits about 75 minutes for a file that
+cannot exist yet, so start a missed run before about 07:00 or in the evening.
 
 ## Nightly manual-book monitoring (P8-054, 2026-10-11) — operational change, not a pre-registration amendment
 

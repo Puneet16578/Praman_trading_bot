@@ -80,7 +80,7 @@ class BriefTest(EngineFixture):
                          f'Strategy 0 (after its {DAYS[0]} run, version 3): Rs 24,480.00 of Rs 25,000.00; 2 positions',
                          f'AAA PENDING_ENTRY (v3, decided {DAYS[0]})', f'BBB PENDING_ENTRY (v3, decided {DAYS[0]})',
                          'Manual (strategy_id=manual): Rs 0.00 of Rs 25,000.00; open trades []',
-                         'SEALED until 2027-06-01'):
+                         'SEALED until 2027-06-01', 'Strategy 0 burn-in gaps (dates with no decisions): 0'):
             self.assertIn(expected, text)
         for forbidden in ('Open risk used', 'Open positions:', 'pnl', 'P&L:', 'profit of', '102.00'):
             self.assertNotIn(forbidden, text)

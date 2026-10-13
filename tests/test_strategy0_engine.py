@@ -89,6 +89,8 @@ class EngineFixture(unittest.TestCase):
         self.temp.cleanup()
 
     def run_day(self, day, rb=None, today=None, **kw):
+        # A normal nightly: decided that evening (P8-056), never the wall clock.
+        kw.setdefault('decided_at', ist(f'{day}T19:00'))
         return strategy0.run(self.store.conn, self.desk, day, rulebook=rb or rulebook(), costs=self.costs,
                              rulebook_file='desk_rulebook_v3.yaml', rulebook_hash='r', cost_config_hash='k',
                              code_commit='c', praman_watermark='w', today=today or day, defect_path=self.defects,
@@ -299,6 +301,19 @@ class EngineTest(EngineFixture):
         self.assertEqual(len(self.events('ENTRY_FILL_FAILED')), 0)
         self.assertNotIn('REPEATED_FILL_FAILURES', ops['kill_switches_active'])
         self.assertEqual(ops['accepted'], 1)
+
+    def test_nightly_passes_the_logged_skip_reasons_to_strategy0(self):
+        from desk.automation import nightly
+        path = Path(self.temp.name)/'nightly_skips.sqlite'
+        own = Store()
+        own.market(DAYS[0])
+        skips = {DAYS[0]: dict(reason='BATTERY_SKIP', skips=['x'])}
+        with patch('desk.automation.nightly.get_live_connection', return_value=own.conn), \
+             patch('desk.automation.nightly.max_recorded_at', return_value='w'), \
+             patch('desk.ingestion_health.skips_by_decision_date', return_value=skips), \
+             patch('desk.automation.strategy0.run', return_value=dict(status='OK')) as called:
+            nightly.run_auto_paper(DAYS[0], desk_db_path=path)
+        self.assertEqual(called.call_args.kwargs['skip_reasons'], skips)
 
     def test_crashed_nightly_run_counts_as_operational_failure(self):
         from desk.automation import nightly
@@ -521,6 +536,113 @@ class SkippedSessionMonitoringTest(EngineFixture):
         self.store.bar('AAA', DAYS[13], 100, 101, 99, 100)
         self.run_day(DAYS[13])
         self.assertEqual([e['event_date'] for e in self.events('EXIT_FILLED')], [DAYS[13]])   # the next open
+
+
+def ist(stamp):
+    from shared.market_time import IST
+    from datetime import datetime
+    return datetime.fromisoformat(stamp).replace(tzinfo=IST)
+
+
+class BurnInGapTest(EngineFixture):
+    """P8-056: paper only does what live could have done. A date with no run, or a decision too late
+    to place an entry before the next open, is an append-only gap; exits are still processed."""
+
+    def gaps(self):
+        return [tuple(r) for r in self.desk.execute('SELECT decision_date, reason, run_id FROM strategy_gaps ORDER BY gap_id')]
+
+    def test_a_run_after_a_skipped_night_decides_its_own_date_and_records_the_gap(self):
+        d0, d1, d2 = DAYS[:3]
+        self.store.market(d0)
+        opportunity(self.desk, 'AAA', d0, plan())
+        self.run_day(d0)
+        self.store.market(d1)
+        self.store.bar('AAA', d1, 101, 104, 100, 103)       # d1's run was skipped
+        self.store.market(d2)
+        opportunity(self.desk, 'BBB', d2, plan())
+        skip = {d1: dict(reason='BATTERY_SKIP', skips=['2026-10-06T18:00:00+05:30: WARN on battery at 22%'])}
+        ops = self.run_day(d2, skip_reasons=skip)
+        self.assertEqual(ops['accepted'], 1)                 # its own date decided normally
+        self.assertEqual([e['symbol'] for e in self.events('CANDIDATE_ACCEPTED') if e['decision_date'] == d2], ['BBB'])
+        entry = self.events('ENTRY_FILLED')[0]               # AAA's order was placed on d0, before d1's open
+        self.assertEqual((entry['symbol'], entry['detail']['session']), ('AAA', d1))
+        run_id = strategy0.latest_operational(self.desk)['run_id']
+        self.assertEqual(self.gaps(), [(d1, 'BATTERY_SKIP', run_id)])
+        self.assertEqual(ops['gaps_recorded'], [dict(decision_date=d1, reason='BATTERY_SKIP')])
+        self.store.market(DAYS[3])
+        self.run_day(DAYS[3])
+        self.assertEqual(len(self.gaps()), 1)                # never recorded twice
+
+    def test_a_date_with_no_run_and_no_skip_line_is_no_run(self):
+        self.store.market(DAYS[0])
+        self.run_day(DAYS[0])
+        self.store.market(DAYS[1])
+        self.store.market(DAYS[2])
+        self.run_day(DAYS[2])
+        self.assertEqual([g[:2] for g in self.gaps()], [(DAYS[1], 'NO_RUN')])
+
+    def test_a_date_whose_run_crashed_is_run_failed(self):
+        from desk.journal.store import record_journal_event
+        self.store.market(DAYS[0])
+        self.run_day(DAYS[0])
+        self.store.market(DAYS[1])
+        record_journal_event(self.desk, event_type=strategy0.RUN_FAILED_EVENT,
+                             detail=dict(run_date=DAYS[1], error_type='RuntimeError'))
+        self.store.market(DAYS[2])
+        self.run_day(DAYS[2], skip_reasons={DAYS[1]: dict(reason='BATTERY_SKIP', skips=['evening'])})
+        (row,) = self.desk.execute('SELECT decision_date, reason, detail FROM strategy_gaps').fetchall()
+        detail = json.loads(row['detail'])
+        self.assertEqual((row['decision_date'], row['reason']), (DAYS[1], 'RUN_FAILED'))
+        self.assertEqual((detail['skips'], [f['error_type'] for f in detail['failures']]), (['evening'], ['RuntimeError']))
+
+    def test_a_late_run_still_fills_a_stop(self):
+        d0, d1, d2 = DAYS[:3]
+        self.store.market(d0)
+        opportunity(self.desk, 'AAA', d0, plan())            # stop 92
+        self.run_day(d0)
+        self.store.market(d1)
+        self.store.bar('AAA', d1, 101, 104, 100, 103)
+        self.run_day(d1)
+        self.store.market(d2)
+        self.store.bar('AAA', d2, 95, 96, 90, 94)
+        ops = self.run_day(d2, decided_at=ist(f'{DAYS[3]}T10:00'))
+        self.assertEqual(ops['gap'], 'DECIDED_TOO_LATE')
+        (exit_,) = self.events('EXIT_FILLED')
+        self.assertEqual((exit_['event_date'], exit_['detail']['kind']), (d2, 'stop_touch'))
+
+    def test_deciding_after_the_cut_off_is_a_gap_but_exits_are_processed(self):
+        from desk.brief import build_brief
+        d0, d1 = DAYS[0], DAYS[1]
+        self.store.market(d0)
+        opportunity(self.desk, 'AAA', d0, plan())
+        self.run_day(d0)
+        self.store.market(d1)
+        self.store.bar('AAA', d1, 101, 104, 100, 103)
+        opportunity(self.desk, 'BBB', d1, plan())
+        ops = self.run_day(d1, decided_at=ist(f'{DAYS[2]}T09:30'))   # after 09:00 on the next trading day
+        self.assertEqual((ops['gap'], ops['accepted']), ('DECIDED_TOO_LATE', 0))
+        self.assertEqual(self.events('CANDIDATE_ACCEPTED', 'CANDIDATE_REJECTED')[1:], [])   # only d0's AAA
+        self.assertEqual([e['symbol'] for e in self.events('ENTRY_FILLED')], ['AAA'])        # entries still settle
+        self.assertEqual([g[:2] for g in self.gaps()], [(d1, 'DECIDED_TOO_LATE')])
+        text = build_brief(self.store.conn, self.desk, d1, rulebook=rulebook(), health_lines=[])
+        self.assertIn(f'NO DECISIONS for {d1}: Strategy 0 ran after the 09:00 IST cut-off', text)
+        self.assertIn(f'Burn-in gaps recorded by this run: {d1} (decided too late); 1 in total', text)
+        self.assertNotIn('NO TRADE', text)
+
+    def test_after_midnight_but_before_nine_still_decides(self):
+        self.store.market(DAYS[0])
+        opportunity(self.desk, 'AAA', DAYS[0], plan())
+        ops = self.run_day(DAYS[0], decided_at=ist(f'{DAYS[1]}T08:59'))
+        self.assertEqual((ops['accepted'], ops.get('gap')), (1, None))
+        self.assertEqual(self.gaps(), [])
+
+    def test_a_friday_decided_on_saturday_is_on_time(self):
+        friday = DAYS[4]                                    # 2026-10-09
+        self.store.market(friday)
+        opportunity(self.desk, 'AAA', friday, plan())
+        self.assertEqual(strategy0.entry_cutoff(friday).isoformat(), '2026-10-12T09:00:00+05:30')
+        ops = self.run_day(friday, decided_at=ist('2026-10-10T10:00'))
+        self.assertEqual(ops['accepted'], 1)
 
 
 class RegistryAndSealTest(unittest.TestCase):

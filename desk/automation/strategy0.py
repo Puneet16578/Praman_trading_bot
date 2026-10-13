@@ -23,7 +23,7 @@ same rules, keep their own version on every event, and count against the same bu
 is processed once across all versions, and the fill-failure streak counts every version's entries.
 """
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import date, datetime, time, timedelta, timezone
 import hashlib
 import json
 import math
@@ -37,6 +37,7 @@ from desk.shadow_followup import cap_measurements
 from desk.shadow_followup2 import LIMIT_ATR, limit_fill
 from src.bitemporal.guard import latest_as_of
 from desk.paper.execution import basis_factor, stop_rule
+from shared.market_time import IST
 from src.signals.price_adjustment import UnadjustableWindowError
 
 STRATEGY_ID = 'S0'
@@ -153,9 +154,55 @@ def _isin_status(conn, run_date):
     return 'OK' if line.startswith('ISIN map: OK') else line.split(':', 1)[1].strip().split(',')[0].split(' ')[0]
 
 
+ENTRY_CUTOFF = time(9, 0)    # IST, next trading day: after this no entry order could precede the open
+
+
+def entry_cutoff(decision_date: str) -> datetime:
+    """The latest moment a decision for `decision_date` could still place its entry order before the
+    next session's open (P8-056): 09:00 IST on the next weekday. There is no holiday calendar, so a
+    holiday makes the cut-off earlier than strictly necessary, never later."""
+    day = date.fromisoformat(decision_date) + timedelta(days=1)
+    while day.weekday() >= 5:
+        day += timedelta(days=1)
+    return datetime.combine(day, ENTRY_CUTOFF, tzinfo=IST)
+
+
+def _missed_dates(praman_conn, desk_conn, run_date, skip_reasons):
+    """Trading sessions after the last date Strategy 0 decided and before `run_date` with no
+    Strategy 0 run, each with its reason: RUN_FAILED if a run for it crashed (journalled by the
+    nightly), else the skip the nightly logged, else NO_RUN. Gaps already recorded are never
+    recorded twice."""
+    last = desk_conn.execute('SELECT MAX(run_date) FROM strategy_runs WHERE strategy_id=? AND run_date<?',
+                             (STRATEGY_ID, run_date)).fetchone()[0]
+    if last is None:
+        return []
+    recorded = {r[0] for r in desk_conn.execute('SELECT decision_date FROM strategy_gaps WHERE strategy_id=?', (STRATEGY_ID,))}
+    failures = {}
+    for r in desk_conn.execute('SELECT detail, recorded_at FROM journal_events WHERE event_type=? ORDER BY journal_event_id',
+                               (RUN_FAILED_EVENT,)):
+        d = json.loads(r['detail'])
+        failures.setdefault(d.get('run_date'), []).append(dict(error_type=d.get('error_type'), recorded_at=r['recorded_at']))
+    gaps = []
+    for day in sessions_between(praman_conn, last, run_date):
+        if day < run_date and day not in recorded:
+            why = skip_reasons.get(day) or {}
+            reason = 'RUN_FAILED' if day in failures else why.get('reason', 'NO_RUN')
+            gaps.append(dict(decision_date=day, reason=reason,
+                             detail=dict(skips=why.get('skips', []), failures=failures.get(day, []))))
+    return gaps
+
+
 def run(praman_conn, desk_conn, run_date, *, rulebook, costs, rulebook_file, rulebook_hash, cost_config_hash,
-        code_commit, praman_watermark, today, defect_path=None, isin_status=None):
-    """One nightly Strategy 0 run. Returns the operational summary (never P&L)."""
+        code_commit, praman_watermark, today, defect_path=None, isin_status=None, skip_reasons=None,
+        decided_at=None):
+    """One nightly Strategy 0 run. Returns the operational summary (never P&L).
+
+    Paper only does what live trading could have done (user principle, 2026-10-13). A trading date
+    with no run is recorded as a burn-in gap (P8-056), with its reason (`_missed_dates`; the
+    nightly passes the logged skips as `skip_reasons`, {date: {'reason', 'skips'}}). A run deciding
+    after `entry_cutoff(run_date)` (`decided_at`, default now) could not have placed its entry orders
+    before the next open: it makes no candidate decisions and records its own date as a gap, but
+    still settles earlier entries, checks stops and orders exits."""
     require_level(rulebook, 'paper_auto')
     strategy = registry.ensure_registered(desk_conn)
     version = strategy['version']
@@ -163,6 +210,14 @@ def run(praman_conn, desk_conn, run_date, *, rulebook, costs, rulebook_file, rul
     if desk_conn.execute('SELECT 1 FROM strategy_runs WHERE strategy_id=? AND run_date=?',
                          (STRATEGY_ID, run_date)).fetchone():
         return dict(status='ALREADY_RUN', run_date=run_date)
+    decided_at = decided_at or datetime.now(timezone.utc)
+    cutoff = entry_cutoff(run_date)
+    too_late = decided_at > cutoff
+    gaps = _missed_dates(praman_conn, desk_conn, run_date, skip_reasons or {})
+    if too_late:
+        gaps.append(dict(decision_date=run_date, reason='DECIDED_TOO_LATE',
+                         detail=dict(decided_at=decided_at.astimezone(IST).isoformat(timespec='seconds'),
+                                     cutoff=cutoff.isoformat())))
     definition = strategy['definition']
     use_limit = definition['entry']['policy'].startswith('LIMIT')
     positions = load_book(desk_conn)
@@ -329,7 +384,9 @@ def run(praman_conn, desk_conn, run_date, *, rulebook, costs, rulebook_file, rul
             if _holding(p) and pid not in exited_today and pid not in not_filled_today}
     held_symbols = {positions[pid]['symbol'] for pid in used}
     limit_sizing = definition.get('sizing_rule') == 'LIMIT_PRICE'
-    for c in candidates:
+    if too_late:
+        ops['gap'] = 'DECIDED_TOO_LATE'          # no entry order could have preceded the next open
+    for c in ([] if too_late else candidates):
         p = c['plan']
         quantity, stress, sizing_price = p.get('quantity'), (p.get('stress') or {}).get('stress_loss_inr'), p.get('decision_price')
         reasons = []
@@ -370,8 +427,10 @@ def run(praman_conn, desk_conn, run_date, *, rulebook, costs, rulebook_file, rul
     ops['open_risk_inr'] = sum(used.values())
     ops['open_risk_budget_inr'] = budget
     ops['no_trade'] = ops['accepted'] == 0
+    if gaps:
+        ops['gaps_recorded'] = [dict(decision_date=g['decision_date'], reason=g['reason']) for g in gaps]
     _write(desk_conn, version, run_date, plan, ops, rulebook.automation_level, rulebook_hash, cost_config_hash,
-           code_commit, praman_watermark)
+           code_commit, praman_watermark, gaps)
     return ops
 
 
@@ -481,7 +540,7 @@ def _contract(c, reasons, definition, rulebook_file, watermark, commit, stress):
                    purpose='Paper burn-in; acceptance is not an eligibility judgement.'))
 
 
-def _write(conn, version, run_date, plan, ops, level, rulebook_hash, cost_hash, commit, watermark):
+def _write(conn, version, run_date, plan, ops, level, rulebook_hash, cost_hash, commit, watermark, gaps=()):
     conn.execute('SAVEPOINT strategy0_run')
     try:
         cursor = conn.execute('INSERT INTO strategy_runs (strategy_id,strategy_version,run_date,automation_level,rulebook_hash,'
@@ -489,6 +548,10 @@ def _write(conn, version, run_date, plan, ops, level, rulebook_hash, cost_hash, 
                               (STRATEGY_ID, version, run_date, level, rulebook_hash, cost_hash, commit, watermark,
                                json.dumps(ops, sort_keys=True), _now()))
         run_id = cursor.lastrowid
+        for gap in gaps:
+            conn.execute('INSERT INTO strategy_gaps (strategy_id,decision_date,reason,detail,run_id,recorded_at) '
+                         'VALUES (?,?,?,?,?,?)', (STRATEGY_ID, gap['decision_date'], gap['reason'],
+                                                 json.dumps(gap['detail'], sort_keys=True), run_id, _now()))
         for event, contract in plan.events:
             cur = conn.execute('INSERT INTO strategy_paper_events (strategy_id,strategy_version,run_id,position_id,opportunity_id,'
                                'symbol,decision_date,event_type,event_date,detail,recorded_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)',

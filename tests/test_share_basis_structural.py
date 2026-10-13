@@ -97,9 +97,11 @@ class ShareBasisStructuralTest(unittest.TestCase):
         return decision_id, f'{symbol}:{thesis_id}'
 
     def s0_run(self, day):
+        from shared.market_time import IST
         return strategy0.run(self.praman, self.desk, day, rulebook=self.rb, costs=self.costs, rulebook_file='v3',
                              rulebook_hash='r', cost_config_hash='k', code_commit='c', praman_watermark='w',
-                             today=day, defect_path=self.defects, isin_status='OK')
+                             today=day, defect_path=self.defects, isin_status='OK',
+                             decided_at=datetime.fromisoformat(day + 'T19:00').replace(tzinfo=IST))   # P8-056: that evening
 
     def test_one_share_basis_through_every_price_path(self):
         noon = lambda day: datetime.fromisoformat(day + 'T12:00:00+00:00')

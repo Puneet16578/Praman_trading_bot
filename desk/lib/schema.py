@@ -318,6 +318,21 @@ STRATEGY_PAPER_EVENTS = DeskTable(
     ),
 )
 
+STRATEGY_GAPS = DeskTable(
+    name="strategy_gaps",
+    ddl="""CREATE TABLE strategy_gaps (
+        gap_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        strategy_id TEXT NOT NULL,
+        decision_date TEXT NOT NULL,       -- a trading session on which the strategy made no decisions
+        reason TEXT NOT NULL CHECK(reason IN ('BATTERY_SKIP', 'UNCOMMITTED_CODE', 'NOT_ON_MASTER',
+                                              'GIT_UNAVAILABLE', 'RUN_FAILED', 'NO_RUN', 'DECIDED_TOO_LATE')),
+        detail TEXT NOT NULL,              -- JSON: skip lines and failures, or the decision time and cut-off
+        run_id INTEGER REFERENCES strategy_runs(run_id),   -- the run that recorded the gap
+        recorded_at TEXT NOT NULL,
+        UNIQUE(strategy_id, decision_date)
+    )""",
+)
+
 DECISION_CONTRACTS = DeskTable(
     name="decision_contracts",
     ddl="""CREATE TABLE decision_contracts (
@@ -379,7 +394,8 @@ ANNOTATED_VIEWS = (
 DESK_TABLES: dict[str, DeskTable] = {
     t.name: t for t in (DECISIONS, THESES, PAPER_TRADE_EVENTS, JOURNAL_EVENTS, OPPORTUNITIES, MONITOR_RUNS, CIRCUIT_BANDS,
                         OPPORTUNITY_LOG, OPPORTUNITY_EXECUTIONS, KILL_SWITCH_EVENTS, TRADING_STRATEGIES,
-                        STRATEGY_RUNS, STRATEGY_PAPER_EVENTS, DECISION_CONTRACTS, SOURCE_FRESHNESS, RECORD_ANNOTATIONS)
+                        STRATEGY_RUNS, STRATEGY_PAPER_EVENTS, DECISION_CONTRACTS, SOURCE_FRESHNESS, RECORD_ANNOTATIONS,
+                        STRATEGY_GAPS)
 }
 
 

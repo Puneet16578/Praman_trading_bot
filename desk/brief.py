@@ -49,6 +49,12 @@ def build_brief(praman_conn, desk_conn, run_date, *, rulebook, health_lines=()):
         if late:     # P8-057: the run on the limit session was missed; ordered at this run, as live would
             lines += [f"Time-limit exits ordered late because a run was missed: {len(late)} "
                       f"({', '.join(str(x['sessions_late']) for x in late)} session(s) late)"]
+        if ops.get('gap') == 'DECIDED_TOO_LATE':     # P8-056
+            lines += [f'NO DECISIONS for {run_date}: Strategy 0 ran after the 09:00 IST cut-off before the next open, '
+                      'when no entry order could still have been placed (a burn-in gap); entries, stops and exits '
+                      'were still processed.']
+    if run is not None:
+        lines += burn_in_gap_lines(desk_conn, run)
     lines += ['']
     accepted = _accepted(desk_conn, run_date)
     for c in accepted:
@@ -70,7 +76,7 @@ def build_brief(praman_conn, desk_conn, run_date, *, rulebook, health_lines=()):
                   f"  Portfolio: PASS (open risk before Rs {d['budget_used_before_inr']:,.2f} of Rs {d['budget_inr']:,.2f})",
                   f'  Execution: {execution}',
                   '  Final state: WATCH (research conditions UNKNOWN until T4; accepted only as a paper burn-in)']
-    if ops is not None and not accepted:
+    if ops is not None and not accepted and ops.get('gap') is None:
         lines += ['NO TRADE - no candidate passed every check today. This is a normal outcome.']
     lines += ['', 'Kill switches:'] + kill_switches.display_lines(desk_conn, 'S0')
     lines += [''] + open_risk_lines(desk_conn, rulebook, run)
@@ -78,6 +84,36 @@ def build_brief(praman_conn, desk_conn, run_date, *, rulebook, health_lines=()):
     if health_lines:
         lines += ['', 'Data health:'] + [f'  {h}' for h in health_lines]
     return '\n'.join(lines) + '\n'
+
+
+GAP_REASONS = {'BATTERY_SKIP': 'battery skip', 'UNCOMMITTED_CODE': 'uncommitted code', 'NOT_ON_MASTER': 'not on master',
+               'GIT_UNAVAILABLE': 'git unavailable', 'RUN_FAILED': 'Strategy 0 run failed', 'NO_RUN': 'no run at all', 'DECIDED_TOO_LATE': 'decided too late'}
+
+
+def _gaps(desk_conn):
+    return desk_conn.execute("SELECT decision_date, reason, run_id FROM strategy_gaps WHERE strategy_id='S0' "
+                             'ORDER BY decision_date').fetchall()
+
+
+def burn_in_gap_lines(desk_conn, run):
+    """Trading dates on which Strategy 0 made no decisions (P8-056): those this run recorded, and
+    the total so far."""
+    rows = _gaps(desk_conn)
+    mine = [r for r in rows if r['run_id'] == run['run_id']]
+    lines = [f"Burn-in gaps recorded by this run: "
+             + (', '.join(f"{r['decision_date']} ({GAP_REASONS[r['reason']]})" for r in mine) or 'none')
+             + f"; {len(rows)} in total"]
+    return lines
+
+
+def burn_in_gap_summary(desk_conn):
+    """One line for `desk status`."""
+    rows = _gaps(desk_conn)
+    if not rows:
+        return 'Strategy 0 burn-in gaps (dates with no decisions): 0'
+    last = rows[-1]
+    return (f"Strategy 0 burn-in gaps (dates with no decisions): {len(rows)}; latest {last['decision_date']} "
+            f"({GAP_REASONS[last['reason']]})")
 
 
 def manual_monitor_lines(desk_conn, run_date):

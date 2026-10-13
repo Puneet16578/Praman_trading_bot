@@ -199,6 +199,28 @@ class LowBatteryGuardTest(unittest.TestCase):
         self.assertTrue(percent is None or 0 <= percent <= 100)
 
 
+class SkipsByDecisionDateTest(unittest.TestCase):
+    """P8-056: each skip line labels the date its run would have decided."""
+
+    def test_skip_lines_map_to_the_date_each_run_would_have_decided(self):
+        from desk.ingestion_health import skips_by_decision_date
+        with tempfile.TemporaryDirectory() as folder:
+            log = Path(folder) / "ingest.log"
+            log.write_text(
+                "=== 2026-10-14T18:00:02+05:30 weekly_ingest skipped: WARN on battery at 22% (below 30%); no step ran; the next run catches up ===\n"
+                "=== 2026-10-15T07:40:00+05:30 weekly_ingest skipped: WARN uncommitted changes in files the nightly runs or reads: desk/x.py; no step ran; the next run catches up ===\n"
+                "=== 2026-10-19T08:10:00+05:30 weekly_ingest skipped: WARN HEAD is on branch other, not master; no step ran; the next run catches up ===\n"
+                "=== 2026-10-19T18:05:00+05:30 weekly_ingest skipped: WARN git status could not run, so the working tree could not be checked; no step ran; the next run catches up ===\n"
+                "=== 2026-10-19T18:30:00+05:30 weekly_ingest started ===\n", encoding="utf-8")
+            with patch("desk.ingestion_health.LOG_PATH", log):
+                skips = skips_by_decision_date()
+        self.assertEqual({day: s["reason"] for day, s in skips.items()},
+                         {"2026-10-14": "UNCOMMITTED_CODE",     # evening battery skip, then a morning retry
+                          "2026-10-16": "NOT_ON_MASTER",        # Monday morning belongs to Friday
+                          "2026-10-19": "GIT_UNAVAILABLE"})
+        self.assertEqual(len(skips["2026-10-14"]["skips"]), 2)
+
+
 class SleepPreventionTest(unittest.TestCase):
     def test_windows_restores_previous_state_on_success_and_interrupt(self):
         for interrupted in (False, True):

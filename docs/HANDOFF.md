@@ -9,6 +9,17 @@
   all six runs on temporary copies: identical (run 1's operational record lacks only v3's
   candidate_order key). Manual monitor unchanged; its time exit after a missed run is retroactive
   (reported, awaiting the user).
+- P8-056 fixed (user decision): a trading date with no Strategy 0 run is an append-only burn-in
+  gap (`strategy_gaps`) with its reason (battery skip, uncommitted code, not on master, git
+  unavailable, run failed, no run at all), recorded by the next run, which decides its own date
+  normally; a run deciding after 09:00 IST on the next weekday makes no decisions (gap
+  DECIDED_TOO_LATE) but processes entries, stops and exits. No catch-up exception to the stale-data
+  switch. The brief lists the gaps; `desk status` counts them. Replay of all six runs with this
+  code on temporary copies: identical, no gaps. Never happened before: all runs decided the same
+  evening. Reported, not changed: after midnight, `bhavcopy_today` waits ~75 min for a file that
+  cannot exist, so a run starting after ~07:00 could miss the cut-off.
+- P8-059 hole (HEAD not master) and P8-060 (ISIN snapshot cache) next; DEFECT_REGISTER.md stays a
+  nightly input of the P8-059 guard (agreed with the user, no change).
 
 ## 2026-10-13: working-tree guard (P8-059) and manual open-risk measure (Claude)
 

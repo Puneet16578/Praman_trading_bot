@@ -114,6 +114,20 @@ accuracy bar and zero unverified numbers in any output. A persistent edge is a b
 
 ## Changelog
 
+**2026-10-13 — Strategy 0 v3 runs only what live trading could have done; no new version (user
+decisions in their message of 2026-10-13, P8-057 and P8-056).** One principle: a stop sits at the
+broker and fires whether or not the laptop ran; an entry needs an order placed before the next open.
+(1) Monitoring, commit 72d2947 (P8-057). Before: each open position was checked against the run
+date's session only. After: every session not yet monitored, after the fill, in date order, with
+the same stop rule and events (the stop rule shared with the manual book as
+`desk.paper.execution.stop_rule`); an exit fills on the session where the stop was breached. A time
+exit falling on a skipped session is ordered at the next run, with the delay recorded. This is the
+registered rule ("monitoring starts the session after the fill") implemented for skipped nights; no
+rule changed. (2) Burn-in gaps (P8-056). A trading date with no Strategy 0 run is recorded as a gap
+(`strategy_gaps`, with its reason) and never decided later; the stale-data switch keeps no
+catch-up exception. A run deciding after 09:00 IST on the next weekday makes no candidate decisions
+and records its date as a gap; entries, stops and exits are still processed.
+
 **2026-10-06 — Strategy 0 v3: seeded random candidate order; v2 superseded after one run
 (approved by the user in their message of 2026-10-06).** Before (v2): the day's SCREEN_PASS
 candidates were taken in symbol order and accepted greedily against the open-risk budget, so the

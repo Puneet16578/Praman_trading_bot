@@ -48,6 +48,38 @@ def isin_map_health_line(conn, as_of_date: str | None) -> str:
         return "ISIN map: ERROR (build metadata unavailable or checksum invalid)."
 
 
+_SKIP_REASONS = (("WARN on battery", "BATTERY_SKIP"), ("WARN uncommitted changes", "UNCOMMITTED_CODE"),
+                 ("WARN HEAD is", "NOT_ON_MASTER"), ("WARN git status could not run", "GIT_UNAVAILABLE"))
+MARKET_CLOSE = (15, 30)
+
+
+def skips_by_decision_date() -> dict:
+    """Nightly runs skipped before any step (P8-053, P8-059), keyed by the date each would have
+    decided: a skip at or after 15:30 IST belongs to that day; an earlier one (a morning recovery)
+    to the previous weekday. Labels Strategy 0's burn-in gap records only (P8-056); nothing here
+    feeds a decision. {date: {'reason': the latest skip's reason, 'skips': [their lines]}}."""
+    from datetime import timedelta
+    from shared.market_time import IST, parse_logged_timestamp
+    out = {}
+    if not LOG_PATH.exists():
+        return out
+    for line in LOG_PATH.read_text(encoding="utf-8").splitlines():
+        m = _SKIP_RE.match(line)
+        if not m:
+            continue
+        moment = parse_logged_timestamp(m.group("start")).astimezone(IST)
+        day = moment.date()
+        if (moment.hour, moment.minute) < MARKET_CLOSE:
+            day -= timedelta(days=1)
+            while day.weekday() >= 5:
+                day -= timedelta(days=1)
+        reason = next((code for prefix, code in _SKIP_REASONS if m.group("detail").startswith(prefix)), "NO_RUN")
+        entry = out.setdefault(day.isoformat(), dict(reason=reason, skips=[]))
+        entry["reason"] = reason
+        entry["skips"].append(f"{m.group('start')}: {m.group('detail')}")
+    return out
+
+
 def ingestion_health_line(current_run_start: str | None = None) -> str:
     """`current_run_start` is the start stamp of the run asking for this line, i.e. the nightly
     brief, which is written before its own run finishes (P8-050): that run is reported as in

@@ -2109,7 +2109,7 @@ decisions and brief do not (P8-056), nor do Strategy 0's stop checks for that se
 
 ## P8-056 - a skipped night loses that date's scan, Strategy 0 decisions and brief
 
-**Severity.** Medium. **Status.** Open — found 2026-10-13; the fix awaits the user's decision.
+**Severity.** Medium. **Status.** Closed — fixed 2026-10-13 (user decision, option (b)); see the fix below.
 
 After a skipped or missed night the next run catches up the data steps: bhavcopy fills missing
 dates, announcements re-read a seven-day overlap, corporate actions 60 days, ASM/GSM 30 days, and
@@ -2124,6 +2124,49 @@ nights more likely. Options: (a) on the next run, process each missed session in
 only the data known by that session (needs a stated exception to the stale-data switch for
 catch-up dates, and a rule for an entry whose next session is already in the store); or (b) keep
 recording the date as a burn-in gap and say so in the brief.
+
+**Fix, 2026-10-13 (user decision: record the date as a gap, with no catch-up exception to the
+stale-data switch; "paper must only do what live trading could have done ... An entry needs an
+order placed before the next open; if that couldn't happen, there's no entry").** No new Strategy 0
+version; the stale-data switch is unchanged.
+- New append-only table `strategy_gaps` (one row per strategy and decision date). Each trading
+  session after the last date Strategy 0 decided and before the run date with no Strategy 0 run is
+  recorded by the next run, which then decides its own date normally; the missed date is never
+  decided later. Reason: RUN_FAILED if a run for it crashed (the nightly's `S0_RUN_FAILED` journal
+  event), else the skip the nightly logged for it (BATTERY_SKIP, UNCOMMITTED_CODE, NOT_ON_MASTER,
+  GIT_UNAVAILABLE; `desk.ingestion_health.skips_by_decision_date` reads `logs/weekly_ingest.log`: a
+  skip at or after 15:30 IST belongs to that day, an earlier one to the previous weekday), else
+  NO_RUN. The skip lines and failures go in the gap's detail.
+- Too late: `strategy0.entry_cutoff(D)` is 09:00 IST on the next weekday after D. A run whose
+  decision time (the moment Strategy 0 decides, in the auto_paper step; the steps after it place
+  nothing) is after the cut-off records D as DECIDED_TOO_LATE, with the decision time and cut-off,
+  and makes no candidate decisions; pending entries, stops and exits (including late time exits) are
+  still processed. No holiday calendar exists, so after a weekday holiday the cut-off is the
+  holiday's morning: earlier than needed, never later, so it can only cost an entry, never allow
+  one live could not have placed.
+- Brief: "Burn-in gaps recorded by this run: <date> (<reason>); N in total" in the Strategy 0
+  section, and on a too-late run "NO DECISIONS for <date>: ..." instead of "NO TRADE". `desk
+  status`: "Strategy 0 burn-in gaps (dates with no decisions): N; latest <date> (<reason>)".
+- What happens today, before this fix (user question): a run for D that decided after the next
+  morning's open still accepted entries, and their limit orders were then filled against an open
+  that had happened before the decision. It never happened: all six Strategy 0 runs (5-12 Oct)
+  decided the same evening, between 18:40 and 21:52 IST, and every session had its own run, so the
+  new code records no gap for the past (replay of all six runs with it on temporary copies:
+  identical, no gaps).
+- A run after midnight but before 09:00 decides D normally (tested). Reported, not changed: the
+  `bhavcopy_today` step, which runs before Strategy 0, asks for the calendar day's file; after
+  midnight that is the next session's, which cannot exist yet, so it spends its whole retry budget
+  (6 attempts, 15 minutes apart, about 75 minutes of waiting) and reports WARN. A run starting
+  after about 07:00 can therefore reach Strategy 0 after 09:00 and record a DECIDED_TOO_LATE gap
+  that the decision itself did not need.
+- Unchanged: the skipped date still gets no circuit bands, desk scan or brief of its own; the data
+  steps catch up as before.
+- Tests: `tests/test_strategy0_engine.py::BurnInGapTest` (a run after a skipped night decides its
+  own date and records the gap once; NO_RUN; RUN_FAILED; too late: a gap, no decisions, entries and
+  a stop still filled, brief lines; 08:59 after midnight decides; a Friday decided on Saturday is on
+  time, the cut-off Monday 09:00), `tests/test_ingestion_progress.py::SkipsByDecisionDateTest`, the
+  nightly passing the logged skips (`test_nightly_passes_the_logged_skip_reasons_to_strategy0`),
+  `tests/test_desk_brief.py` (the `desk status` line) and `tests/test_desk_append_only.py`.
 
 ## P8-057 - Strategy 0 checks stops on the run date's session only
 
@@ -2156,7 +2199,7 @@ with the new code on temporary copies: position events (259) and decision contra
 identical; operational records identical except that run 1's lacks the `candidate_order` key v3's
 code adds (pre-existing since e36ac7c, not this fix). Manual monitor (P8-054), checked and unchanged:
 stops catch up the same way; its time exit fills at the first open after the horizon even when the
-run before that open was missed, which live trading could not do (reported to the user).
+run before that open was missed, which live trading could not do (reported to the user). Commit 72d2947.
 
 ## P8-054 - desk monitor checked a manual stop on the run date's session only
 
