@@ -2036,6 +2036,25 @@ streak trips the switch. The in-code v1 and v2 definitions hash exactly as the p
 superseded after one run, v3 registered, 2026-10-05 ALREADY_RUN, 5PAISA and AUBANK in the book as
 v2 PENDING_ENTRY (Rs 24,764.32 of the budget); the production store was unchanged.
 
+## P8-060 - the nightly ISIN refresh re-downloads fixed historical snapshots, making WARN routine
+
+**Severity.** Low. **Status.** Open — found 2026-10-13 (the user asked why the ISIN WARN stopped);
+the fix awaits the user's approval.
+
+`scripts/build_isin_map.py` fetches today's CM snapshot plus all ten fixed historical
+`SNAPSHOT_DATES` (2019-11-15 to 2025-10-13) from NSE's archive every night, with no cache. Most nights
+one or two of those downloads fail with an HTTP error, a different date each night (30 Sep:
+2020-06-15, 2021-02-17; 6 Oct: 2020-06-15, 2021-06-15; 7 Oct: 2020-06-15, 2023-06-15; 8 Oct:
+2021-02-17; 9 Oct: 2021-07-22; none on 5 and 12 Oct), and the step reports WARN. The same dates
+succeed on other nights, so the failures are transient on NSE's side. Nothing changed: the last
+change to the script or `isin_mapping.py` is ec12bc4 (P8-034), before all of these runs. 12 Oct was
+simply a night when every download succeeded. Since P8-034 a failed historical snapshot loses no
+identity (the existing map's identities are retained), so the WARN carries almost no information,
+and a routine WARN hides a real one. The log keeps only the exception type, not the HTTP status.
+Proposed fix: fetch each fixed historical snapshot once into a checksummed cache and re-use it, so
+the nightly fetches only today's snapshot (ten fewer NSE requests a night), and record the HTTP
+status of any failure; then an ISIN WARN means something real.
+
 ## P8-058 - manual open risk was entry-to-stop risk, not the stress loss the rulebook caps
 
 **Severity.** Medium. **Status.** Closed — fixed 2026-10-13 (user approval); no record affected.

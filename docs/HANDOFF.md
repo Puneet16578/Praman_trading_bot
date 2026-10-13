@@ -15,6 +15,15 @@
   stress loss (P8-058, Medium; no documented decision for entry-to-stop; no manual trade or
   decision ever existed, so nothing affected). Fixed: each counts at the stress loss recorded on its
   opening decision; an unrecorded one makes G5/G6 UNKNOWN. No rulebook change.
+- ISIN WARN 6-9 Oct (user question): transient NSE HTTP errors on one or two of the ten fixed
+  historical snapshots re-downloaded every night, a different date each night; nothing changed, and
+  12 Oct was a night when all succeeded. P8-060 (Low, open): proposed cache for the fixed snapshots,
+  awaiting approval.
+- Waiting on the user: P8-056 (catch up a skipped date's scan/S0/brief?), P8-057 (S0 stop checks on
+  skipped sessions), P8-060 (ISIN snapshot cache).
+- After the 2026-10-13 nightly (user request): confirm "What changed: nothing since the previous
+  monitor run", that the previous finished run shown is 12 Oct's (OK), and that the nightly made and
+  verified its own logs archive; show the brief in full.
 
 ## 2026-10-12 (morning): nightly runs 6-9 October and the burn-in record (Claude, read-only check)
 
