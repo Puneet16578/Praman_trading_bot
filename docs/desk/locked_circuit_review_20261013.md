@@ -44,6 +44,53 @@ both books. Preserve append-only records and sealed outcomes. Decide separately
 whether this correction requires a registered strategy amendment/version; do not
 silently reinterpret past burn-in records. No historical outcome audit is authorized.
 
+## Buy side: entries on a day locked at the upper limit (added 2026-10-13, user request)
+
+The proposal above covers sells at a lower lock. The mirror case is an entry. On a
+day locked at the upper limit all day there are buyers queued at the limit and no
+sellers, yet both books' day limit entry (the registered follow-up 2 `limit_fill`,
+used by Strategy 0's `_settle_entry` and the manual `desk paper open`) fills at the
+open whenever the open is at or below the limit. Synthetic call (decision price 100,
+ATR20 4, so limit 102):
+
+- all four prices 102 (lock equal to the limit): `FILL_OPEN` at 102;
+- all four prices 101 (lock below the limit): `FILL_OPEN` at 101;
+- all four prices 103 (lock above the limit): `NO_FILL`, as today.
+
+The first two invent a buy that a queued order at the upper limit would not get.
+Daily volume at the upper limit shows that some sellers met the earlier queue, not
+that our order, placed before the open, reached the front of it.
+
+Proposed detection, the mirror of steps 1-3 above and with the same prerequisites:
+- Resolve the upper limit effective for the entry session from the preceding
+  trading session's exact band report, the exchange reference price on that
+  session's raw share basis (with ex-date resets) and a verified tick size.
+- Flag POSSIBLY_LOCKED_UPPER when the raw open, high, low and close all equal that
+  upper limit within one verified tick. Then do not fill: record `ENTRY_NO_FILL`
+  with reason `LOCKED_UPPER`, with the band report, reference price, tick and OHLC
+  as evidence. The entry is a day order, so it is cancelled as any unfilled entry
+  is; nothing is deferred and no risk is opened. This is a market outcome, not a
+  data failure: under the fill-failure switch it counts as an attempt (ATTEMPT_OK),
+  like an untouched limit.
+- A bar that opens at the upper limit but trades below it during the day is not an
+  all-day lock; the existing rule applies unchanged.
+- A flat bar whose lock status cannot be verified (band report missing or not
+  applicable, dynamic range, unverified tick, ambiguous corporate action): no
+  entry. Declining an entry never opens risk, so failing closed is safe here, unlike
+  the exit side. Record it as `ENTRY_FILL_FAILED` with failure `LOCK_STATUS_UNKNOWN`:
+  data the fill decision needs were missing, which the switch already counts as an
+  operational failure.
+- Separately: a limit above the session's upper limit could not be placed as
+  entered, because the exchange rejects orders outside the band, which is published
+  the evening before. Whether the paper order should be capped at the upper limit
+  or treated as rejected is a rule question for the same strategy-amendment
+  decision; this review proposes no answer.
+
+The four recorded Strategy 0 fills include no exactly flat bar
+(docs/desk/locked_fill_audit_20261013.md), so this did not affect any recorded
+entry under the flat-bar screen. As for exits, the full tick-tolerant test cannot
+be run without authoritative tick and limit history. Engine unchanged.
+
 ## Proposed tests
 
 All-day lock at the known lower band (including positive volume); ordinary gap
@@ -51,6 +98,10 @@ above the lower band; band touch without all-day lock; missing/dynamic bands;
 corporate-action reference reset; correct preceding-session report; consecutive
 locked days followed by an executable session; next-open time exits; unchanged
 position/risk while deferred; no duplicate events and no forward outcome display.
+Buy side: all-day upper lock with the limit equal to and above the locked price
+(no fill, reason LOCKED_UPPER, counted as an attempt) in both books; lock above the
+limit (ordinary NO_FILL); opening at the upper limit then trading lower (existing
+rule); unverifiable band on a flat bar (LOCK_STATUS_UNKNOWN, operational failure).
 
 Evidence: synthetic call above executed locally and source traced through both
 callers. No network requests, production writes, new fills or engine changes.

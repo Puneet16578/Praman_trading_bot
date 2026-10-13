@@ -1,3 +1,40 @@
+## 2026-10-13/14 (night): after-run checks; T1 addendum and sourcing; R1 probe; P8-064 buy side (Claude)
+
+- 13 Oct nightly 18:00:02-18:39:05, overall=WARN. New WARNs, neither from today's changes (the two
+  steps, their modules and STEPS unchanged since fc39780): announcements_recent bulk window
+  12-13 Oct AnnouncementFetchError (receipt PARTIAL, complete only through 12 Oct), so all 52
+  candidates failed G2 (disclosures UNKNOWN) and Strategy 0 had nothing to decide (designed
+  fail-closed behaviour); circuit_bands 13 Oct price-band report 404 at 18:07:58 (13 Oct bands stay
+  UNKNOWN). The brief does not say why 0 passed (reported, not changed).
+- Checks passed: "What changed: nothing since the previous monitor run"; previous finished run
+  12 Oct 21:09:46 overall=OK "(0d ago)"; the nightly made logs_20261013T130547594726Z.zip and
+  verified it (105 files, every hash matched by an independent check); strategy_gaps exists, 0 rows;
+  ten ISIN snapshots cached 18:06:39-42, hashes verify; no skip.
+- T1 (user-approved pre-registration change): addendum 1 committed 86b2543 before any fetch or
+  feature: >= 5 separate adverse spells per period for V1/V2 (runs < 20 sessions apart merge;
+  UNKNOWN sessions never split), 60-session blocks for V1/V2, V1/V2 probably INCONCLUSIVE on 2025
+  alone, sourcing before outcomes. Sourcing part 1 (97a0e05): documentation pages only,
+  niftyindices 11/20, nseindia 4/20, every URL listed; no data downloaded. Key facts: Daily Snapshot
+  files ind_close_all_DDMMYYYY.csv (archive via POST endpoint, depth unstated); publication evidence
+  unproven (Last-Modified untested); common industry classification only from 31 Mar 2022, no dated
+  per-company history found; V3 options for the user. Phase 1 probe budget (<= 64 requests) awaits
+  approval: fetch nothing until then, and nothing from NSE while the nightly runs.
+- R1 (7348b20): design approved with the two changes (same-day flags allowed for every symbol;
+  no event-anchored change or join to catalogue events >= 2026-09-16, including research reads of
+  live.sqlite, before 2027-06-01; one-minute bars, not ticks; live.sqlite to nightly backups once it
+  exists), dated changelog. Built only scripts/angel_stream_capacity_test.py + 14 offline tests:
+  refuses dirty tree / non-master / running nightly; tiers 25-1000 by turnover known before today,
+  10 minutes each, end by 15:30, stop at first failure; first tick per symbol kept out of lag
+  stats; summary in logs/ without prices; raw ticks only in data/live/probe/. Not run (needs the
+  user's login during market hours, after the connection test passes). Stop here for the user's
+  review; no watcher, no NSE RSS (needs a budget).
+- P8-064 buy side (document only): the registered limit entry fills a paper buy at the open on an
+  all-day upper lock when the limit is at or above the locked price (synthetic: fills at 102 and
+  101 with limit 102). Proposed POSSIBLY_LOCKED_UPPER detection, LOCKED_UPPER no-fill (counted as
+  an attempt), LOCK_STATUS_UNKNOWN for unverifiable flat bars. Engine unchanged.
+- Memory: the user's network rules (doc pages <= 20 per site, URLs listed; downloads need a budget;
+  no NSE during the nightly).
+
 ## 2026-10-13 (16:46): Claude takes over from Codex: pending commits, before the nightly
 
 - Root verified (D:/Agentic_ai_project/praman), master; task Ready, next run 18:00, no run in

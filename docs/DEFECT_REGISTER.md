@@ -2415,6 +2415,12 @@ cannot prove buyers/queue priority; missing/dynamic bands and corporate-action
 ambiguity stay UNKNOWN. Full proposal and tests: docs/desk/locked_circuit_review_20261013.md.
 Re-verification: direct synthetic shared-rule call reproduced the fill; both callers
 and pending-exit paths inspected. No engine change or outcome backfill authorized.
+Buy side added 2026-10-13 (user request): the registered limit entry (`limit_fill`,
+both books) also fills a paper buy at the open on an all-day upper lock whenever the
+limit is at or above the locked price; synthetic calls with limit 102 filled at 102
+and at 101 on flat bars. Proposed detection (POSSIBLY_LOCKED_UPPER, no fill, reason
+LOCKED_UPPER; unverifiable band on a flat bar = LOCK_STATUS_UNKNOWN) in the same
+review document. Document only; engine unchanged.
 
 ## P8-065 - draft broker guard rejected an unrelated local variable
 
