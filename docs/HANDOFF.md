@@ -1,3 +1,14 @@
+## 2026-10-13 Codex: B1
+
+- Part A complete. A5 engine unchanged; 830 tests in 150.115s, OK.
+- B1 user-approved policy inserted verbatim into CLAUDE.md and AGENTS.md and replaces
+  the blanket prohibition in blueprint Praman amendment 5. Existing order bans retained.
+- Exact old/new report: docs/desk/angel_policy_changes_20261013.md.
+- Public Angel reads only: official SDK 1.5.5 wheel/hash reviewed, official forum rate limits
+  found; current scrip master maps 2694/2696 latest Praman EQ symbols, misses CCAVENUE/MOREPENLAB.
+  No package installation, login, NSE request or push performed. Wrapper work in progress.
+- Full suite: 830 tests in 708.088s, OK, Python exit 0 before B1 commit.
+
 ## 2026-10-13 Codex: A5
 
 - A4 committed after 830 tests in 371.519s, OK.

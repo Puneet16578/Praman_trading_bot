@@ -516,9 +516,7 @@ forensic pre-registration take precedence over both.
    The level is recorded as `automation_level` (A0-A4) in the active rulebook, and code refuses any
    action above it.
 5. **A2 begins with system-prepared order tickets that the user enters manually in their broker.**
-   Broker-API order placement is a separate task that needs explicit approval, including a
-   compliance check against SEBI's framework for retail algorithmic trading. Until then there is no
-   broker connectivity of any kind.
+   Broker connectivity is limited to read-only market data from Angel One SmartAPI. Praman may only log in and out, read the profile, fetch quotes and candle data, stream the market feed and download the public scrip master. No order, GTT, position, holdings or funds calls. Angel's key can technically place orders, so this is enforced in code. Credentials never enter the repository, logs, test fixtures or any chat: the API key comes from the environment variable ANGEL_API_KEY, and the client ID, PIN and TOTP are typed by me at runtime and kept only in memory. The forward-window firewall applies to this data. Placing orders still needs a separate, approved task with a SEBI compliance check.
 
 ### Known conflicts with the Desk constitution (docs/desk/DESIGN.md)
 
