@@ -229,3 +229,49 @@ be proven for the periods evaluated, V3 is either dropped or given a declared al
 source in a further dated addendum, decided and committed before any outcome is computed. A
 present-day classification is never backfilled. Dropping V3 leaves the Bonferroni family at
 three, so V1's and V2's intervals do not narrow.
+
+## Addendum 2 (2026-10-14): V3's benchmark; when an index close is known
+
+Approved by the user in their message of 2026-10-14 ("I approve this pre-registration change").
+Recorded before any T1 feature or outcome was computed; none had been at this commit. The phase 1
+sourcing probe (docs/desk/t1_sourcing_probe_20261014.md) downloaded index files only and computed
+nothing.
+
+**1. V3 changes benchmark: from sector to the equal-weight market.** Sourcing part 1
+(docs/desk/t1_sourcing_check_20261013.md) found no usable point-in-time sector history before
+March 2022; sectoral indices cover too few stocks to meet the 80% coverage rule; web-archive
+constituent lists are not official. V3 becomes:
+- negative 20-session stock return relative to the equal-weight market, versus zero or positive.
+  The relative return is the stock's cumulative adjusted simple return over 20 global sessions
+  minus the compounded equal-weight daily return of all other eligible equities over the same
+  endpoints, the focal stock excluded on every day.
+- The market basket is computed point-in-time from Praman's own store, over the same universe and
+  daily denominators as breadth (eligible equities with a valid adjusted close-to-close return
+  that day). A day without a valid basket makes that stock-window UNKNOWN; nothing is
+  forward-filled.
+- Same prediction (negative relative strength has a higher adverse20 rate after volatility
+  control), same criteria, 20-session bootstrap blocks (addendum 1), and the family stays at three
+  contrasts (V1, V2, V3) with 98.333333% intervals. The spell rule of addendum 1 still applies to
+  V1 and V2 only.
+- Sector-relative strength is dropped from this study: the sector classification and sector
+  return input, and the stock-relative-to-sector displays (1/5/20/60 sessions), are removed. The
+  1/5/60-session relative strengths are displayed against the same equal-weight market instead.
+
+**2. When an official index or VIX close is known: an ASSUMPTION.** An official NIFTY 50,
+NIFTY 500 or India VIX close for session D counts as known from session D+1, never on D itself.
+This is an ASSUMPTION, not a proven publication time. Evidence from the phase 1 probe: the NSE
+Indices Daily Snapshot file's `Last-Modified` falls on D between 23:10 and 23:50 IST for 14 of 16
+sampled files, at 01:10 IST on D+1 for one, and shows a rewrite months later for one; NSE's own
+copies carry identical closes. The headers bound when the archive copy existed, not when the close
+was first published. Without this assumption the pre-registration's strict rule (no proven
+publication, no knowledge before first retrieval) would leave these inputs UNKNOWN and V1 could
+never be tested.
+- It applies to these three inputs only; every other knowledge rule is unchanged.
+- Consequence: the V1 state for a decision on session D uses index and VIX closes through D-1.
+  The same applies to the descriptive NIFTY 50 trend and stock-relative-to-NIFTY-50 displays.
+- A file that is missing, or whose own date differs from the session requested, leaves that
+  session's value UNKNOWN.
+- Results must state this assumption next to V1 and the index-based displays.
+
+Before any outcome is computed, coverage and missingness by input and year must still be published
+from the full daily history (phase 2, not yet approved), as the knowledge section requires.

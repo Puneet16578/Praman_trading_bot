@@ -7,6 +7,17 @@
   the fetch tool, unrelated). The 12 Oct half matched, but the whole window failed, the receipt was
   PARTIAL, 13 Oct's G2 had disclosures UNKNOWN for all 52 candidates. The data catch up on the next
   run (last_complete stays 12 Oct); the 13 Oct decisions do not. Fix proposed, not implemented.
+- Item 2 (0f6f2ba): T1 phase 1 probe, 25 of the 64 approved requests, 00:41-00:46 IST, task Ready.
+  NSE Indices Daily Snapshot exists on all 16 sampled dates (2 per year, Sep 2018-Aug 2025), own
+  date matches, NIFTY 50/NIFTY 500/INDIA VIX rows present. Last-Modified on the trading evening
+  23:10-23:50 IST for 14/16, 01:10 next day for 1, rewritten later for 1. NSE copies: identical
+  closes, re-uploaded before Aug 2020. Every URL and header in t1_sourcing_probe_20261014.md; raw
+  files and ledger in data/raw/t1_sources/. scripts/t1_source_probe.py enforces budget/spacing/
+  nightly hours. Phase 2 (full history, ~1,830 files) not approved.
+- Item 3: T1 addendum 2 (user-approved pre-registration change): V3 relative to the equal-weight
+  market of eligible stocks from Praman's own store (breadth universe, focal stock excluded);
+  sector-relative strength dropped; family stays three. Index/VIX close for D known from D+1,
+  labelled ASSUMPTION, with the probe's header evidence; V1 at D uses closes through D-1.
 
 ## 2026-10-13/14 (night): after-run checks; T1 addendum and sourcing; R1 probe; P8-064 buy side (Claude)
 
