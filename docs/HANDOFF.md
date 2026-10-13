@@ -1,3 +1,28 @@
+## 2026-10-13 Codex: C design / pre-nightly handoff
+
+- Parts A and B complete, each item committed; B3/B4 commit 5dbfae6.
+- C proposal: docs/desk/R1_market_hours_watcher_design.md. Design only, awaiting
+  user OK. Covers 90-second conditional RSS, morning reconciliation, real-time
+  detection snapshots, isolated append-only bitemporal tables, foreground
+  capacity measurement, firewall tests, wake/gap handling and both log formats.
+- Explicit constraints: current B stream is blocking/LTP-only; R1 needs a
+  cooperative foreground transport adaptation. Initially volume snapshots rotate
+  every 15 minutes over 100 symbols. Protected or uncertain event coverage
+  suppresses derived move flags. No watcher code, tables or job created.
+- D NOT VERIFIED: tonight's 13 October run starts 18:00 IST and had not started
+  at this handoff. After it finishes, inspect its complete brief and verify:
+  "nothing since the previous monitor run"; previous finished run 12 October
+  with OK/WARN; its own verified logs archive; gap table empty; ten ISIN snapshots
+  cached. Do not substitute the 12 October brief. If still running, stop.
+- Network permission covers Angel public docs/package/master reads only. No
+  package installed or authenticated call made. Push awaits explicit permission.
+  No wakeup, background loop or other agent was started. No production store
+  modified. P8-064 locked-circuit paper-fill defect remains OPEN, engine unchanged.
+- Final full suite: 855 tests in 307.625s, OK, Python exit 0. Existing SQLite
+  ResourceWarnings remain. Nightly task Ready at 16:08 IST; no active run.
+  Commit this design/handoff on master, then verify the tree is clean before
+  requesting push permission. The 17:45 deadline has not been approached.
+
 ## 2026-10-13 Codex: B3 / B4
 
 - B2 committed eea5ce6. B3 adds scripts/angel_connection_test.py for the user's
