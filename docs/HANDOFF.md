@@ -1,3 +1,14 @@
+## 2026-10-13 Codex: A4
+
+- A3 committed after 830 tests in 400.832s, OK.
+- A4 audit: docs/desk/isin_today_audit_20261013.md. Two confirmed today's-404s among 11
+  logged ISIN attempts: 28 September within 13:53:03-14:22:14 IST; 3 October (Saturday)
+  within 06:22:38.949684-06:22:40.459427 IST. Exact request times not retained.
+- No evidence of routine evening today's-404: seven known successes, one DNS failure and one
+  indeterminate interrupted weekday-evening attempt. Historical WARNs are distinct (P8-060).
+  No retry or suppression change proposed on this evidence. No NSE request made.
+- A4 is documentation only; full suite: 830 tests in 371.519s, OK, Python exit 0.
+
 ## 2026-10-13 Codex: A3
 
 - A2 committed 4fd562a (826 tests in 377.973s, OK).
