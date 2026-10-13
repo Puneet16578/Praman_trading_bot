@@ -2,8 +2,10 @@
 
 ## Working-tree guard for the nightly (P8-059, 2026-10-13) — operational change, not a pre-registration amendment
 
-Before any step, the nightly runs `git --no-optional-locks status --porcelain` (which never writes
-to the repository). If a file it runs or reads has an uncommitted change (code and config under
+Before any step, the nightly checks that `master` is checked out (`git rev-parse --abbrev-ref
+HEAD`; another branch or a detached HEAD skips with a WARN), then runs
+`git --no-optional-locks status --porcelain` (which never writes to the repository). If a file it
+runs or reads has an uncommitted change (code and config under
 `src/`, `desk/`, `scripts/`, `shared/`, `config/`, `rulebook/`, tracked or untracked, plus
 `docs/DEFECT_REGISTER.md` and the two `docs/desk/shadow_replay_followup*_results.json` files it
 reads), or git cannot run, it runs nothing and writes a WARN naming the files to

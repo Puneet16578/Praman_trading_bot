@@ -49,7 +49,8 @@ def isin_map_health_line(conn, as_of_date: str | None) -> str:
 
 
 _SKIP_REASONS = (("WARN on battery", "BATTERY_SKIP"), ("WARN uncommitted changes", "UNCOMMITTED_CODE"),
-                 ("WARN HEAD is", "NOT_ON_MASTER"), ("WARN git status could not run", "GIT_UNAVAILABLE"))
+                 ("WARN HEAD is", "NOT_ON_MASTER"), ("WARN git status could not run", "GIT_UNAVAILABLE"),
+                 ("WARN git could not read HEAD", "GIT_UNAVAILABLE"))
 MARKET_CLOSE = (15, 30)
 
 

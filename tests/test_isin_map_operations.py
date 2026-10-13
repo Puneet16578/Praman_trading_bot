@@ -110,6 +110,7 @@ class IsinRefreshTest(unittest.TestCase):
             with self.subTest(status=status), patch.object(weekly_ingest, "LOG_PATH", log), \
                     patch.object(weekly_ingest, "STEPS", steps), \
                     patch.object(weekly_ingest, "power_status", return_value=(False, None)), \
+                    patch.object(weekly_ingest, "head_branch", return_value="master"), \
                     patch.object(weekly_ingest, "uncommitted_nightly_inputs", return_value=[]), \
                     contextlib.redirect_stdout(io.StringIO()):   # P8-055: never the machine's real battery
                 self.assertEqual(weekly_ingest.main(), exit_code)

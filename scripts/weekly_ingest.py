@@ -480,6 +480,25 @@ def uncommitted_nightly_inputs(root: Path = ROOT) -> list[str] | None:
     return sorted({p for p in paths if p.startswith(NIGHTLY_INPUT_DIRS) or p in NIGHTLY_INPUT_FILES})
 
 
+NIGHTLY_BRANCH = "master"
+
+
+def head_branch(root: Path = ROOT) -> str | None:
+    """The checked-out branch from `git rev-parse --abbrev-ref HEAD` (read-only), "HEAD" when
+    detached, None if git cannot run. The nightly runs only on master (P8-059)."""
+    git = _git()
+    if git is None:
+        return None
+    try:
+        done = subprocess.run([git, "--no-optional-locks", "rev-parse", "--abbrev-ref", "HEAD"],
+                              cwd=root, capture_output=True, timeout=60,
+                              creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    except (OSError, subprocess.SubprocessError):
+        return None
+    name = done.stdout.decode("utf-8", "surrogateescape").strip()
+    return name if done.returncode == 0 and name else None
+
+
 def _skip_low_battery(started: str, percent: int) -> int:
     return _skip(started, f"on battery at {percent}% (below {MIN_BATTERY_PERCENT}%)")
 
@@ -524,6 +543,12 @@ def main() -> int:
     on_battery, percent = power_status()
     if on_battery and percent is not None and percent < MIN_BATTERY_PERCENT:
         return _skip_low_battery(started, percent)
+    branch = head_branch()
+    if branch is None:
+        return _skip(started, "git could not read HEAD, so the branch could not be checked")
+    if branch != NIGHTLY_BRANCH:
+        where = "detached" if branch == "HEAD" else f"on branch {branch}"
+        return _skip(started, f"HEAD is {where}, not {NIGHTLY_BRANCH}; the nightly runs only on {NIGHTLY_BRANCH}")
     dirty = uncommitted_nightly_inputs()
     if dirty is None:
         return _skip(started, "git status could not run, so the working tree could not be checked")

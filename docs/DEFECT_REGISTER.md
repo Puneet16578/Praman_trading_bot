@@ -2107,6 +2107,17 @@ skips on a dirty one). The nightly harnesses in other tests now isolate the chec
 battery (P8-055 lesson). Catch-up: the data steps catch up; the skipped date's scan, Strategy 0
 decisions and brief do not (P8-056), nor do Strategy 0's stop checks for that session (P8-057).
 
+**Follow-up, 2026-10-13 (user: "also skip when HEAD isn't master").** The guard had a hole: a clean
+tree on another branch, or a detached HEAD, ran that code. Now, before the tree check,
+`git --no-optional-locks rev-parse --abbrev-ref HEAD` (read-only) must print `master`; otherwise no
+step runs and the WARN reads "HEAD is on branch <name>, not master; the nightly runs only on master"
+(or "HEAD is detached, ..."). If git cannot read HEAD, it skips with "git could not read HEAD". The
+burn-in gap record (P8-056) labels these NOT_ON_MASTER and GIT_UNAVAILABLE. Tests:
+`tests/test_nightly_tree_guard.py::HeadBranchTest` (a real temporary repository: master, another
+branch, detached HEAD, no index write, git missing or failing) and `NightlyGuardTest` (another
+branch and detached HEAD skip with the WARN in the log and brief, the branch is checked before the
+tree, an unreadable HEAD skips, the gap labels); the other nightly harnesses patch the branch too.
+
 ## P8-056 - a skipped night loses that date's scan, Strategy 0 decisions and brief
 
 **Severity.** Medium. **Status.** Closed — fixed 2026-10-13 (user decision, option (b)); see the fix below.

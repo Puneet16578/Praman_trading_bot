@@ -43,6 +43,7 @@ class LogsIsolationTest(unittest.TestCase):
                 patch.object(weekly_ingest, "LOG_PATH", Path(folder) / "ingest.log"), \
                 patch.object(weekly_ingest, "STEPS", []), \
                 patch.object(weekly_ingest, "power_status", return_value=(True, 10)), \
+                patch.object(weekly_ingest, "head_branch", return_value="master"), \
                 patch.object(weekly_ingest, "uncommitted_nightly_inputs", return_value=[]), \
                 contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(weekly_ingest.main(), 0)

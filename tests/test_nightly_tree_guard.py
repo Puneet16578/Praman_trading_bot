@@ -78,18 +78,57 @@ class UncommittedInputsTest(unittest.TestCase):
             self.assertEqual(weekly_ingest._git(), expected)
 
 
+@unittest.skipUnless(weekly_ingest._git(), "git is not installed")
+class HeadBranchTest(unittest.TestCase):
+    """P8-059 follow-up: the nightly runs only with master checked out."""
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        (self.root / "desk").mkdir()
+        (self.root / "desk/a.py").write_text("x = 1\n", encoding="utf-8")
+        git(self.root, "init", "-q")
+        git(self.root, "symbolic-ref", "HEAD", "refs/heads/master")
+        git(self.root, "add", "-A")
+        git(self.root, "-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-q", "-m", "fixture")
+
+    def test_master_another_branch_and_detached_head(self):
+        self.assertEqual(weekly_ingest.head_branch(self.root), "master")
+        git(self.root, "checkout", "-q", "-b", "other")
+        self.assertEqual(weekly_ingest.head_branch(self.root), "other")
+        git(self.root, "checkout", "-q", "--detach", "master")
+        self.assertEqual(weekly_ingest.head_branch(self.root), "HEAD")
+
+    def test_reading_the_branch_never_writes_to_the_repository(self):
+        index = self.root / ".git" / "index"
+        before = index.stat().st_mtime_ns
+        self.assertEqual(weekly_ingest.head_branch(self.root), "master")
+        self.assertEqual(index.stat().st_mtime_ns, before)
+        self.assertFalse((self.root / ".git" / "index.lock").exists())
+
+    def test_git_missing_or_failing_returns_none(self):
+        with patch.object(weekly_ingest, "_git", return_value=None):
+            self.assertIsNone(weekly_ingest.head_branch(self.root))
+        self.assertIsNone(weekly_ingest.head_branch(self.root / "no such folder"))
+        failed = subprocess.CompletedProcess(args=[], returncode=128, stdout=b"", stderr=b"fatal")
+        with patch.object(weekly_ingest.subprocess, "run", return_value=failed):
+            self.assertIsNone(weekly_ingest.head_branch(self.root))
+
+
 class NightlyGuardTest(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.log = Path(temporary.name) / "ingest.log"
 
-    def run_main(self, inputs):
+    def run_main(self, inputs, branch="master"):
         ran = []
         with patch.object(weekly_ingest, "LOG_PATH", self.log), \
                 patch.object(weekly_ingest, "STEPS", [("first", lambda: ran.append("first"))]), \
                 patch.object(weekly_ingest, "_prevent_sleep", contextlib.nullcontext), \
                 patch.object(weekly_ingest, "power_status", return_value=(False, None)), \
+                patch.object(weekly_ingest, "head_branch", return_value=branch), \
                 patch.object(weekly_ingest, "uncommitted_nightly_inputs", return_value=inputs), \
                 patch("desk.brief.record_skipped_run") as brief, \
                 contextlib.redirect_stdout(io.StringIO()):
@@ -118,6 +157,31 @@ class NightlyGuardTest(unittest.TestCase):
         code, ran, _ = self.run_main(None)
         self.assertEqual((code, ran), (0, []))
         self.assertIn("skipped: WARN git status could not run", self.log.read_text(encoding="utf-8"))
+
+    def test_another_branch_or_detached_head_skips(self):
+        from desk.ingestion_health import skips_by_decision_date
+        for branch, where in (("other", "on branch other"), ("HEAD", "detached")):
+            with self.subTest(branch=branch):
+                code, ran, brief = self.run_main([], branch=branch)
+                self.assertEqual((code, ran), (0, []))
+                warn = f"HEAD is {where}, not master; the nightly runs only on master"
+                self.assertIn(f"skipped: WARN {warn}; no step ran", self.log.read_text(encoding="utf-8"))
+                self.assertIn(warn, brief.call_args.args[1])
+        with patch("desk.ingestion_health.LOG_PATH", self.log):
+            self.assertEqual({s["reason"] for s in skips_by_decision_date().values()}, {"NOT_ON_MASTER"})
+
+    def test_branch_is_checked_before_the_tree_and_an_unreadable_head_skips(self):
+        self.run_main(["desk/x.py"], branch="other")
+        text = self.log.read_text(encoding="utf-8")
+        self.assertIn("WARN HEAD is on branch other", text)
+        self.assertNotIn("uncommitted", text)
+        code, ran, _ = self.run_main([], branch=None)
+        self.assertEqual((code, ran), (0, []))
+        self.assertIn("skipped: WARN git could not read HEAD", self.log.read_text(encoding="utf-8"))
+        from desk.ingestion_health import skips_by_decision_date
+        with patch("desk.ingestion_health.LOG_PATH", self.log):
+            (skips,) = skips_by_decision_date().values()       # both runs would have decided the same date
+        self.assertEqual((skips["reason"], len(skips["skips"])), ("GIT_UNAVAILABLE", 2))
 
 
 if __name__ == "__main__":
