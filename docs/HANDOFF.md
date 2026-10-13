@@ -1,3 +1,18 @@
+## 2026-10-13 Codex: B3 / B4
+
+- B2 committed eea5ce6. B3 adds scripts/angel_connection_test.py for the user's
+  private terminal: login, SBIN quote, 2026-09-01 minute candles, 30 seconds of
+  live SBIN during regular hours with a fresh quote, then logout in finally.
+  Prints prices/timestamps only; failures return exit 1 without raw errors.
+- Calendar/open-status proxy and optional installation instructions documented
+  in docs/desk/angel_market_data.md. The agent has not run an authenticated call.
+- B4: no Angel import in nightly, no scheduled job, no stores written. SDK/feed
+  tests are mocked and offline. Part A's authorized nightly wait fix is separate.
+- Full suite before this commit: 855 tests in 323.532s, OK, Python exit 0.
+- R1 design is uncommitted, awaiting its final review/commit and user approval.
+  D cannot be verified yet: 13 October's 18:00 nightly has not started.
+  Push still needs explicit user permission; no push attempted.
+
 ## 2026-10-13 Codex: B2
 
 - B1 committed ca99d6e. B2 adds only the optional read-only Angel wrapper,

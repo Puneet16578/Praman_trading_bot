@@ -102,3 +102,20 @@ No authenticated Angel endpoint has been called by the agent. Live account acces
 permissions, IP restrictions, historical availability and live-feed reliability are
 DOCUMENTED, NOT VERIFIED until the user runs scripts/angel_connection_test.py.
 Part C is a design only; no live watcher or additional store exists.
+
+## User-terminal connection check (B3)
+
+After installing the optional requirements and privately setting ANGEL_API_KEY,
+run `python scripts/angel_connection_test.py` in your own interactive terminal.
+It prompts privately, prints one SBIN quote, then raw OHLC prices/timestamps for
+2026-09-01 one-minute candles. During regular weekday hours, a fresh exchange
+quote (at most 120 seconds old) enables 30 seconds of live SBIN prices, then it
+logs out. Otherwise streaming is skipped. No holiday calendar exists: this is
+a conservative open-market proxy, not special-session/calendar verification.
+Missing/stale exchange timestamps do not imply that the market is open.
+
+Output is prices and timestamps only (apart from necessary hidden-input prompt
+labels). Exit code 0 means the requested operations completed; 1 means a failure
+or interruption. Raw errors and credentials are never printed. In PowerShell,
+inspect `$LASTEXITCODE` after it exits. It writes no store or log file and always
+attempts logout. The agent has not run this authenticated connection check.
