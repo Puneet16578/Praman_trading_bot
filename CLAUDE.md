@@ -10,6 +10,8 @@ system). Its architectural disciplines carry over unchanged.
 
 ## Inherited invariants — non-negotiable
 
+Broker connectivity is limited to read-only market data from Angel One SmartAPI. Praman may only log in and out, read the profile, fetch quotes and candle data, stream the market feed and download the public scrip master. No order, GTT, position, holdings or funds calls. Angel's key can technically place orders, so this is enforced in code. Credentials never enter the repository, logs, test fixtures or any chat: the API key comes from the environment variable ANGEL_API_KEY, and the client ID, PIN and TOTP are typed by me at runtime and kept only in memory. The forward-window firewall applies to this data. Placing orders still needs a separate, approved task with a SEBI compliance check.
+
 1. **Extend, never fork.** One orchestrator. One checkpoint validator. Never create a parallel
    implementation of an existing class. Enforced by grep, not intention.
 
@@ -312,8 +314,3 @@ D9. **Paper before live.** Live use only after the rulebook's pre-committed crit
 The Desk never outputs BUY. Its outputs are decision states only:
 `INSUFFICIENT` / `RESEARCH_REQUIRED` / `WATCH` / `ELIGIBLE` / `VETO` / `EXPIRED`. The human makes
 every decision.
-
-
-## Read-only broker connectivity (2026-10-13, user instruction B1)
-
-Broker connectivity is limited to read-only market data from Angel One SmartAPI. Praman may only log in and out, read the profile, fetch quotes and candle data, stream the market feed and download the public scrip master. No order, GTT, position, holdings or funds calls. Angel's key can technically place orders, so this is enforced in code. Credentials never enter the repository, logs, test fixtures or any chat: the API key comes from the environment variable ANGEL_API_KEY, and the client ID, PIN and TOTP are typed by me at runtime and kept only in memory. The forward-window firewall applies to this data. Placing orders still needs a separate, approved task with a SEBI compliance check.
