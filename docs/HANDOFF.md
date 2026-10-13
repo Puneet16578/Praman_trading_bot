@@ -1,3 +1,13 @@
+## 2026-10-13 Codex: A5
+
+- A4 committed after 830 tests in 371.519s, OK.
+- A5 / P8-064 OPEN (Medium): shared paper stop rule invents a fill for a specified all-day
+  lower-circuit lock with no buyers. Synthetic reproduction returned ('stop_gap', 95).
+- Proposal: docs/desk/locked_circuit_review_20261013.md. Exact preceding-session band,
+  authoritative reference price/tick, conservative ambiguous-bar handling, deferred append-only
+  exits retaining position risk. Engine unchanged; no sealed outcomes read or live stores written.
+- Full suite: 830 tests in 150.115s, OK, Python exit 0. Part A is complete.
+
 ## 2026-10-13 Codex: A4
 
 - A3 committed after 830 tests in 400.832s, OK.

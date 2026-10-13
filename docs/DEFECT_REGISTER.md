@@ -2397,3 +2397,21 @@ finished run's IST finish date; the registered constant stays 7, with no version
 change. No forward holiday calendar exists; conservative holiday false positives
 remain documented. Tests cover weekends, missed weekdays, in-progress runs and
 UTC/IST finish dates: 35 targeted tests in 1.049s, OK. Full suite in HANDOFF.md.
+
+
+## P8-064 - paper exits can fill on an all-day locked lower circuit
+
+**Severity.** Medium. **Status.** Open ? engine unchanged, review requested in Part A5 (2026-10-13).
+The shared stop_rule(opening, low, stop) has no execution-availability input. Both
+manual monitoring and Strategy 0 accept its fill without consulting bands/queues.
+Verified synthetic example: previous close 100, band 5%, OHLC all 95, stop 98;
+stop_rule(95, 95, 98) returns ('stop_gap', 95), even under the specified no-buyers
+condition. Next-open exit paths likewise assume liquidity. This is paper execution
+correctness; no live broker execution exists and production outcomes were not read.
+Proposed fix, not implemented: detect a possibly locked raw bar against the exact
+applicable preceding-session band and verified reference price/tick, defer the exit
+append-only and retain risk until a later executable session. Daily volume alone
+cannot prove buyers/queue priority; missing/dynamic bands and corporate-action
+ambiguity stay UNKNOWN. Full proposal and tests: docs/desk/locked_circuit_review_20261013.md.
+Re-verification: direct synthetic shared-rule call reproduced the fill; both callers
+and pending-exit paths inspected. No engine change or outcome backfill authorized.
