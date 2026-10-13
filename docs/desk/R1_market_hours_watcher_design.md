@@ -1,7 +1,9 @@
 # R1 market-hours watcher - proposal, 13 October 2026
 
-DESIGN ONLY. Awaiting the user's OK. No watcher, capacity-probe script, tables,
-scheduled task or nightly integration is implemented by this document.
+APPROVED 2026-10-13 with two changes (see the changelog at the end). Only the
+capacity probe, `scripts/angel_stream_capacity_test.py`, is built; the watcher, its
+tables and any nightly integration wait for the user's review of the probe's
+results. No scheduled task. NSE RSS requests need separate approval with a budget.
 
 ## Lifecycle and sources
 
@@ -81,16 +83,15 @@ coverage requirements and deterministic tie-breaking. It is a resource allocatio
 list, not a recommendation or suspicion score. Every observed tick carries the
 exchange timestamp and actual local receipt time. No trade or paper engine runs.
 
-Unusual-observation rules must be predeclared and versioned: compare a current
-price level and cumulative volume to baselines already known before detection,
-without linking later prices to an earlier filing. Cause defaults to UNKNOWN;
-a prior known filing can be listed as contemporaneous context, never asserted to
-have caused the move. For protected forward events, the firewall below takes
-precedence: suppress all derived move/volume comparisons for a protected symbol
-and display raw observations only. With incomplete event coverage, suppress
-derived comparisons for the entire uncertain universe. R1 therefore cannot
-promise price-move flags for every stock during the embargo. This conservative
-restriction is part of the design requiring approval.
+Unusual-observation rules must be predeclared and versioned: compare today's
+price or volume with baselines known before today (yesterday's close, a trailing
+average of earlier sessions). That is event detection, the same as the nightly
+desk scan already does at the close, and it is allowed for every symbol,
+including symbols with protected events (firewall rule below). Cause defaults to
+UNKNOWN. A filing detected in the same session can be listed beside an
+observation as context, never asserted to have caused it; a filing from an
+earlier day is never shown beside today's observation, because that pairing is a
+change measured from the filing's date.
 
 ## Append-only, bitemporal storage
 
@@ -111,7 +112,8 @@ time has an explicit status; it is never fabricated from a receipt time.
 | `live_source_receipts` | Feed/source, requested/received times, status, validators, payload hash, coverage bounds, sanitized failure code |
 | `live_filings` | Identity/version, symbol, exchange publication, first detection, raw category, existing classifier result, receipt reference |
 | `live_filing_snapshots` | One attempted detection snapshot per filing version, quote times/age, raw bid/ask/last/volume or failure; never a subsequent-price series |
-| `live_market_ticks` | Symbol/token, exchange timestamp, sequence if provided, raw last price, receipt timestamp |
+| `live_minute_bars` | One-minute bars built in memory from the stream: symbol/token, minute start (exchange time), open/high/low/close of the last traded price, tick count, first/last exchange and receipt timestamps, receipt-lag summary; no raw ticks |
+| `live_quote_rotation` | The 15-minute FULL quote rotation: slot, symbol, request/receipt times, quote age, bid/ask/last/cumulative volume or failure; skipped/late slots recorded |
 | `live_effective_changes` | Surveillance/band/action source, effective date, publication/detection, old/new source references, explicit coverage state |
 | `live_observations` | Predeclared observation type, baseline reference, detection measurements, cause UNKNOWN/context references, firewall decision; no outcome fields |
 | `live_gaps` | Source/process gap start/end events, reason, clock uncertainty, resolution reference; no rewriting an open gap |
@@ -120,9 +122,18 @@ time has an explicit status; it is never fabricated from a receipt time.
 The canonical tables remain append-only. The two requested log paths are written
 once per day. If a restart requires a correction, append a timestamped correction
 section and register its new artifact hash; do not erase the first report.
-Bound tick queues; on saturation record dropped counts/time intervals explicitly.
-Raw payload retention and storage capacity must be measured in the probe, with
-no silent pruning of append-only history.
+
+Raw ticks are not stored. The watcher folds each tick into its symbol's current
+one-minute bar in memory and writes the bar once the minute has closed (a tick
+for a later minute, or the minute's end plus a short grace on the local clock).
+A tick arriving for a minute already written is counted as late in the next bar
+and in `live_gaps`; a written bar is never rewritten. Stored alongside the bars:
+the filing snapshots and the 15-minute quote rotation. Raw ticks exist only in
+the capacity probe, in its own file, to measure capacity and storage. Bound
+in-memory work; on saturation record dropped counts and intervals explicitly.
+Once `live.sqlite` exists, it is added to the nightly backups with restore
+verification against its own manifest, as the logs folder is; that is a separate
+change to `desk/backups.py` with its own tests.
 
 ## Forward-window firewall
 
@@ -131,26 +142,34 @@ events on/after 2026-09-16 are protected while market_today() < 2027-06-01.
 Check BEFORE any outcome query or calculation, not only in rendering. Do not
 modify the frozen pipeline/pre-registration or create another calendar boundary.
 
-The watcher exposes raw observations and source latency, never filing-to-later-
-price joins, post-filing returns, best/worst later prices, event-window volume
-outcomes, P&L or outcome labels. Snapshot receipt lag is an operational latency,
-not a price change. Derived observation requests are rejected for symbols with
-protected events, and when event coverage is unknown; this includes existing
-catalogue events, not merely today's RSS arrivals. A late filing that changes
-known coverage appends a suppression/correction record. No retrospective
-recomputation or causal relabelling of previously recorded observations occurs.
-Reports omit withdrawn derived observations and show the correction history.
+The firewall line (user decision, 2026-10-13):
+- Allowed for every symbol: comparing today's price or volume with baselines
+  known before today (yesterday's close, a trailing average). That is event
+  detection, as the nightly desk scan already does at the close.
+- Never compute, store or display a change measured from an earlier event's or
+  filing's date (a post-filing return, best or worst later price, event-window
+  volume, P&L, an outcome label), and never join live observations to catalogue
+  events dated on or after 2026-09-16.
+- The firewall also covers research reads of `data/live/live.sqlite`: no query
+  may join it to those events before 2027-06-01. The watcher's own query layer
+  enforces it, and any research reader must go through the same guard.
+
+Snapshot receipt lag is an operational latency, not a price change. No
+retrospective recomputation or causal relabelling of recorded observations.
 Do not open access merely because a synthetic as-of query is dated in 2027;
 the actual market clock controls the existing firewall.
 
 Required implementation tests (not implemented by this design-only task):
 
-1. A protected filing plus later ticks: a spy evaluator/SQL loader must never be
-   called; attempts to compute or render a post-filing change must fail.
+1. Both sides of the firewall line: a same-day flag (today against yesterday's
+   close or a trailing average) works for a symbol with a protected catalogue
+   event; any change anchored on an event's or filing's date, and any join of
+   `live.sqlite` to a catalogue event dated on or after 2026-09-16 before
+   2027-06-01, fails before a loader or evaluator is called.
 2. Boundary dates 2026-09-15/16 and actual dates 2027-05-31/06-01, with UTC/IST
    rollover and forged future as-of. Existing firewall remains authoritative.
-3. Source/category corrections, late arrivals and unknown coverage cannot enable
-   a derived comparison; raw observations remain correctly timestamped.
+3. Source/category corrections and late arrivals cannot create an event-anchored
+   change or join; raw observations remain correctly timestamped.
 4. Every query is as-of filtered; a restart cannot backdate detections, duplicate
    a snapshot or overwrite a fact. UPDATE/DELETE attempts fail.
 5. Inject sleep, clock jumps, network disconnect, queue overflow, 429, malformed
@@ -161,9 +180,10 @@ Required implementation tests (not implemented by this design-only task):
 
 ## Reliable streaming limit and foreground concurrency
 
-Propose, but do not create yet, `scripts/angel_stream_capacity_test.py`. The user
-runs it manually during a liquid part of a trading day with a clean tree and
-their login. Probe 25, 50, 100, 200, 300, 500, 750, then at most 1000 tokens,
+`scripts/angel_stream_capacity_test.py` (built 2026-10-13; run by the user after
+the connection test passes) is the only place raw ticks are kept, in its own
+file under `data/live/probe/`. The user runs it manually during a liquid part of
+a trading day with a clean tree on master and their login. Probe 25, 50, 100, 200, 300, 500, 750, then at most 1000 tokens,
 one connection at a time, ten minutes per tier, ending no later than 15:45.
 Stop escalation on failed tiers, disconnect, growing queue or missing heartbeat.
 No outcomes, trades, account calls or nightly writes. Record raw receipt metrics:
@@ -229,7 +249,7 @@ Filings since watermark: <count>; category mapping gaps: <count>
   Local books: <manual/Strategy 0/neither>; document=<exchange link>
 Effective today: <surveillance change / circuit band / corporate action + sources>
 Unmapped Angel symbols: <list>; stale/missing sources: <list>
-Forward firewall: active; raw observations only for protected/uncertain symbols
+Forward firewall: active; same-day flags only; no event-anchored changes or joins
 ```
 
 ```text
@@ -247,7 +267,23 @@ Firewall: <suppressed count/reasons>; no post-filing price changes or outcomes
 Logout: <completed/failed>; report/table reconciliation: <counts/hash>
 ```
 
-Approval requested for this design before implementation, especially the
-conservative suppression of derived move flags during protected/unknown coverage,
-the new isolated store, and the cooperative wrapper adaptation. No implementation
-or NSE network access is implied by approval of Part B.
+## Changelog
+
+**2026-10-13 — approved with two changes (user decision in their message of
+2026-10-13).**
+- Firewall line. Before: all derived move and volume comparisons were suppressed
+  for symbols with protected events, and for the whole universe when event
+  coverage was uncertain. After: same-day comparisons with baselines known before
+  today are allowed for every symbol; changes measured from an earlier event's or
+  filing's date, and joins of live observations (including research reads of
+  `live.sqlite`) to catalogue events dated on or after 2026-09-16 before
+  2027-06-01, are never computed, stored or displayed. Tests cover both sides.
+- Storage. Before: every tick stored in `live_market_ticks`. After: one-minute
+  bars built in memory and stored, plus the filing snapshots and the 15-minute
+  quote rotation; raw ticks only in the capacity probe. `live.sqlite` joins the
+  nightly backups, with restore verification, once it exists.
+- Approved as proposed: the isolated store, the cooperative single-loop wrapper
+  refactor and the startup reconciliation.
+- Built now: only `scripts/angel_stream_capacity_test.py`, with offline tests.
+  The watcher waits for the user's review of the probe's results. NSE RSS
+  requests need the user's approval with a stated budget when reached.
