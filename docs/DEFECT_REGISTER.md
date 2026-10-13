@@ -2415,3 +2415,31 @@ cannot prove buyers/queue priority; missing/dynamic bands and corporate-action
 ambiguity stay UNKNOWN. Full proposal and tests: docs/desk/locked_circuit_review_20261013.md.
 Re-verification: direct synthetic shared-rule call reproduced the fill; both callers
 and pending-exit paths inspected. No engine change or outcome backfill authorized.
+
+## P8-065 - draft broker guard rejected an unrelated local variable
+
+**Severity.** Low. **Status.** Fixed 2026-10-13, B2 before commit.
+The first AST guard treated every name `position` as a forbidden SDK reference,
+including local arithmetic variables. Restrict detection to function calls,
+attributes, imports, dynamic attribute references and endpoint strings.
+Re-verification: repository-wide AST scan and adversarial guard cases pass in
+the 25-test offline Angel run (0.847s, OK). No runtime code was affected.
+
+## P8-066 - draft broker session cleanup missed two failure paths
+
+**Severity.** Medium. **Status.** Fixed 2026-10-13, B2 before commit.
+Checking as-of before session expiry retained an expired token when yesterday's
+as-of was supplied; login could also mint a token before its implicit profile
+request failed. Check expiry and clear first; best-effort revoke a partial login
+then always clear memory. Tests cover both paths, in the 25-test offline run
+(0.847s, OK). No authenticated call or real credential was used.
+
+## P8-067 - HTTP debug logging could expose broker authentication
+
+**Severity.** Medium. **Status.** Fixed 2026-10-13, B2 before commit.
+Muting SDK logging alone left externally configured HTTP debug logging enabled;
+the SDK profile query contains the refresh token. The wrapper now temporarily
+disables standard logging and HTTP connection debug output around authenticated
+REST transport and restores settings in finally. Websocket trace is disabled.
+Regression exercises noisy transport logging and restoration, in the 25-test
+offline run (0.847s, OK). No actual secret exposure occurred.

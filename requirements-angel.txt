@@ -1,0 +1,4 @@
+# Optional, standalone market-data adapter; never installed by the nightly.
+smartapi-python==1.5.5
+logzero
+websocket-client

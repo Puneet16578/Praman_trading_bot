@@ -1,3 +1,19 @@
+## 2026-10-13 Codex: B2
+
+- B1 committed ca99d6e. B2 adds only the optional read-only Angel wrapper,
+  pinned smartapi-python 1.5.5 requirements, mocked tests and documentation.
+- Seven public capabilities; allowlisted REST dispatcher, hidden prompts,
+  midnight expiry, no token refresh/persistence, muted vendor/HTTP debug logs,
+  exact NSE EQ mapping, conservative 4.1-second global REST spacing and bounded
+  foreground feed. No nightly integration, store write or package installation.
+- Latest EQ master comparison: 2694/2696 mapped; CCAVENUE and MOREPENLAB unmapped.
+  Live authentication/IP compatibility/feed reliability DOCUMENTED, NOT VERIFIED.
+- Draft defects P8-065/066/067 fixed before commit; P8-064 remains open by design.
+- Targeted Angel tests: 25 in 0.847s, OK. Full suite: 855 tests in 213.836s,
+  OK, Python exit 0. This run includes the separately committed B3 script tests.
+- At 15:53 IST the nightly task was Ready. Clean master deadline remains 17:45.
+  C design is being prepared; no R1 implementation. D awaits tonight's run.
+
 ## 2026-10-13 Codex: B1
 
 - Part A complete. A5 engine unchanged; 830 tests in 150.115s, OK.
