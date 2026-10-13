@@ -145,8 +145,8 @@ def classify_event(
     signal fields every event reports regardless of class.
 
     momentum_high=None (return_20d unavailable) is treated the same as momentum_high=False --
-    the conservative default (CLAUDE.md invariant 12: missing evidence must never inflate a
-    grounded-adjacent classification)."""
+    the conservative default: missing evidence must never inflate a grounded-adjacent
+    classification (in keeping with CLAUDE.md invariant 12, measured signals only)."""
     if not has_coverage:
         return UNEXPLAINED_UNKNOWN_COVERAGE, None
 

@@ -21,6 +21,11 @@ from the decision date alone (`seeded_order`), recorded with the run; v2 used sy
 spans versions: positions accepted by v2 are settled, monitored and exited by v3's runs under the
 same rules, keep their own version on every event, and count against the same budget. A run date
 is processed once across all versions, and the fill-failure streak counts every version's entries.
+
+Paper only does what live trading could have done (user decision 2026-10-13). A stop would sit at
+the broker, so a run checks every session not yet monitored, in date order (P8-057). An entry needs
+an order placed before the next open, so a date with no run, or decided after `entry_cutoff`, gets
+no decisions and is recorded as a burn-in gap in `strategy_gaps` (P8-056).
 """
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta, timezone

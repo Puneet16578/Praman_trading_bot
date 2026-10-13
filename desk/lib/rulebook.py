@@ -5,7 +5,7 @@ rulebook/ACTIVE -- and identified by the SHA-256 of its LF-normalized content
 against the exact same rulebook.
 
 Values are proposed by Claude, marked PROPOSED with a one-line reason each, and are not binding
-until the user approves or changes them (STOP 2, docs/desk/DESIGN.md's own working procedure) --
+until the user approves or changes them (STOP 2 of Desk Phase 1, under CLAUDE.md's working procedure) --
 this module validates SHAPE and TYPE, never picks or defends a specific number.
 """
 from __future__ import annotations

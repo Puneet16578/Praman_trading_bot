@@ -23,7 +23,9 @@ _START_RE = re.compile(r"^=== (?P<start>\S+) weekly_ingest started ===\s*$")
 _STEP_RE = re.compile(r"^=== (?P<start>\S+) weekly_ingest step=(?P<label>\S+) status=(?P<status>\w+) completed=\S+ ===\s*$")
 _SKIP_RE = re.compile(r"^=== (?P<start>\S+) weekly_ingest skipped: (?P<detail>.*?) ===\s*$")
 
-STALE_AFTER_DAYS = 7  # PROPOSED, matching the roughly-weekly cadence weekly_ingest.py's own name implies
+# PROPOSED when ingestion was weekly (weekly_ingest.py keeps that name); it has run every weekday since
+# 2026-09-28 (docs/OPERATIONS.md, "Daily ingestion"). Strategy 0's registered definition cites this value.
+STALE_AFTER_DAYS = 7
 
 
 def latest_trading_date_line(conn) -> str:
@@ -85,8 +87,9 @@ def ingestion_health_line(current_run_start: str | None = None) -> str:
     """`current_run_start` is the start stamp of the run asking for this line, i.e. the nightly
     brief, which is written before its own run finishes (P8-050): that run is reported as in
     progress, with the steps it has logged so far, never as unfinished. Every other unmatched start
-    keeps P8-045's rule. A run skipped for low battery (P8-053) is reported when it is later than
-    the last finished run; it never counts as a run, so staleness is unaffected."""
+    keeps P8-045's rule. A run skipped before any step (low battery, P8-053; the code guard, P8-059)
+    is reported when it is later than the last finished run; it never counts as a run, so staleness
+    is unaffected."""
     if not LOG_PATH.exists():
         return "Ingestion health: UNKNOWN (logs/weekly_ingest.log not found)."
 

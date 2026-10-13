@@ -69,10 +69,11 @@ Working-tree guard (user decision 2026-10-13; P8-059): the nightly runs the work
 records the commit with each decision, and it usually starts the moment the laptop wakes, so an
 interrupted session could leave it half-finished code. If any file it runs or reads (code and
 config under NIGHTLY_INPUT_DIRS, plus NIGHTLY_INPUT_FILES; tracked or untracked) differs from HEAD,
-or git cannot run, no step runs and the skip is recorded exactly like the low-battery one.
-`git --no-optional-locks status` never writes to the repository. Other docs and theses never trip it.
-A skipped date gets no desk scan, circuit bands, Strategy 0 decisions or brief of its own (P8-056);
-the data steps catch up.
+or git cannot run, no step runs and the skip is recorded exactly like the low-battery one. The
+same happens unless master is checked out (another branch or a detached HEAD). Neither git command
+writes to the repository. Other docs and theses never trip it. A skipped date gets no desk scan,
+circuit bands or brief of its own and no Strategy 0 decisions: the next Strategy 0 run records it as
+a burn-in gap (P8-056). The data steps catch up.
 
 Every step's stdout is captured (not just its exit status) so this script can surface the two
 things a human running this unattended actually needs to see without reading the full log every
@@ -511,8 +512,9 @@ def _skip(started: str, reason: str) -> int:
         from desk.brief import record_skipped_run
         record_skipped_run(market_today().isoformat(),
                            f"WARN {started}: nightly run skipped, {reason}. No step ran: no ingestion, desk scan, "
-                           "Strategy 0 run or backup. The next run catches up on the data; this date gets no "
-                           "Strategy 0 decisions unless a run completes today.")
+                           "Strategy 0 run or backup. The next run catches up on the data. Strategy 0 decides the latest "
+                           "session only if a run decides it before 09:00 IST on the next weekday; otherwise "
+                           "the next run records that session as a burn-in gap.")
     except Exception as exc:  # the log line is the durable record; a brief problem must not hide it
         _append_log(f"  [power] WARN the skip could not be recorded in the brief ({type(exc).__name__})")
     return 0

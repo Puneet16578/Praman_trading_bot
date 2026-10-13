@@ -193,9 +193,9 @@ def health_lines(praman_conn, run_date, current_run_start=None):
 
 
 def record_skipped_run(day, notice, *, out_dir=None):
-    """A nightly run skipped before any step (low battery, P8-053) still leaves its WARN in that
-    day's brief: a short brief if none exists for the day, otherwise the notice is appended. An
-    existing brief is never replaced. Default folder: logs/ (a temporary folder under tests)."""
+    """A nightly run skipped before any step (low battery, P8-053; the code guard, P8-059) leaves
+    its WARN in that day's brief: a short brief if none exists for the day, otherwise the notice is
+    appended. An existing brief is never replaced. Default folder: logs/ (a temporary folder under tests)."""
     from shared.log_paths import logs_dir
     out_dir = out_dir or logs_dir()
     out_dir.mkdir(parents=True, exist_ok=True)

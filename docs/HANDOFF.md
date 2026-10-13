@@ -28,6 +28,27 @@
   downloads (all ten dates, temporary cache). The real cache does not exist yet: tonight's run fills
   it (expect ten "downloaded and cached" lines in its isin_map output); from 14 Oct expect "cached
   snapshot, hash verified".
+- Item 6, citation sweep (src/, desk/, scripts/, shared/; 185 files): every cited document exists;
+  all 48 defect IDs cited are in the register and match their topic; blueprint sections 3, 6.3, 7,
+  8, 13, amendment 4, DESIGN constitution items 3 and 5, CLAUDE.md invariants 1, 8, 12 and D1/D6,
+  session items B1-B5, Amendment 2 §5, Amendment 4 §1 and the phase-doc item numbers checked
+  against their targets. "Section 7/8/11" means CLAUDE.md invariants 7/8/11 (CLAUDE.md itself
+  writes "(Section 11)"): correct. Fixed (comments only): `desk/lib/rulebook.py` cited
+  "docs/desk/DESIGN.md's own working procedure", which never existed (it is CLAUDE.md's);
+  `src/classification/event_classifier.py` attributed to invariant 12 a rule it does not state;
+  `desk/ingestion_health.py`'s STALE_AFTER_DAYS comment said ingestion is weekly; stale skip and
+  monitoring descriptions after today's changes (weekly_ingest, brief, ingestion_health,
+  strategy0 docstrings), and the skip notice in the brief now states the 09:00 cut-off.
+  Reported, not changed: (1) STALE_AFTER_DAYS = 7 was set for weekly ingestion; with nightly runs
+  the health line in the brief and `desk status` calls a last run up to 7 days old not STALE. For
+  Strategy 0 it matters little: a date is decided once and only before the 09:00 cut-off (P8-056),
+  so an old session cannot be decided late. It is cited by S0's registered definition, so changing
+  it is the user's call. (2) "item N" in Desk Phase 1 files (paper/execution.py item 9,
+  risk/officer.py item 7, evidence/bundle.py item 5, ingestion_health.py item 5) and "round 2,
+  item 4" in phase10_amendment4_phase8b_reauc.py cite session instruction lists that are not in the
+  repository (the last is §5 of docs/phase10_amendment4_prep2.md); unverifiable, left as they are.
+  (3) `src/bitemporal/schema.py` raises "... -- Section 7 violation." (a message, consistent with
+  the convention above).
 
 ## 2026-10-13: working-tree guard (P8-059) and manual open-risk measure (Claude)
 
