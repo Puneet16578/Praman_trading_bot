@@ -36,7 +36,7 @@ from desk.risk.officer import compute_position_size, planned_loss_inr, round_tri
 from desk.shadow_followup import cap_measurements
 from desk.shadow_followup2 import LIMIT_ATR, limit_fill
 from src.bitemporal.guard import latest_as_of
-from desk.paper.execution import basis_factor
+from desk.paper.execution import basis_factor, stop_rule
 from src.signals.price_adjustment import UnadjustableWindowError
 
 STRATEGY_ID = 'S0'
@@ -84,7 +84,8 @@ def load_book(conn, version=None, *, through_run_id=None):
         detail = json.loads(row['detail'])
         p = positions.setdefault(row['position_id'], dict(symbol=row['symbol'], decision_date=row['decision_date'],
                                                           version=row['strategy_version'], accepted=None, entry=None,
-                                                          entry_outcome=None, exit_order=None, exit=None))
+                                                          entry_outcome=None, exit_order=None, exit=None,
+                                                          last_monitored=None))
         if row['strategy_version'] != p['version']:
             raise EngineRefused(f"{row['position_id']}: events under more than one strategy version; book inconsistent.")
         record = dict(detail, event_date=row['event_date'], event_id=row['event_id'], recorded_at=row['recorded_at'])
@@ -94,6 +95,8 @@ def load_book(conn, version=None, *, through_run_id=None):
             p['entry_outcome'] = row['event_type']
             if row['event_type'] == 'ENTRY_FILLED':
                 p['entry'] = record
+        elif row['event_type'] == 'MONITORED':
+            p['last_monitored'] = max(p['last_monitored'] or '', row['event_date'])   # sessions already checked
         elif row['event_type'] == 'EXIT_ORDERED':
             p['exit_order'] = record
         elif row['event_type'] == 'EXIT_FILLED':
@@ -269,37 +272,55 @@ def run(praman_conn, desk_conn, run_date, *, rulebook, costs, rulebook_file, rul
         if p['status'] != 'OPEN' or p['entry']['event_date'] >= run_date:
             continue
         ops['monitored'] += 1
-        try:
-            factor = basis_factor(praman_conn, p['symbol'], p['decision_date'], run_date)
-        except UnadjustableWindowError as exc:
-            # No factor exists, so the stop cannot be monitored: leave at the next open.
-            plan.events.append((_event('MONITORED', p, run_date, dict(note=f'Unadjustable corporate action: {exc}'),
-                                       position_id=pid), None))
-            plan.events.append((_event('EXIT_ORDERED', p, run_date, dict(reason='UNADJUSTABLE_CORPORATE_ACTION'),
-                                       position_id=pid), None))
-            continue
+        # Every session not yet monitored, in date order (P8-057): a stop sits at the broker and fires
+        # whether or not a run happened, so a skipped night's session is checked on the next run with
+        # exactly the same rule. An exit ORDER (time limit, kill switch) needs a run: it is placed now.
         stop, qty = p['accepted']['stop_level'], p['entry']['quantity']
-        bar = session_bar(praman_conn, p['symbol'], run_date, run_date)
-        held = len(sessions_between(praman_conn, p['entry']['event_date'], run_date))
-        if bar is None or not all(_finite(bar[k]) and bar[k] > 0 for k in ('open_price', 'low_price')):
-            ops['missing_bars'] += 1
-            plan.events.append((_event('MONITORED', p, run_date, dict(note='No usable bar today.', stop=stop,
-                                sessions_held=held), position_id=pid), None))
+        unchecked = sessions_between(praman_conn, max(p['entry']['event_date'], p['last_monitored'] or ''), run_date)
+        outcome = None
+        for day in unchecked:
+            try:
+                factor = basis_factor(praman_conn, p['symbol'], p['decision_date'], day)
+            except UnadjustableWindowError as exc:
+                # No factor exists, so the stop cannot be monitored: leave at the next open.
+                plan.events.append((_event('MONITORED', p, day, dict(note=f'Unadjustable corporate action: {exc}'),
+                                           position_id=pid), None))
+                plan.events.append((_event('EXIT_ORDERED', p, run_date, dict(reason='UNADJUSTABLE_CORPORATE_ACTION'),
+                                           position_id=pid), None))
+                outcome = 'exit_ordered'
+                break
+            bar = session_bar(praman_conn, p['symbol'], day, run_date)
+            held = len(sessions_between(praman_conn, p['entry']['event_date'], day))
+            if bar is None or not all(_finite(bar[k]) and bar[k] > 0 for k in ('open_price', 'low_price')):
+                ops['missing_bars'] += 1
+                plan.events.append((_event('MONITORED', p, day, dict(note='No usable bar today.', stop=stop,
+                                    sessions_held=held), position_id=pid), None))
+                outcome = 'no_bar'
+                continue
+            outcome = None
+            opening, low = bar['open_price'] * factor, bar['low_price'] * factor
+            hit = stop_rule(opening, low, stop)
+            plan.events.append((_event('MONITORED', p, day, dict(stop=stop, open=opening, low=low, factor=factor,
+                                raw_open=bar['open_price'], raw_low=bar['low_price'], sessions_held=held,
+                                row_id=bar['row_id']), position_id=pid), None))
+            if hit:
+                plan.events.append((_event('EXIT_FILLED', p, day, dict(
+                    price=hit[1], quantity=qty, reason='STOP', kind=hit[0], basis_factor=factor,
+                    sell_cost_inr=round_trip_cost_inr(hit[1], qty, costs, 'sell'), row_id=bar['row_id']),
+                    position_id=pid), None))
+                outcome = 'stopped'
+                break
+        if outcome is not None:          # stopped, exit already ordered, or no usable bar for today
             continue
-        opening, low = bar['open_price'] * factor, bar['low_price'] * factor
-        hit = ('stop_gap', opening) if opening <= stop else (('stop_touch', stop) if low <= stop else None)
-        plan.events.append((_event('MONITORED', p, run_date, dict(stop=stop, open=opening, low=low, factor=factor,
-                            raw_open=bar['open_price'], raw_low=bar['low_price'], sessions_held=held,
-                            row_id=bar['row_id']), position_id=pid), None))
-        if hit:
-            plan.events.append((_event('EXIT_FILLED', p, run_date, dict(
-                price=hit[1], quantity=qty, reason='STOP', kind=hit[0], basis_factor=factor,
-                sell_cost_inr=round_trip_cost_inr(hit[1], qty, costs, 'sell'), row_id=bar['row_id']),
-                position_id=pid), None))
-        elif held >= definition['time_limit_sessions'] or exiting:
+        held = len(sessions_between(praman_conn, p['entry']['event_date'], run_date))
+        if held >= definition['time_limit_sessions'] or exiting:
             reason = 'TIME_LIMIT' if held >= definition['time_limit_sessions'] else 'KILL_SWITCH ' + ','.join(exiting)
-            plan.events.append((_event('EXIT_ORDERED', p, run_date, dict(reason=reason, sessions_held=held),
-                                       position_id=pid), None))
+            detail = dict(reason=reason, sessions_held=held)
+            late = held - definition['time_limit_sessions']
+            if reason == 'TIME_LIMIT' and late > 0:      # the run on the limit session was missed
+                detail['ordered_late_by_sessions'] = late
+                ops.setdefault('time_exits_late', []).append(dict(position_id=pid, sessions_late=late))
+            plan.events.append((_event('EXIT_ORDERED', p, run_date, detail, position_id=pid), None))
 
     # 4. Today's candidates, in the registered order, against the open-risk budget.
     exited_today = {e['position_id'] for e, _ in plan.events if e['event_type'] == 'EXIT_FILLED'}

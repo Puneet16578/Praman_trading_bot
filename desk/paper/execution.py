@@ -63,23 +63,28 @@ def fill_entry(conn, symbol: str, decision_date: str, slippage_pct: float, as_of
     return Fill(event_date=next_date, price=price, kind="entry")
 
 
+def stop_rule(opening: float, low: float, stop: float) -> tuple[str, float] | None:
+    """THE stop rule, shared by the manual monitor and Strategy 0 (P8-057): if the session's open
+    already gapped through the stop, fill there (worse for a long than the stop itself); otherwise,
+    if the session's low touched the stop, fill AT the stop, never at a more favorable price the
+    position never actually had a chance at. Prices on one share basis. (kind, price) or None."""
+    if opening <= stop:
+        return "stop_gap", opening
+    if low <= stop:
+        return "stop_touch", stop
+    return None
+
+
 def check_stop_on_session(conn, symbol: str, event_date: str, stop: float, as_of: str,
                           basis_date: str | None = None) -> Fill | None:
-    """Conservative rule: if the session's own open already gapped through the stop, fill there
-    (worse for a long than the stop itself); otherwise, if the session's low touched the stop, fill
-    AT the stop, never at a more favorable price the position never actually had a chance at.
-    `stop` and the returned price are on `basis_date`'s share basis (raw when it is None)."""
+    """`stop_rule` on one session's bar. `stop` and the returned price are on `basis_date`'s share
+    basis (raw when it is None)."""
     row = session_ohlc(conn, symbol, event_date, as_of)
     if row is None:
         return None
     factor = basis_factor(conn, symbol, basis_date, event_date)
-    adj_open = row["open_price"] * factor
-    adj_low = row["low_price"] * factor
-    if adj_open <= stop:
-        return Fill(event_date=event_date, price=adj_open, kind="stop_gap")
-    if adj_low <= stop:
-        return Fill(event_date=event_date, price=stop, kind="stop_touch")
-    return None
+    hit = stop_rule(row["open_price"] * factor, row["low_price"] * factor, stop)
+    return None if hit is None else Fill(event_date=event_date, price=hit[1], kind=hit[0])
 
 
 def fill_non_price_exit(conn, symbol: str, trigger_date: str, as_of: str, basis_date: str | None = None) -> Fill | None:

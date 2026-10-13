@@ -1,3 +1,15 @@
+## 2026-10-13 (from 09:12): approved round: P8-057, P8-056 gaps, P8-060 cache, branch guard (Claude)
+
+- The user's "tonight's run has finished" came at 09:12 on 13 Oct: the latest run was 12 Oct's; the
+  13 Oct run is at 18:00. Item 3 checks (What changed, previous run 12 Oct, own logs archive, brief)
+  wait for it.
+- P8-057 fixed (user approval): Strategy 0 checks every session not yet monitored, in date order,
+  with the same stop rule (now shared as `desk.paper.execution.stop_rule`); a time exit after a
+  skipped night is ordered at the next run with the delay recorded and shown in the brief. Replay of
+  all six runs on temporary copies: identical (run 1's operational record lacks only v3's
+  candidate_order key). Manual monitor unchanged; its time exit after a missed run is retroactive
+  (reported, awaiting the user).
+
 ## 2026-10-13: working-tree guard (P8-059) and manual open-risk measure (Claude)
 
 - Start 08:39: task Ready, no run in progress, no Python running; tree clean at fc39780

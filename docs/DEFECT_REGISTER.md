@@ -2137,6 +2137,27 @@ The same defect class as P8-054 in the manual book. Nothing affected: every sess
 fix: check every session since the fill in date order, as P8-054 does; it changes the registered
 engine's implementation, not its rule ("monitoring starts the session after the fill").
 
+**Fix, 2026-10-13 (user approval; "paper must only do what live trading could have done: a stop
+would sit at the broker and fire whether or not the laptop ran").**
+**Status.** Closed — fixed; no new Strategy 0 version (the code now follows the registered rule).
+`strategy0.run` checks every session not yet monitored (after the fill and the last MONITORED
+session), in date order, with the same rule and the same events (one MONITORED per session, the
+EXIT_FILLED dated on the breach session). The stop rule itself now lives once, in
+`desk.paper.execution.stop_rule`, used by both the manual monitor (`check_stop_on_session`) and
+Strategy 0. The session loops stay separate: Strategy 0 records a MONITORED event per global session
+from its registered EQ/BE/BZ bar, the manual monitor scans the symbol's EQ history. An exit ORDER
+needs a run, so a 10-session time exit after a skipped night is ordered at the next run, as live
+would, with `ordered_late_by_sessions` on the event and a "Time-limit exits ordered late" line in the
+brief. Unchanged for a normal night: when today's bar is missing the time check waits, as before.
+Tests (`tests/test_strategy0_engine.py::SkippedSessionMonitoringTest`): a stop touched or gapped on a
+skipped day with the price recovering the next day, every session monitored once across a skipped
+night, the late time exit; all four fail with the pre-fix engine. Replay of all six Strategy 0 runs
+with the new code on temporary copies: position events (259) and decision contracts (248)
+identical; operational records identical except that run 1's lacks the `candidate_order` key v3's
+code adds (pre-existing since e36ac7c, not this fix). Manual monitor (P8-054), checked and unchanged:
+stops catch up the same way; its time exit fills at the first open after the horizon even when the
+run before that open was missed, which live trading could not do (reported to the user).
+
 ## P8-054 - desk monitor checked a manual stop on the run date's session only
 
 **Severity.** Medium. **Status.** Closed — fixed 2026-10-11 (user approval); no record affected.

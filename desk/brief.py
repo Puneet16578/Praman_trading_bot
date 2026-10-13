@@ -45,6 +45,10 @@ def build_brief(praman_conn, desk_conn, run_date, *, rulebook, health_lines=()):
                   f"fill failures {ops['entries_failed']}; cancelled {ops['entries_cancelled']}; "
                   f"per-trade cap breaches at fill {ops['cap_breaches_at_fill']}",
                   'Rejected by reason: ' + (', '.join(f'{k} {v}' for k, v in sorted(ops['rejected'].items())) or 'none')]
+        late = ops.get('time_exits_late') or []
+        if late:     # P8-057: the run on the limit session was missed; ordered at this run, as live would
+            lines += [f"Time-limit exits ordered late because a run was missed: {len(late)} "
+                      f"({', '.join(str(x['sessions_late']) for x in late)} session(s) late)"]
     lines += ['']
     accepted = _accepted(desk_conn, run_date)
     for c in accepted:

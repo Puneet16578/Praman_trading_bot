@@ -457,6 +457,72 @@ class StrategyV3Test(EngineFixture):
         self.assertEqual(ops['rejected'], {'KILL_SWITCH': 1})
 
 
+class SkippedSessionMonitoringTest(EngineFixture):
+    """P8-057: a stop sits at the broker, so a skipped night's session is checked on the next run."""
+
+    def accept_and_fill(self):
+        d0, d1 = DAYS[0], DAYS[1]
+        self.store.market(d0)
+        opportunity(self.desk, 'AAA', d0, plan())            # limit 102, stop 92
+        self.run_day(d0)
+        self.store.market(d1)
+        self.store.bar('AAA', d1, 101, 104, 100, 103)       # fills at the 101 open
+        self.run_day(d1)
+        self.assertEqual(len(self.events('ENTRY_FILLED')), 1)
+
+    def test_stop_breached_on_a_skipped_day_is_taken_on_that_day(self):
+        self.accept_and_fill()
+        d2, d3 = DAYS[2], DAYS[3]
+        self.store.market(d2)
+        self.store.bar('AAA', d2, 95, 96, 90, 94)           # low 90 touches the 92 stop; no run that night
+        self.store.market(d3)
+        self.store.bar('AAA', d3, 97, 98, 96, 97)           # recovered: today's bar alone shows no breach
+        self.run_day(d3)
+        exits = self.events('EXIT_FILLED')
+        self.assertEqual([(e['event_date'], e['detail']['price'], e['detail']['kind']) for e in exits], [(d2, 92, 'stop_touch')])
+        self.assertEqual([e['event_date'] for e in self.events('MONITORED')], [d2])   # exited on d2: d3 not needed
+
+    def test_gap_on_a_skipped_day_fills_at_that_open(self):
+        self.accept_and_fill()
+        d2, d3 = DAYS[2], DAYS[3]
+        self.store.market(d2)
+        self.store.bar('AAA', d2, 88, 89, 85, 86)
+        self.store.market(d3)
+        self.store.bar('AAA', d3, 80, 81, 79, 80)
+        self.run_day(d3)
+        self.assertEqual([(e['event_date'], e['detail']['price'], e['detail']['kind']) for e in self.events('EXIT_FILLED')],
+                         [(d2, 88, 'stop_gap')])
+
+    def test_every_session_is_monitored_once_across_a_skipped_night(self):
+        self.accept_and_fill()
+        for day in DAYS[2:5]:
+            self.store.market(day)
+            self.store.bar('AAA', day, 101, 103, 99, 102)
+        self.run_day(DAYS[2])
+        self.run_day(DAYS[4])                                # DAYS[3]'s run was missed
+        self.assertEqual([e['event_date'] for e in self.events('MONITORED')], DAYS[2:5])
+
+    def test_time_exit_after_a_skipped_night_is_ordered_at_the_next_run_with_the_delay(self):
+        from desk.brief import build_brief
+        self.accept_and_fill()
+        for day in DAYS[2:13]:
+            self.store.market(day)
+            self.store.bar('AAA', day, 101, 103, 99, 102)    # never near the stop
+        for day in DAYS[2:11]:
+            self.run_day(day)                                # held 1..9
+        ops = self.run_day(DAYS[12])                         # DAYS[11] (held 10) was missed
+        ordered = self.events('EXIT_ORDERED')
+        self.assertEqual([(e['event_date'], e['detail']) for e in ordered],
+                         [(DAYS[12], dict(reason='TIME_LIMIT', sessions_held=11, ordered_late_by_sessions=1))])
+        self.assertEqual(ops['time_exits_late'], [dict(position_id='S0:AAA:2026-10-05', sessions_late=1)])
+        self.assertIn('Time-limit exits ordered late because a run was missed: 1 (1 session(s) late)',
+                      build_brief(self.store.conn, self.desk, DAYS[12], rulebook=rulebook(), health_lines=[]))
+        self.store.market(DAYS[13])
+        self.store.bar('AAA', DAYS[13], 100, 101, 99, 100)
+        self.run_day(DAYS[13])
+        self.assertEqual([e['event_date'] for e in self.events('EXIT_FILLED')], [DAYS[13]])   # the next open
+
+
 class RegistryAndSealTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
