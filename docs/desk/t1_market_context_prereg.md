@@ -183,3 +183,49 @@ must test knowledge-date guards, action adjustments, membership changes, missing
 bars, warm-up, bootstrap multiplicities and firewall before any outcome analysis.
 Publish immutable input hashes, code/preregistration commits, coverage and full
 results whatever they show. Implementation awaits user review in a later session.
+
+## Addendum 1 (2026-10-13): spells, block length, sourcing first
+
+Approved by the user in their message of 2026-10-13 ("I approve this pre-registration change").
+Recorded before any T1 input was fetched or any T1 feature or outcome was computed; none had
+been at this commit. It only adds requirements: no period, variant, threshold, metric or
+existing success criterion is loosened.
+
+**1. Separate spells for V1 and V2.** V1 and V2 are market-wide states that can last for
+months, so a single episode (the 2020 crash) could decide a result. For each of V1 and V2, and
+in each evaluated period separately, the result is INCONCLUSIVE unless the adverse state forms
+at least 5 separate spells among that period's decision dates.
+- A spell is a run of global sessions on which the adverse state holds (V1: adverse regime;
+  V2: weak breadth).
+- Two runs less than 20 global sessions apart count as one spell. The distance is the number
+  of sessions between the last adverse session of one run and the first of the next, counting
+  only sessions whose state is known and not adverse. Sessions whose state is UNKNOWN never
+  separate two runs, so a stretch of missing inputs can only merge spells, never create one.
+- Spells are counted on the decision dates the period actually evaluates (after the
+  development purge rule), before any outcome is loaded. Report the spell count, each spell's
+  first and last date and its number of adverse sessions.
+- This is in addition to every existing requirement (coverage, 100 valid outcomes and 30
+  distinct dates per state and quintile, 1,900 usable draws).
+
+**2. Bootstrap block length.** V1 and V2 use moving blocks of 60 consecutive global sessions;
+V3 keeps 20. For 60-session blocks, starts are uniform among the T-59 valid starts, with
+replacement, and ceil(T/60) blocks are concatenated and truncated to T dates. Everything else in
+the bootstrap section is unchanged (2,000 replicates, whole date clusters, multiplicities and
+missingness carried, fixed quintile boundaries and weights, no cross-period blocks). Each block
+length has its own set of draws from its own generator, seeded 20261001. A contrast and its
+matched V0 comparison use the draws of that variant's block length. The family of three primary
+contrasts and its 98.333333% intervals are unchanged.
+
+**3. Stated in advance: V1 and V2 will probably be INCONCLUSIVE on 2025 alone.** One calendar
+year is unlikely to hold five separate spells of a months-long market state. That is a
+limitation to report with the result, not a reason to loosen the spell rule, the block length
+or any other criterion. A development result that passes stays unreplicated on 2025 in that
+case; it is never reported as replicated.
+
+**4. Sourcing comes before outcomes.** No T1 feature or outcome is computed until a sourcing
+report is committed: coverage and provenance for each input by year, the evidence of when each
+value was published, and the knowledge rule applied. If point-in-time sector membership cannot
+be proven for the periods evaluated, V3 is either dropped or given a declared alternative
+source in a further dated addendum, decided and committed before any outcome is computed. A
+present-day classification is never backfilled. Dropping V3 leaves the Bonferroni family at
+three, so V1's and V2's intervals do not narrow.
