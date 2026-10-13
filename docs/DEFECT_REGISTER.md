@@ -2559,3 +2559,23 @@ run an `S0_RUN_ANNOTATED` journal entry (`scripts/desk_annotate_p8069.py`, idemp
 a temporary copy first); `desk status` and every brief show "Strategy 0 burn-in dates decided on
 incomplete disclosure data". Nothing is re-decided. The brief's bare "NO TRADE ... a normal
 outcome" on such a night is still not explained there (reported, not changed).
+
+## P8-070 - Praman's store lacks five real trading sessions, so windows across them silently shorten
+
+**Severity.** Medium. **Status.** Open — found 2026-10-14 while building T1 inputs; fix awaits the user.
+The official NIFTY 50/NIFTY 500/India VIX histories (niftyindices, downloaded for T1 phase 2) list
+sessions that the bhavcopy store has no rows for at all:
+- 2022-08-08, a regular weekday session (8 Aug 2022; 9 Aug was the holiday). Not recorded as a
+  gap in any log or document.
+- Four weekend special sessions: 2020-02-01 and 2025-02-01 (Budget-day Saturdays, full sessions),
+  2023-11-12 (Muhurat) and 2024-03-02 (special Saturday session). The daily ingestion skips weekends
+  locally (OPERATIONS.md, "Daily ingestion"), so these were never requested. The store does hold four
+  other weekend sessions (2019-10-27, 2020-11-14, 2024-01-20, 2024-05-18), so weekends are not
+  excluded by design everywhere.
+Effect: anything counting "global sessions" from the store (the forensic catalogue's windows and
+labels, the Desk's ATR and lookbacks, T1) treats the day before and the day after as adjacent, so a
+20-session window spans 21 real sessions. T1 treats 2022-08-08 as a session with every stock missing
+(windows across it are UNKNOWN) and leaves the four weekend sessions out of its calendar; both are
+in the T1 coverage report for review. Nothing is changed in the store. Possible fix (needs approval:
+a Praman store write and NSE requests): fetch the five dated bhavcopy files, check each file's own
+date (P2-003), ingest them append-only, and say how the frozen pipeline's pinned inputs are affected.
