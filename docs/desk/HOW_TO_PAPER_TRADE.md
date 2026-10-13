@@ -87,8 +87,9 @@ The five thesis triggers are **price** (stop/target), **time** (horizon), **evid
 **Mechanical exits (since 2026-10-11, P8-054):** `desk monitor` runs every night as part
 of the scheduled ingestion (and whenever you run `desk monitor` or `desk evening`). It fills
 the **stop**, at the session open if it gaps below the stop, otherwise at the stop if
-touched, and the **time** exit, at the open of the first session after your thesis
-horizon (never the entry session's own open). It checks every session since entry in date
+touched. The **time** exit is ordered by the first run at or after your thesis
+horizon, then fills at the next session open. A missed horizon night delays the order
+until the next run; the brief shows the delay in trading sessions (P8-061). It checks every session since entry in date
 order, so a stop hit on an evening nobody ran it is still filled on that day at that day's
 price. Its report (exits, pending opens and closes, open positions, what changed) is in the
 daily brief. It does not execute **targets** or the **evidence**, **risk** and **portfolio**

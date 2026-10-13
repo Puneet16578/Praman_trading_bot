@@ -75,35 +75,58 @@ class MonitorCatchUpTest(unittest.TestCase):
         run_monitor(self.praman, self.desk, DAYS[4])
         self.assertEqual(self.close_event(trade_id), (DAYS[2], 88.0, 'stop (stop_gap)'))
 
-    def test_time_exit_at_the_first_open_after_the_horizon_even_if_evenings_were_missed(self):
+    def test_missed_horizon_orders_on_recovery_and_fills_after_it(self):
+        from desk.brief import manual_monitor_lines
+        self.bars(d4=(103.0, 104.0, 102.0, 103.0), d6=(106.0, 107.0, 105.0, 106.0))
+        trade_id = self.trade(horizon=DAYS[3])
+        report = run_monitor(self.praman, self.desk, DAYS[5])
+        self.assertIsNone(self.close_event(trade_id))
+        self.assertEqual(report['time_exits_pending'], [dict(trade_id=trade_id, not_before_date=DAYS[5],
+                         horizon=DAYS[3], ordered_late_by_sessions=2)])
+        self.assertIn('2 session(s) late', '\n'.join(manual_monitor_lines(self.desk, DAYS[5])))
+        run_monitor(self.praman, self.desk, DAYS[5])
+        self.assertEqual(self.desk.execute("SELECT COUNT(*) FROM journal_events WHERE event_type='TIME_EXIT_ORDERED'").fetchone()[0], 1)
+        run_monitor(self.praman, self.desk, DAYS[6])
+        self.assertEqual(self.close_event(trade_id)[:2], (DAYS[6], 106.0))
+
+    def test_order_on_horizon_fills_next_open_despite_missed_later_runs(self):
         self.bars(d4=(103.0, 104.0, 102.0, 103.0))
         trade_id = self.trade(horizon=DAYS[3])
-        report = run_monitor(self.praman, self.desk, DAYS[3])                  # horizon day: not yet due
-        self.assertEqual(report['exits_triggered'], [])
-        self.assertEqual(report['positions'][trade_id]['horizon'], DAYS[3])
-        report = run_monitor(self.praman, self.desk, DAYS[6])                  # d4 and d5 evenings missed
-        self.assertEqual(report['exits_triggered'], [dict(trade_id=trade_id, reason='time_exit_open', price=103.0,
-                                                          event_date=DAYS[4], trigger='time')])
-        self.assertEqual(self.close_event(trade_id),
-                         (DAYS[4], 103.0, f'time (first session after the {DAYS[3]} horizon)'))
+        report = run_monitor(self.praman, self.desk, DAYS[3])
+        self.assertEqual(report['time_exits_pending'][0]['ordered_late_by_sessions'], 0)
+        self.assertIsNone(self.close_event(trade_id))
+        run_monitor(self.praman, self.desk, DAYS[6])
+        self.assertEqual(self.close_event(trade_id)[:2], (DAYS[4], 103.0))
 
     def test_on_the_time_exit_session_only_the_open_counts(self):
-        self.bars(d4=(100.0, 101.0, 85.0, 90.0))                              # low below the stop after the open
+        self.bars(d4=(100.0, 101.0, 85.0, 90.0))
         trade_id = self.trade(horizon=DAYS[3])
+        run_monitor(self.praman, self.desk, DAYS[3])
         run_monitor(self.praman, self.desk, DAYS[5])
         self.assertEqual(self.close_event(trade_id)[:2], (DAYS[4], 100.0))
 
     def test_time_exit_session_opening_through_the_stop_is_a_stop_gap(self):
         self.bars(d4=(90.0, 91.0, 89.0, 90.0))
         trade_id = self.trade(horizon=DAYS[3])
+        run_monitor(self.praman, self.desk, DAYS[3])
         fill, trigger = first_mechanical_exit(self.praman, self.desk, trade_id, DAYS[5])
         self.assertEqual((fill.event_date, fill.price, fill.kind, trigger), (DAYS[4], 90.0, 'stop_gap', 'price'))
 
-    def test_time_exit_never_uses_the_entry_sessions_own_open(self):
+    def test_overdue_horizon_does_not_backdate_to_entry_or_next_open(self):
         self.bars(d2=(104.0, 105.0, 103.0, 104.0))
-        trade_id = self.trade(horizon=DAYS[0])                                 # already past at entry (DAYS[1])
-        fill, trigger = first_mechanical_exit(self.praman, self.desk, trade_id, DAYS[3])
-        self.assertEqual((fill.event_date, fill.price, trigger), (DAYS[2], 104.0, 'time'))
+        trade_id = self.trade(horizon=DAYS[0])
+        self.assertIsNone(first_mechanical_exit(self.praman, self.desk, trade_id, DAYS[3]))
+        run_monitor(self.praman, self.desk, DAYS[3])
+        self.assertIsNone(self.close_event(trade_id))
+        run_monitor(self.praman, self.desk, DAYS[4])
+        self.assertEqual(self.close_event(trade_id)[:2], (DAYS[4], 100.0))
+
+    def test_standing_stop_on_missed_horizon_precedes_new_time_order(self):
+        self.bars(d4=(95.0, 96.0, 91.0, 93.0))
+        trade_id = self.trade(horizon=DAYS[3])
+        report = run_monitor(self.praman, self.desk, DAYS[5])
+        self.assertEqual(self.close_event(trade_id)[:2], (DAYS[4], 92.0))
+        self.assertNotIn('time_exits_pending', report)
 
     def test_trade_without_a_linked_thesis_has_no_time_exit_but_keeps_its_stop(self):
         self.bars(d5=(95.0, 96.0, 91.0, 92.0))

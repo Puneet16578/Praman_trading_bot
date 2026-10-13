@@ -5,13 +5,14 @@ triggers, and reports what changed (new disclosures, surveillance changes, corpo
 volume/delivery changes) since the previous monitor run, by diffing against the most recent
 monitor_runs report.
 
-Mechanical exits (P8-054): the stop, and the time exit at the open of the first session after the
-thesis horizon, are checked on EVERY session from the entry session through the run date, in date
-order, so a stop hit on an evening nobody ran the monitor is still found and filled at that
-session's own price. The nightly ingestion runs this every evening. Targets and the evidence, risk
+Mechanical exits (P8-054/P8-061): stops are checked on EVERY session from entry through the run
+date. Time exits require an order recorded by a run at or after the horizon, and fill at the first
+open AFTER that order. A missed night never creates a retroactive time exit. The nightly ingestion
+runs this every evening. Targets and the evidence, risk
 and portfolio exits stay the user's judgement.
 """
 from __future__ import annotations
+import json
 
 from desk.evidence.bundle import assemble_evidence_bundle
 from desk.journal import store as jstore
@@ -27,11 +28,18 @@ def trade_horizon(desk_conn, trade_id: str) -> str | None:
     return row[0] if row else None
 
 
+def _time_exit_order(desk_conn, trade_id: str):
+    row = desk_conn.execute(
+        "SELECT detail FROM journal_events WHERE trade_id=? AND event_type='TIME_EXIT_ORDERED' "
+        "ORDER BY journal_event_id LIMIT 1", (trade_id,)).fetchone()
+    return json.loads(row['detail']) if row else None
+
+
 def first_mechanical_exit(praman_conn, desk_conn, trade_id: str, run_date: str):
     """(Fill, trigger) for the first mechanical exit from the entry session through `run_date`, in
     date order, or None. trigger 'price': the stop (gap at the open, else touch at the stop, the
-    existing conservative rule). trigger 'time': the open of the first session after both the
-    horizon and the entry session; on that session only its open counts (the position is gone
+    existing conservative rule). trigger 'time': the open of the first session after the recorded
+    time-exit order; on that session only its open counts (the position is gone
     afterwards), and an open at or below the stop is reported as the stop gap it also is. Each
     session uses the stop in force on that date. Raises UnadjustableWindowError where no adjustment
     factor exists."""
@@ -43,15 +51,15 @@ def first_mechanical_exit(praman_conn, desk_conn, trade_id: str, run_date: str):
     opened = next(e for e in events if e['event_type'] == 'OPEN')
     symbol = trade_id.split(':')[0]
     basis = trade_basis_date(desk_conn, trade_id)
-    horizon = trade_horizon(desk_conn, trade_id)
+    order = _time_exit_order(desk_conn, trade_id)
     sessions = [d for d in build_symbol_history(praman_conn, symbol).trading_days if opened['event_date'] <= d <= run_date]
     for day in sessions:
         stop = [e['stop'] for e in events if e['event_date'] <= day][-1]
         # Never the entry session's own open: a limit entry fills after that open.
-        if horizon is not None and day > horizon and day > opened['event_date']:
+        if order is not None and day > order['not_before_date'] and day > opened['event_date']:
             row = session_ohlc(praman_conn, symbol, day, run_date)
             if row is None:
-                return None          # the first session after the horizon is not known yet
+                return None          # the first session after the order is not known yet
             opening = row['open_price'] * basis_factor(praman_conn, symbol, basis, day)
             return (Fill(event_date=day, price=opening, kind='stop_gap'), 'price') if opening <= stop else \
                    (Fill(event_date=day, price=opening, kind='time_exit_open'), 'time')
@@ -154,7 +162,8 @@ def run_monitor(praman_conn, desk_conn, run_date: str) -> dict:
             # the price. Two identical trades therefore show identical P&L (desk/risk/officer.py:
             # realized_pnl_inr) whichever exit ended them.
             fill, trigger = found
-            reason = f"stop ({fill.kind})" if trigger == "price" else f"time (first session after the {horizon} horizon)"
+            order = _time_exit_order(desk_conn, trade_id)
+            reason = f"stop ({fill.kind})" if trigger == "price" else f"time (ordered {order['not_before_date']}, horizon {horizon})"
             sell_cost_inr = round_trip_cost_inr(fill.price, latest["quantity"], loaded_costs.costs, "sell")
             jstore.record_journal_event(desk_conn, event_type='EXIT_TRIGGER', trade_id=trade_id,
                                        detail={'trigger': trigger, 'event_date': fill.event_date}, reason=reason)
@@ -164,6 +173,19 @@ def run_monitor(praman_conn, desk_conn, run_date: str) -> dict:
             report["exits_triggered"].append({"trade_id": trade_id, "reason": fill.kind, "price": fill.price,
                                               "event_date": fill.event_date, "trigger": trigger})
             continue
+
+        # Like Strategy 0, the horizon needs a run to place an order. Persist it once,
+        # after checking all standing stops; never fill from already-known future bars here.
+        order = _time_exit_order(desk_conn, trade_id)
+        if horizon is not None and run_date >= horizon and order is None:
+            late = praman_conn.execute(
+                'SELECT COUNT(DISTINCT event_date) FROM bhavcopy WHERE event_date>? AND event_date<=? '
+                'AND knowledge_date<=?', (horizon, run_date, run_date)).fetchone()[0]
+            order = dict(not_before_date=run_date, horizon=horizon, ordered_late_by_sessions=late)
+            jstore.record_journal_event(desk_conn, event_type='TIME_EXIT_ORDERED', trade_id=trade_id,
+                                       detail=order, reason='time horizon reached')
+        if order is not None:
+            report.setdefault('time_exits_pending', []).append(dict(trade_id=trade_id, **order))
 
         from desk.source_freshness import complete_through, market_coverage_from, required_through
         bundle = assemble_evidence_bundle(praman_conn, symbol, run_date, sector=None,

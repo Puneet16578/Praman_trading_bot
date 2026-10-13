@@ -2361,3 +2361,16 @@ pending or exiting: 5PAISA PENDING_ENTRY (v2, decided 2026-10-05), AUBANK PENDIN
 2026-10-05)" above the manual line. Test: `tests/test_desk_brief.py` (both books labelled in `desk
 status`; no limit price or P&L text; the old unlabelled lines gone).
 
+
+
+## P8-061 - manual time exits were filled retroactively after a missed run
+
+**Severity.** Medium. **Status.** Fixed 2026-10-13, Part A1.
+`first_mechanical_exit` used the first session after the horizon even if no run had
+placed an exit order. Unlike a standing stop, this order could not have existed.
+The monitor now appends one TIME_EXIT_ORDERED journal event on the next run at or
+after the horizon; only a later session can fill it. Missed-session stop checks
+remain in date order. The brief shows the order date and delay in trading sessions.
+Production manual paper_trade_events count was 0 (read-only check); no records changed.
+Regression evidence: tests.test_desk_monitor_catchup and tests.test_desk_brief:
+21 tests in 12.733s, OK. Full-suite evidence is in the session handoff.

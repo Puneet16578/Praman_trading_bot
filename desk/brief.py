@@ -126,6 +126,10 @@ def manual_monitor_lines(desk_conn, run_date):
     report = json.loads(row['report'])
     lines = [f"Manual book monitoring (desk monitor for {run_date}; mechanical exits only: stop and time):"]
     exits = report.get('exits_triggered', [])
+    for order in report.get('time_exits_pending', []):
+        lines.append(f"  {order['trade_id']}: time exit ordered {order['not_before_date']}; "
+                     f"awaiting the next session open; {order['ordered_late_by_sessions']} session(s) late "
+                     f"after horizon {order['horizon']}")
     lines.append(f'  Mechanical exits: {len(exits)}')
     for e in exits:
         when = f" on {e['event_date']}" if e.get('event_date') else ''

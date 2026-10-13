@@ -1,3 +1,15 @@
+## 2026-10-13 Codex: A1 (user's Parts A-D session)
+
+- Root verified; master initially clean. User confirmed Claude idle and closed.
+- Nightly task Ready, next 18:00 IST; no Python ingestion running. Hard stop for a clean master at 17:45.
+- Baseline: 822 tests in 267.549s, OK, Python exit 0; existing SQLite ResourceWarnings.
+- A1 / P8-061: manual time exits now require a recorded order on the horizon/recovery run,
+  then fill at the following open. Delay shown in the brief; stop catch-up retained.
+  Read-only production manual paper_trade_events count: 0; no production records changed.
+- Targeted tests: 21 in 12.733s, OK. Full suite: 824 tests in 177.209s, OK, Python exit 0.
+- A2-A5, B, C design and D after-nightly verification remain. No network used yet.
+- User approved only Angel public docs/package/scrip-master reads; ask before any other network, including push.
+
 ## 2026-10-13 (from 09:12): approved round: P8-057, P8-056 gaps, P8-060 cache, branch guard (Claude)
 
 - The user's "tonight's run has finished" came at 09:12 on 13 Oct: the latest run was 12 Oct's; the
