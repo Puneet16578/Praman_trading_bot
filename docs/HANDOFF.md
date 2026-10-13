@@ -1,3 +1,18 @@
+## 2026-10-13 Codex: follow-up 1, SDK side effects
+
+- Original nine commits pushed to origin/master (through 31cdbe0), as approved.
+- P8-068 fixed: intercept SDK DNS/hardware probes, suppress import bytecode and
+  stream debug logs, explicit loopback IP/zero MAC headers. No SDK constructors.
+  Terminal script suppresses bytecode before imports; arbitrary imports need -B.
+- 28 offline Angel tests in 1.343s, OK. Fresh-process no-I/O import guard;
+  complete mocked session with seven distinct synthetic secrets; network routes
+  and file/folder writes guarded. Pinned wheel actual import/construction also
+  checked offline with logging/feed dependencies stubbed. No real key used.
+- Public-IP discovery is not performed. A provider requiring real IP headers may
+  reject login; actual account compatibility remains DOCUMENTED, NOT VERIFIED.
+- Full suite: 858 tests in 459.070s, OK, Python exit 0. Follow-ups 2/3/4
+  remain for separate commits; R1 still under review, no code.
+
 ## 2026-10-13 Codex: C design / pre-nightly handoff
 
 - Parts A and B complete, each item committed; B3/B4 commit 5dbfae6.

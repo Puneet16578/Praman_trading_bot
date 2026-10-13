@@ -4,8 +4,9 @@ SDK: official smartapi-python 1.5.5, https://github.com/angel-one/smartapi-pytho
 The pinned SDK logs credential-bearing errors and does an IP lookup on import.
 Import is muted/offline; its constructor and HTTP dispatcher are replaced, while
 its session/market-data methods and feed decoder are reused. One allowlisted
-dispatcher enforces the policy, with TLS verification and redirects disabled.
-No file or store is written. Raw observations only; no return/outcome API exists.
+dispatcher requires TLS verification and disables redirects.
+No SDK file or store is written. Launch Python with -B to prevent its import
+caches too. Raw observations only; no return/outcome API exists.
 """
 from __future__ import annotations
 
@@ -19,6 +20,9 @@ import math as _math
 import logging as _logging
 import os as _os
 import ssl as _ssl
+import socket as _socket
+import sys as _sys
+import uuid as _uuid
 import threading as _threading
 import time as _time
 import warnings as _warnings
@@ -122,17 +126,24 @@ class _Silent:
 
 def _sdk_types():
     """The ONLY SDK import site. Import-time IP lookup never reaches the network."""
+    previous_bytecode = _sys.dont_write_bytecode
+    _sys.dont_write_bytecode = True
     try:
         if _metadata.version('smartapi-python') != _SDK_VERSION:
             raise AngelError('Install the pinned optional Angel requirements.')
         import logzero
         with _patch.object(_requests, 'get', return_value=_Namespace(text='127.0.0.1')), \
-                _patch.object(logzero, 'logger', _Silent()):
+                _patch.object(logzero, 'logger', _Silent()), \
+                _patch.object(_socket, 'gethostbyname', return_value='127.0.0.1'), \
+                _patch.object(_uuid, 'getnode', return_value=0):
             import SmartApi.smartConnect as rest
             import SmartApi.smartWebSocketV2 as feed
         rest.logger = rest.log = feed.logger = _Silent()
 
         class _ReadOnlySDK(rest.SmartConnect):
+            clientLocalIp = clientPublicIp = '127.0.0.1'
+            clientMacAddress = '00:00:00:00:00:00'
+
             def __init__(self, api_key):
                 # Do not call the SDK constructor: it creates credential-bearing log files.
                 self.api_key = api_key
@@ -144,6 +155,8 @@ def _sdk_types():
         return _ReadOnlySDK, feed.SmartWebSocketV2
     except Exception:
         raise AngelError('Install the pinned optional Angel requirements.') from None
+    finally:
+        _sys.dont_write_bytecode = previous_bytecode
 
 
 def _number(value):
@@ -367,51 +380,52 @@ class AngelMarketData:
         if mapped['unmapped']:
             raise AngelError('Feed contains unmapped NSE EQ symbols.')
         reverse = {token: symbol for symbol, token in mapped['mapped'].items()}
-        sock = None
-        self._streaming = True
-        try:
-            import websocket
-            websocket.enableTrace(False)
-            deadline = _time.monotonic() + seconds
-            sock = websocket.create_connection(_FEED, timeout=min(10, seconds), redirect_limit=0,
-                    sslopt={'cert_reqs': _ssl.CERT_REQUIRED, 'check_hostname': True},
-                    header={'Authorization': 'Bearer ' + self._sdk.access_token, 'x-api-key': self._api_key,
-                            'x-client-code': self._client_id, 'x-feed-token': self._sdk.feed_token})
-            # Only the decoder/subscription methods are needed; the SDK constructor writes logs.
-            parser = self._feed_type.__new__(self._feed_type)
-            parser.wsapp, parser.input_request_dict = sock, {}
-            parser.subscribe('praman', 1, [{'exchangeType': 1, 'tokens': list(reverse)}])
-            heartbeat = _time.monotonic()
-            while _time.monotonic() < deadline:
-                self._active(as_of)
-                now = _time.monotonic()
-                if now >= heartbeat:
-                    sock.send('ping')
-                    heartbeat = now + 10
-                sock.settimeout(max(0.001, min(deadline - now, heartbeat - now, 1)))
-                try:
-                    message = sock.recv()
-                except websocket.WebSocketTimeoutException:
-                    continue
-                if message in ('pong', b'pong'):
-                    continue
-                if not isinstance(message, bytes):
-                    raise AngelError('Feed closed or rejected subscription.')
-                raw = parser._parse_binary_data(message)
-                self._active(as_of)
-                token = raw.get('token')
-                if token not in reverse or raw.get('exchange_type') != 1 or raw.get('subscription_mode') != 1:
-                    raise AngelError('Feed identity mismatch.')
-                stamp = _dt.datetime.fromtimestamp(_number(raw['exchange_timestamp']) / 1000, _IST)
-                on_tick({'symbol': reverse[token], 'timestamp': stamp.isoformat(),
-                         'price': _number(raw['last_traded_price']) / 100,
-                         'recorded_at': _now().isoformat(), 'knowledge_date': as_of})
-        except (Exception, KeyboardInterrupt):
-            raise AngelError('Market feed stopped or failed.') from None
-        finally:
-            self._streaming = False
-            if sock is not None:
-                try:
-                    sock.close()
-                except Exception:
-                    pass
+        with _quiet_transport():
+            sock = None
+            self._streaming = True
+            try:
+                import websocket
+                websocket.enableTrace(False)
+                deadline = _time.monotonic() + seconds
+                sock = websocket.create_connection(_FEED, timeout=min(10, seconds), redirect_limit=0,
+                        sslopt={'cert_reqs': _ssl.CERT_REQUIRED, 'check_hostname': True},
+                        header={'Authorization': 'Bearer ' + self._sdk.access_token, 'x-api-key': self._api_key,
+                                'x-client-code': self._client_id, 'x-feed-token': self._sdk.feed_token})
+                # Only the decoder/subscription methods are needed; the SDK constructor writes logs.
+                parser = self._feed_type.__new__(self._feed_type)
+                parser.wsapp, parser.input_request_dict = sock, {}
+                parser.subscribe('praman', 1, [{'exchangeType': 1, 'tokens': list(reverse)}])
+                heartbeat = _time.monotonic()
+                while _time.monotonic() < deadline:
+                    self._active(as_of)
+                    now = _time.monotonic()
+                    if now >= heartbeat:
+                        sock.send('ping')
+                        heartbeat = now + 10
+                    sock.settimeout(max(0.001, min(deadline - now, heartbeat - now, 1)))
+                    try:
+                        message = sock.recv()
+                    except websocket.WebSocketTimeoutException:
+                        continue
+                    if message in ('pong', b'pong'):
+                        continue
+                    if not isinstance(message, bytes):
+                        raise AngelError('Feed closed or rejected subscription.')
+                    raw = parser._parse_binary_data(message)
+                    self._active(as_of)
+                    token = raw.get('token')
+                    if token not in reverse or raw.get('exchange_type') != 1 or raw.get('subscription_mode') != 1:
+                        raise AngelError('Feed identity mismatch.')
+                    stamp = _dt.datetime.fromtimestamp(_number(raw['exchange_timestamp']) / 1000, _IST)
+                    on_tick({'symbol': reverse[token], 'timestamp': stamp.isoformat(),
+                             'price': _number(raw['last_traded_price']) / 100,
+                             'recorded_at': _now().isoformat(), 'knowledge_date': as_of})
+            except (Exception, KeyboardInterrupt):
+                raise AngelError('Market feed stopped or failed.') from None
+            finally:
+                self._streaming = False
+                if sock is not None:
+                    try:
+                        sock.close()
+                    except Exception:
+                        pass

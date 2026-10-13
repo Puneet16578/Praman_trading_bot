@@ -2443,3 +2443,24 @@ disables standard logging and HTTP connection debug output around authenticated
 REST transport and restores settings in finally. Websocket trace is disabled.
 Regression exercises noisy transport logging and restoration, in the 25-test
 offline run (0.847s, OK). No actual secret exposure occurred.
+
+## P8-068 - SDK isolation did not cover DNS, bytecode and feed debug logging
+
+**Severity.** Medium. **Status.** Fixed 2026-10-13, user follow-up 1.
+The draft import interceptor blocked ipify but left the SDK's hostname lookup
+and hardware-address discovery active. Normal Python imports can write bytecode;
+the WebSocket transport did not share REST's configured-log suppression.
+SDK loading now disables bytecode writes temporarily and intercepts hostname and
+hardware probes as well as public-IP HTTP. The SDK constructor remains bypassed.
+Both IP headers are explicitly 127.0.0.1 and MAC is 00:00:00:00:00:00, replacing
+the SDK's hardcoded public-IP fallback. Actual account/IP compatibility is unverified.
+Streaming now uses the same logging/debug suppression, restored on exit.
+The terminal script disables bytecode before importing project modules; use -B
+for arbitrary wrapper imports too (a module cannot prevent its own prior import
+cache write). No package install or authenticated/network call occurred.
+Evidence: 28 offline Angel tests in 1.343s, OK; guarded fresh-process import,
+mocked import probes and entire login/quote/candles/feed/logout flow. Seven
+distinct synthetic secrets and request headers do not escape into logs/output;
+file/folder access guards remain untriggered. The downloaded pinned SDK wheel's
+actual import/construction also passed an audit-hook ban on network/filesystem
+writes with optional logging/feed modules stubbed. Full suite in HANDOFF.md.

@@ -43,8 +43,18 @@ Authenticated REST transport also suppresses configured HTTP debug output and
 standard logging (the profile URL contains a token), restoring settings on exit.
 Websocket trace is disabled before connection. These controls assume this
 standalone foreground client, not concurrent unrelated application threads.
-The SDK's existing fallback IP headers are retained without an external IP lookup.
-Actual account/IP-policy compatibility remains for the user's connection test.
+Both X-ClientLocalIP and X-ClientPublicIP are explicitly `127.0.0.1` and
+X-MACAddress is `00:00:00:00:00:00`. The SDK's hardcoded public-IP fallback is
+not used. No real public IP is discovered or inferred. If Angel requires a
+registered real IP in these headers, this may reject login; account/IP-policy
+compatibility is DOCUMENTED, NOT VERIFIED. Do not silently add an IP service.
+The import interceptor also blocks SDK hostname/DNS and hardware-address probes.
+SDK constructors are bypassed, so their log-directory/file creation never runs.
+SDK imports temporarily disable Python bytecode writes; use `python -B` for
+fresh wrapper imports. An ordinary import without -B can write the wrapper's own
+Python cache before its code executes. The connection script disables bytecode
+before importing project modules. This is an interpreter cache, not an SDK log.
+Stream transport shares REST's configured-debug/log suppression and restoration.
 
 Rate-limit source (official SmartAPI Team table):
 https://smartapi.angelone.in/smartapi/forum/topic/4387/changes-in-api-rate-limit/5
@@ -106,7 +116,7 @@ Part C is a design only; no live watcher or additional store exists.
 ## User-terminal connection check (B3)
 
 After installing the optional requirements and privately setting ANGEL_API_KEY,
-run `python scripts/angel_connection_test.py` in your own interactive terminal.
+run `python -B scripts/angel_connection_test.py` in your own interactive terminal.
 It prompts privately, prints one SBIN quote, then raw OHLC prices/timestamps for
 2026-09-01 one-minute candles. During regular weekday hours, a fresh exchange
 quote (at most 120 seconds old) enables 30 seconds of live SBIN prices, then it
