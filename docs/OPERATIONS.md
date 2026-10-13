@@ -483,3 +483,19 @@ There are no pytz imports or references in desk/ or src/. Production Desk time
 uses shared.market_time. pytz 2026.4 is installed in the test environment alongside
 empyrical-reloaded 0.5.12 for the drawdown cross-check; it is not a Desk clock
 dependency. No new production timezone dependency was introduced.
+
+
+## A2 - same-day bhavcopy wait and calendar limitation (P8-062)
+
+The step now skips without opening a database, requesting a file or sleeping when
+it is a weekend, the run started before 15:30 IST, or the run started on another
+calendar date. It uses the original run-start timestamp, not the time this late
+step happens to execute. At/after close, a same-date weekday run retains retries.
+
+Both this step and Strategy 0's 09:00 cutoff use weekdays. Searches of src/, desk/,
+shared/ and scripts/ found observed bar calendars but no forward holiday calendar.
+Weekdays are therefore retained: a weekday holiday may still exhaust the wait;
+the cutoff may reject on a holiday earlier than strictly necessary. Neither an
+absent bar nor an ingestion gap is evidence that a day was a holiday.
+
+Targeted regression: 19 tests in 2.861s, OK (retry and ingestion-progress modules).

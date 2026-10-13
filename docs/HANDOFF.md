@@ -1,3 +1,12 @@
+## 2026-10-13 Codex: A2
+
+- A1 committed 17702f8 (824 tests passed).
+- A2 / P8-062: same-day bhavcopy waits only if the original run started on today's weekday
+  at/after 15:30 IST; morning, weekend and midnight-crossing runs skip immediately with a reason.
+- Both this and the 09:00 cutoff use weekdays; no forward holiday calendar found. Limitation
+  recorded in OPERATIONS.md and session_20261013_followups.md. Cutoff rule unchanged.
+- Targeted: 19 tests in 2.861s, OK. Full suite: 826 tests in 377.973s, OK, Python exit 0.
+
 ## 2026-10-13 Codex: A1 (user's Parts A-D session)
 
 - Root verified; master initially clean. User confirmed Claude idle and closed.

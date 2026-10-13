@@ -2374,3 +2374,15 @@ remain in date order. The brief shows the order date and delay in trading sessio
 Production manual paper_trade_events count was 0 (read-only check); no records changed.
 Regression evidence: tests.test_desk_monitor_catchup and tests.test_desk_brief:
 21 tests in 12.733s, OK. Full-suite evidence is in the session handoff.
+
+
+## P8-062 - morning recovery waits for a bhavcopy that cannot yet exist
+
+**Severity.** Medium. **Status.** Fixed 2026-10-13, Part A2.
+The weekday-only same-day retry step could wait before today's market close,
+including after midnight, delaying recovery past Strategy 0's 09:00 cutoff.
+It now requires the run to have started on today's weekday at/after 15:30 IST.
+Otherwise it logs why and returns before a request or sleep. Original run-start
+is used even if earlier steps cross close or midnight. Forward holiday dates are
+not available; the weekday limitation remains explicit in OPERATIONS.md.
+Re-verification: 19 targeted tests in 2.861s, OK; full-suite result in HANDOFF.md.

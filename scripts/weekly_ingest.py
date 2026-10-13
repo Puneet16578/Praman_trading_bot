@@ -230,20 +230,12 @@ def step_asm_gsm() -> None:
 
 
 def step_bhavcopy_today() -> None:
-    """Requests TODAY's bhavcopy specifically -- `step_bhavcopy` above deliberately stops at
-    yesterday (see `ingest_bhavcopy_full_history.main`'s own `end_date` default), so on a same-day
-    evening run this is the step that actually closes today's gap. Retries if NSE has not published
-    yet: `ingest_bhavcopy_date` classifies "not out yet" the same way it classifies a holiday
-    fallback -- the archive keeps serving the PRIOR trading day's file until the real one exists
-    (P2-003) -- so a request for today whose `actual_event_date` comes back EARLIER than today means
-    "not published yet, or today is not a trading day," not a distinguishable error. This function
-    cannot tell those two apart any more than the underlying fetch can (no invented holiday
-    calendar) -- it retries either way and reports plainly if today's file still is not out after
-    the full retry budget, leaving the ambiguity visible rather than guessing at it.
+    """Wait for today's file only on a weekday when this run started after its close.
 
-    Weekends are the one case this DOES resolve locally, cheaply, without a network call at all --
-    skipped outright rather than spending the full retry budget on a request nothing will ever
-    publish."""
+    No forward holiday calendar exists locally. Weekdays remain the proxy (also used
+    by Strategy 0's 09:00 cutoff); a weekday holiday can still exhaust the retry budget.
+    A morning recovery or a run crossing midnight must never wait for a future close.
+    """
     from src.bitemporal.connection import get_connection, init_db
     from src.config.settings import get_settings
     from src.ingestion.nse_market_data.bhavcopy import ingest_bhavcopy_date
@@ -251,6 +243,16 @@ def step_bhavcopy_today() -> None:
     today = market_today()
     if today.weekday() >= 5:  # Sat=5, Sun=6
         print(f"[BHAVCOPY_TODAY] {today.isoformat()} is a weekend -- skipped, no request made.")
+        return
+
+    from shared.market_time import parse_logged_timestamp
+    started = parse_logged_timestamp(_CURRENT_RUN_START).astimezone(IST) if _CURRENT_RUN_START else datetime.now(IST)
+    if started.date() != today:
+        print(f"[BHAVCOPY_TODAY] {today.isoformat()} skipped: run started on {started.date()}, "
+              "not after today's close; no request or wait.")
+        return
+    if (started.hour, started.minute) < (15, 30):
+        print(f"[BHAVCOPY_TODAY] {today.isoformat()} skipped: run started before 15:30 IST close; no request or wait.")
         return
 
     settings = get_settings()
