@@ -2386,3 +2386,14 @@ Otherwise it logs why and returns before a request or sleep. Original run-start
 is used even if earlier steps cross close or midnight. Forward holiday dates are
 not available; the weekday limitation remains explicit in OPERATIONS.md.
 Re-verification: 19 targeted tests in 2.861s, OK; full-suite result in HANDOFF.md.
+
+
+## P8-063 - nightly health display tolerated a week of missed runs
+
+**Severity.** Low. **Status.** Fixed 2026-10-13, Part A3.
+The health line reused Strategy 0's registered seven-calendar-day stale threshold.
+Brief/status now use a separate previous-weekday display threshold on the last
+finished run's IST finish date; the registered constant stays 7, with no version
+change. No forward holiday calendar exists; conservative holiday false positives
+remain documented. Tests cover weekends, missed weekdays, in-progress runs and
+UTC/IST finish dates: 35 targeted tests in 1.049s, OK. Full suite in HANDOFF.md.

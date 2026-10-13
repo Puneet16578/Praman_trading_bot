@@ -7,7 +7,7 @@ Best-effort only: never raises, since nothing here is allowed to block or alter 
 """
 from __future__ import annotations
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from shared.log_paths import logs_dir
@@ -26,6 +26,18 @@ _SKIP_RE = re.compile(r"^=== (?P<start>\S+) weekly_ingest skipped: (?P<detail>.*
 # PROPOSED when ingestion was weekly (weekly_ingest.py keeps that name); it has run every weekday since
 # 2026-09-28 (docs/OPERATIONS.md, "Daily ingestion"). Strategy 0's registered definition cites this value.
 STALE_AFTER_DAYS = 7
+
+
+def _previous_display_session(today):
+    """Display-only weekday proxy: no forward holiday calendar exists (P8-063).
+
+    Never infer a holiday from missing ingestion, which would hide a stale store.
+    Strategy 0 retains its separately registered STALE_AFTER_DAYS value.
+    """
+    day = today - timedelta(days=1)
+    while day.weekday() >= 5:
+        day -= timedelta(days=1)
+    return day
 
 
 def latest_trading_date_line(conn) -> str:
@@ -157,9 +169,12 @@ def ingestion_health_line(current_run_start: str | None = None) -> str:
                 return f"Ingestion health: {'; '.join(notices)}."
             return "Ingestion health: UNKNOWN (no run summary found in the log)."
 
-        start = parse_logged_timestamp(last_summary["start"])
-        age_days = (datetime.now(timezone.utc) - start).days
-        staleness = f"STALE ({age_days}d ago)" if age_days > STALE_AFTER_DAYS else f"{age_days}d ago"
+        from shared.market_time import IST
+        finished = parse_logged_timestamp(last_summary["finish"])
+        now = datetime.now(timezone.utc)
+        age_days = (now - finished).days
+        stale = finished.astimezone(IST).date() < _previous_display_session(now.astimezone(IST).date())
+        staleness = f"STALE ({age_days}d ago)" if stale else f"{age_days}d ago"
         summary = (f"{last_summary['start']} ({staleness}), overall={last_summary['overall']}, "
                    f"gaps={last_gaps if last_gaps is not None else '?'}")
         tail = [n for n in (skip_notice, unfinished_notice) if n]

@@ -1,3 +1,11 @@
+## 2026-10-13 Codex: A3
+
+- A2 committed 4fd562a (826 tests in 377.973s, OK).
+- A3 / P8-063: brief/status freshness uses last finished run's IST finish date against the
+  previous weekday, independently of Strategy 0's unchanged registered 7-day constant.
+  No holiday calendar: conservative weekday proxy documented; absent bars never imply holidays.
+- Targeted: 35 tests in 1.049s, OK. Full suite: 830 tests in 400.832s, OK, Python exit 0.
+
 ## 2026-10-13 Codex: A2
 
 - A1 committed 17702f8 (824 tests passed).

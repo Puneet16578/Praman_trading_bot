@@ -27,3 +27,16 @@ the cutoff may reject on a holiday earlier than strictly necessary. Neither an
 absent bar nor an ingestion gap is evidence that a day was a holiday.
 
 Targeted regression: 19 tests in 2.861s, OK (retry and ingestion-progress modules).
+
+
+## A3 - display freshness (P8-063)
+
+The brief and desk status share ingestion_health_line. Its last *finished* run is
+now STALE if its IST finish date predates the previous weekday. Friday stays fresh
+through Monday; it is stale on Tuesday. An in-progress run cannot refresh it.
+Strategy 0 retains STALE_AFTER_DAYS = 7 and its registered version unchanged.
+The previous-weekday proxy has the same holiday limitation as A2: no forward
+holiday calendar is stored, and an absent bar is not evidence of a holiday.
+A holiday can therefore yield a conservative false STALE. This display never gates
+or sizes trades. Tests include UTC/IST and finish-vs-start boundary cases.
+Targeted: 35 tests in 1.049s, OK. Full-suite result is in HANDOFF.md.
