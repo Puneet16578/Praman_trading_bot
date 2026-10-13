@@ -59,6 +59,7 @@ def build_brief(praman_conn, desk_conn, run_date, *, rulebook, health_lines=()):
                       'were still processed.']
     if run is not None:
         lines += burn_in_gap_lines(desk_conn, run)
+        lines += [burn_in_incomplete_line(desk_conn)]
     lines += ['']
     accepted = _accepted(desk_conn, run_date)
     for c in accepted:
@@ -108,6 +109,23 @@ def burn_in_gap_lines(desk_conn, run):
              + (', '.join(f"{r['decision_date']} ({GAP_REASONS[r['reason']]})" for r in mine) or 'none')
              + f"; {len(rows)} in total"]
     return lines
+
+
+def burn_in_incomplete_line(desk_conn):
+    """The burn-in record's dates decided on incomplete disclosure data (P8-069 note; append-only
+    annotations, never a re-decision)."""
+    from desk.annotations import burn_in_incomplete_days
+    days = burn_in_incomplete_days(desk_conn)
+    if not days:
+        return 'Strategy 0 burn-in dates decided on incomplete disclosure data: 0'
+    parts = []
+    for d in days:
+        screened = desk_conn.execute(
+            "SELECT COUNT(*) FROM record_annotations a JOIN opportunity_log o ON a.target_table='opportunity_log' "
+            "AND a.target_id=o.opportunity_id WHERE o.event_date=? AND a.detail LIKE ?",
+            (d['run_date'], f'%"defect": "{d["defect"]}"%')).fetchone()[0]
+        parts.append(f"{d['run_date']} ({d['defect']}; {screened} screen results annotated)")
+    return f'Strategy 0 burn-in dates decided on incomplete disclosure data: {len(days)}: ' + ', '.join(parts)
 
 
 def burn_in_gap_summary(desk_conn):

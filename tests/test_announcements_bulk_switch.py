@@ -140,7 +140,7 @@ class RefreshTest(unittest.TestCase):
             class Client:
                 directory=root
                 trace=[]
-            def fetch(client,first,last):
+            def fetch(client,first,last,**kw):
                 if first==date(2026,9,17):
                     raise AnnouncementFetchError('fixture middle failure')
                 return [raw(str(first),day=first.isoformat())]

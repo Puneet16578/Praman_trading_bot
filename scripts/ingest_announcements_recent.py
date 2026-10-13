@@ -187,10 +187,14 @@ def main(end_date=None, *, mode=None, conn=None, session=None, isin_map=None,
         summary['identity_rows_inserted'] = identities.inserted
         # Resolve from the append-only fact table, not the cache files that transported it.
         snapshots = identity_snapshots_from_store(conn, end_date.isoformat())
+        open_day = market_today()      # P8-069: the IST day still in progress is never compared or certified
         for first, last in windows(start, end_date):
             entry = dict(start=first.isoformat(), end=last.isoformat())
             try:
-                raw = fetch_checked_window(client, first, last)
+                raw = fetch_checked_window(client, first, last, open_day=open_day)
+                if first <= open_day <= last:
+                    entry['open_day'] = open_day.isoformat()
+                    entry['open_day_rows'] = sum(r['sort_date'][:10] == open_day.isoformat() for r in raw)
                 counts = ingest_bulk(conn, raw, snapshots=snapshots, fetched_on=end_date.isoformat(),
                                      source_file=str(client.directory))
                 entry.update(status='COMPLETE', **counts)

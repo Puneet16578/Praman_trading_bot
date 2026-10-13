@@ -127,13 +127,14 @@ def cmd_status(args):
     desk_conn = get_desk_connection()
     rulebook = load_active_rulebook()
     from desk.automation import strategy0
-    from desk.brief import burn_in_gap_summary, open_risk_lines
+    from desk.brief import burn_in_gap_summary, burn_in_incomplete_line, open_risk_lines
     from desk.ingestion_health import ingestion_health_line, isin_map_health_line, latest_trading_date_line
 
     # Both books, labelled; Strategy 0 as of its latest run, operational only (P8-051).
     for line in open_risk_lines(desk_conn, rulebook.rulebook, strategy0.latest_operational(desk_conn)):
         print(line)
     print(burn_in_gap_summary(desk_conn))   # P8-056
+    print(burn_in_incomplete_line(desk_conn))   # P8-069
     from desk.readiness import print_gate_progress
     print_gate_progress(desk_conn, rulebook.rulebook)
     from desk.automation import kill_switches

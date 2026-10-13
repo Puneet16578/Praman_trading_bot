@@ -48,3 +48,48 @@ def annotate_incomplete_disclosures(desk_conn, *, until: str, since: str = LAPSE
 def annotated_ids(desk_conn, table: str, annotation: str = INCOMPLETE_DISCLOSURE) -> set:
     return {r[0] for r in desk_conn.execute('SELECT target_id FROM record_annotations WHERE target_table=? AND annotation=?',
                                             (table, annotation))}
+
+
+RUN_ANNOTATED_EVENT = 'S0_RUN_ANNOTATED'
+
+
+def annotate_day_incomplete_disclosures(desk_conn, *, day: str, defect: str, reason: str, evidence: dict) -> dict:
+    """Append a note to every record decided for `day` (P8-069; user decision 2026-10-14): its
+    opportunity log rows, opportunities and manual decisions get INCOMPLETE_DISCLOSURE_EVIDENCE,
+    and each Strategy 0 run for that date a journal entry. Never an edit; idempotent."""
+    now = datetime.now(timezone.utc).isoformat()
+    counts = {}
+    for table, key, dated in _TARGETS:
+        rows = desk_conn.execute(f'SELECT {key} AS id, recorded_at FROM {table} WHERE {dated} = ? ORDER BY 1',
+                                 (day,)).fetchall()
+        added = 0
+        for row in rows:
+            detail = dict(defect=defect, reason=reason, record_date=day, record_recorded_at=row['recorded_at'], **evidence)
+            cursor = desk_conn.execute('INSERT OR IGNORE INTO record_annotations (target_table, target_id, annotation, '
+                                       'detail, recorded_at) VALUES (?,?,?,?,?)',
+                                       (table, row['id'], INCOMPLETE_DISCLOSURE, json.dumps(detail, sort_keys=True), now))
+            added += cursor.rowcount
+        counts[table] = dict(dated=len(rows), newly_annotated=added)
+    noted = {json.loads(r['detail']).get('run_id') for r in desk_conn.execute(
+        'SELECT detail FROM journal_events WHERE event_type=?', (RUN_ANNOTATED_EVENT,))}
+    runs = desk_conn.execute("SELECT run_id FROM strategy_runs WHERE strategy_id='S0' AND run_date=? ORDER BY run_id",
+                             (day,)).fetchall()
+    added = 0
+    for run in runs:
+        if run['run_id'] in noted:
+            continue
+        desk_conn.execute('INSERT INTO journal_events (event_type, detail, reason, recorded_at) VALUES (?,?,?,?)',
+                          (RUN_ANNOTATED_EVENT, json.dumps(dict(run_id=run['run_id'], run_date=day, defect=defect,
+                                                                annotation=INCOMPLETE_DISCLOSURE, **evidence), sort_keys=True),
+                           reason, now))
+        added += 1
+    counts['strategy_runs'] = dict(dated=len(runs), newly_annotated=added)
+    desk_conn.commit()
+    return counts
+
+
+def burn_in_incomplete_days(desk_conn) -> list[dict]:
+    """Strategy 0 run dates noted as decided on incomplete disclosure data, oldest first."""
+    rows = [json.loads(r['detail']) for r in desk_conn.execute(
+        'SELECT detail FROM journal_events WHERE event_type=? ORDER BY journal_event_id', (RUN_ANNOTATED_EVENT,))]
+    return sorted(({'run_date': d['run_date'], 'defect': d['defect']} for d in rows), key=lambda d: d['run_date'])

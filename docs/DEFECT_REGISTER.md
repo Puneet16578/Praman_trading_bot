@@ -2508,7 +2508,7 @@ writes with optional logging/feed modules stubbed. Full suite in HANDOFF.md.
 
 ## P8-069 - a filing landing during the refresh voids the whole night's disclosure certification
 
-**Severity.** Medium. **Status.** Open — found 2026-10-13 from that night's WARN; fix awaits the user.
+**Severity.** Medium. **Status.** Closed — fixed 2026-10-14 (user approval); found 2026-10-13 from that night's WARN.
 The 13 Oct nightly's `announcements_recent` step reported "WARN announcements bulk
 2026-10-12..2026-10-13: AnnouncementFetchError". Not a timeout or an HTTP failure: the run's own
 request trace (`data/raw/announcement_runs/20261013T123643127766/requests.json`) shows all 8
@@ -2542,3 +2542,20 @@ day's rows without certifying them; keep the check's failure for any difference 
 day. Optionally retry a failed comparison once after a pause. The brief should also say why no
 candidate passed (G2 UNKNOWN from a PARTIAL receipt) instead of only "a normal outcome".
 No request was made to test any of this.
+
+**Fix, 2026-10-14 (user approval: "the whole/split comparison certifies only completed days,
+through D-1, matching P8-049").** `fetch_checked_window(..., open_day=...)` compares only filings
+published before the IST day in progress; that day's filings from both responses are stored (the
+whole response plus any filing only the split saw), and the night's receipt, recorded that day,
+certifies through D-1 at most (P8-049, unchanged). A difference on a completed day still fails the
+window. The refresh passes `open_day=market_today()` and records `open_day` and `open_day_rows` on
+the window that contains it. Re-run offline on the saved 13 Oct responses, the new rule passes that
+night's window (965 filings stored). Tests: `tests/test_announcements_open_day.py` (a synthetic
+filing arriving between the two requests, which still fails under the old rule; a split-only filing
+stored; a completed-day difference still failing; the whole night COMPLETE with its receipt
+certifying 12 Oct, not 13 Oct). Note appended, never an edit (user decision): the 52 opportunity
+log rows of 13 Oct carry INCOMPLETE_DISCLOSURE_EVIDENCE citing P8-069, and Strategy 0's 13 Oct
+run an `S0_RUN_ANNOTATED` journal entry (`scripts/desk_annotate_p8069.py`, idempotent, dry-run on
+a temporary copy first); `desk status` and every brief show "Strategy 0 burn-in dates decided on
+incomplete disclosure data". Nothing is re-decided. The brief's bare "NO TRADE ... a normal
+outcome" on such a night is still not explained there (reported, not changed).

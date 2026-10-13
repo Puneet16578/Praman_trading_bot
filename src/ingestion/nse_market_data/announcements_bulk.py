@@ -111,14 +111,30 @@ def payload_signatures(raw):
                        | {'announcement_id': stable_id(r)}, sort_keys=True, ensure_ascii=False) for r in raw}
 
 
-def fetch_checked_window(client, start, end):
+def _published_on(row):
+    return datetime.strptime(row['sort_date'], '%Y-%m-%d %H:%M:%S').date()
+
+
+def fetch_checked_window(client, start, end, *, open_day=None):
+    """The window fetched whole and in halves; any difference fails the window.
+
+    P8-069 (user decision 2026-10-14): `open_day` is the IST day still in progress when the window
+    is fetched. Its filings keep arriving between the requests (one published four seconds before
+    the 13 Oct whole request was missing from the single-day request two seconds later), so the
+    comparison covers completed days only, publication before `open_day`. The open day's rows from
+    both responses are stored, but a receipt recorded that day certifies only the day before
+    (P8-049), so they certify nothing that night. A difference on a completed day still fails."""
     whole = fetch_window(client, start, end)
     if start < end:
         middle = start + (end-start)//2
         split = fetch_window(client, start, middle, label='check')
         split += fetch_window(client, middle+timedelta(days=1), end, label='check')
-        if payload_signatures(whole) != payload_signatures(split):
+        done = (lambda rows: rows) if open_day is None else (lambda rows: [r for r in rows if _published_on(r) < open_day])
+        if payload_signatures(done(whole)) != payload_signatures(done(split)):
             raise AnnouncementFetchError('Whole/split announcement windows differ')
+        if open_day is not None:
+            known = {stable_id(r) for r in whole}
+            whole = whole + [r for r in split if _published_on(r) >= open_day and stable_id(r) not in known]
     return whole
 
 

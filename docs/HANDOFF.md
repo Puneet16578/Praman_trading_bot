@@ -1,3 +1,13 @@
+## 2026-10-14 (from 01:13): P8-069 fixed; 13 Oct note; T1 phase 2 (Claude)
+
+- P8-069 (user approval): the bulk refresh's whole/split comparison covers completed days only;
+  the IST day in progress is stored, never compared or certified (receipts certify D-1, P8-049).
+  The saved 13 Oct responses pass under the new rule. Tests: test_announcements_open_day.py (4).
+  Tonight's 18:00 run is the first under it; after it, confirm the announcement check passed.
+- 13 Oct note (append-only): scripts/desk_annotate_p8069.py annotates the 52 opportunity rows and
+  Strategy 0's 13 Oct run; shown in desk status and every brief. Dry run on a temporary copy
+  (production unchanged), then run on production after this commit (see the next entry).
+
 ## 2026-10-14 (from 00:37): announcements failure, T1 probe and addendum 2, P8-064 implementation (Claude)
 
 - Item 1 (P8-069, Medium, open): 13 Oct's announcements were incomplete because the bulk refresh's
