@@ -25,6 +25,9 @@
   11:22, the forum reports (5595, 5677, 5691, 5692), the moderator's static-IP posts (5679, and
   Codex's 5671, verified), and what each explanation predicts for the next two runs. No cause
   claimed. smartapi.angelone.in pages read today: 8 (2 docs, 6 forum topics).
+- Part A commits: 0d353e1, 9a5ad72, 59cd2ba, bf77cc8. Full suite after A4: 958 tests in 236.406s,
+  OK, exit 0 (14:23-14:27). Nothing stashed. Angel tests: 81. No authenticated call made by Claude.
+  Next (user): connection test (1 Sep, once in market hours, once after 15:30), then --only-25.
 
 ## 2026-10-14: Historical candle HTTP 403 follow-up (Codex)
 
