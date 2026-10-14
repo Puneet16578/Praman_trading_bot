@@ -18,6 +18,22 @@ packages while the nightly runs.
 
 ## 2. The lines to type, in order
 
+**First, check the public IP.** Angel's Moderator_3 wrote on 7 Oct 2026 that "Static IP is
+required across all SmartAPI app types, not only for order placement. The NSE framework
+mandates it for order placement; we apply it to all API access as a condition of use."
+([forum topic 5671](https://smartapi.angelone.in/smartapi/forum/topic/5671)). Before the
+test commands, check that this connection's public IP is the one registered with Angel;
+replace the placeholder with your registered address:
+
+```powershell
+(Invoke-RestMethod https://api.ipify.org) -eq '<registered IP>'
+```
+
+`True` means it matches. `False` means this connection is not the registered one; say so
+when you report the results (on 14 Oct 2026 every run came from an unregistered address).
+This lookup is yours, from your terminal; Praman's own code calls only Angel and never
+looks up an IP.
+
 Each line on its own. The key goes in through a hidden prompt, lives only in this
 window's environment (never `setx`, never typed on a command line), and is
 removed at the end.
