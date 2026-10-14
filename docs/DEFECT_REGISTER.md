@@ -2579,3 +2579,20 @@ labels, the Desk's ATR and lookbacks, T1) treats the day before and the day afte
 in the T1 coverage report for review. Nothing is changed in the store. Possible fix (needs approval:
 a Praman store write and NSE requests): fetch the five dated bhavcopy files, check each file's own
 date (P2-003), ingest them append-only, and say how the frozen pipeline's pinned inputs are affected.
+
+## P8-071 - the Angel connection test exited with code 1 and said nothing
+
+**Severity.** Low. **Status.** Closed — fixed 2026-10-14 (user report: "exits silently with code 1").
+`scripts/angel_connection_test.py` caught every failure and returned 1 without printing, so the
+user's window (no `smartapi-python`, no `ANGEL_API_KEY`) gave no clue. Its own test asserted the
+silence (`test_failure_still_logs_out_without_printing_exception` checked for empty output), so the
+defect was encoded in a test. The wrapper's errors were already fixed, credential-free messages.
+Fix: every run ends with one plain line. A setup check runs before any login (missing or wrong
+library: "Stopped before login: ..."), each wrapper error maps to a plain reason ("ANGEL_API_KEY is
+not set in this window: see setup step 2", "Angel library not installed ...: see setup step 1",
+login failure with the unverified IP headers named), other errors give only their type, and success
+ends "Connection test completed: ...". New `--check` mode: `desk.angel_market_data.check_setup()`
+reports the Python, the pinned library and its two dependencies and loads the SDK offline, without
+logging in and without reading `ANGEL_API_KEY` (a test fails if it touches the variable). Run on the
+nightly's Python: "Setup ready for the connection test." Tests: `tests/test_angel_connection_test.py`
+(8). The pinned library was installed the same day after a dry run showed only two new packages.

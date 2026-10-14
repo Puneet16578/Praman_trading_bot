@@ -1,4 +1,7 @@
 # Optional, standalone market-data adapter; never installed by the nightly.
+# Exact versions installed 2026-10-14 (hash-checked; see docs/desk/angel_connection_setup.md):
+# smartapi-python 1.5.5 sha256 32991f413134f773d29a09762660d8a93026c4820bb8881a68ca48be9e45ff7d
+# logzero 1.7.0 sha256 23eb1f717a2736f9ab91ca0d43160fd2c996ad49ae6bad34652d47aba908769d
 smartapi-python==1.5.5
-logzero
-websocket-client
+logzero==1.7.0
+websocket-client==1.8.0

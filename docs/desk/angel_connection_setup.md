@@ -1,67 +1,54 @@
 # Private terminal setup for the Angel connection check
 
 Use your own PowerShell terminal. Do not paste keys, login details or tokens into
-chat. If a real key has been shared, revoke/rotate it first. These commands are
-instructions for you; the agent has not installed packages or logged in.
+chat. If a real key has been shared, revoke/rotate it first. The agent has never
+logged in or read a key.
 
-## 1. Use the same Python installation as Praman
+## 1. The Angel library (installed 2026-10-14)
 
-Verified locally: `python` resolves to the Python313 installation below; the
-nightly uses its adjacent `pythonw.exe`. No separate virtual environment is used
-by the scheduled task. Install the optional dependencies with that exact Python:
+The nightly's Python, `C:\Users\VICTUS\AppData\Local\Programs\Python\Python313\python.exe`
+(3.13.6; the scheduled task runs the `pythonw.exe` beside it), now has the pinned
+library: `smartapi-python` 1.5.5 (wheel SHA-256 `32991f41...45ff7d`, the reviewed
+one) and `logzero` 1.7.0 (`23eb1f71...08769d`). A `pip --dry-run` first showed these
+two as the only changes, both new; its other needs (`websocket-client` 1.8.0,
+`requests` 2.32.4, `six` 1.17.0, `python-dateutil` 2.9.0.post0) were already
+installed and unchanged. They were installed hash-checked with `--no-deps`.
+`requirements-angel.txt` pins these exact versions. Do not install or update
+packages while the nightly runs.
+
+## 2. The lines to type, in order
+
+Each line on its own. The key goes in through a hidden prompt, lives only in this
+window's environment (never `setx`, never typed on a command line), and is
+removed at the end.
 
 ```powershell
 Set-Location 'D:\Agentic_ai_project\praman'
 $pramanPython = 'C:\Users\VICTUS\AppData\Local\Programs\Python\Python313\python.exe'
-& $pramanPython -m pip install -r .\requirements-angel.txt
-& $pramanPython -B -c "import importlib.metadata; print(importlib.metadata.version('smartapi-python'))"
-```
-
-The version check must print `1.5.5`. Installation requires network and writes
-installed packages; the no-file-write claim concerns the connection check, not
-package installation. Do not install/update dependencies while the nightly runs.
-
-## 2. Set the API key privately for this terminal only
-
-Do not put a literal key in a command or use `setx`: the former can enter shell
-history and the latter persists it in the Windows environment registry. This
-hidden prompt sets only the current process environment, inherited by Python:
-
-```powershell
+& $pramanPython -B .\scripts\angel_connection_test.py --check
 $angelKeyInput = Read-Host 'Angel API key' -AsSecureString
 $angelKeyPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($angelKeyInput)
-try {
-    $env:ANGEL_API_KEY = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($angelKeyPointer)
-}
-finally {
-    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($angelKeyPointer)
-    $angelKeyInput.Dispose()
-    Remove-Variable angelKeyInput, angelKeyPointer
-}
-& $pramanPython -B -c "import os; print(bool(os.environ.get('ANGEL_API_KEY')))"
-```
-
-The visibility check prints only `True` or `False`, never the value. It should
-print `True`. Keep this same terminal open for the next command.
-
-## 3. Run the connection check
-
-```powershell
+$env:ANGEL_API_KEY = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($angelKeyPointer)
+[Runtime.InteropServices.Marshal]::ZeroFreeBSTR($angelKeyPointer); $angelKeyInput.Dispose(); Remove-Variable angelKeyInput, angelKeyPointer
 & $pramanPython -B .\scripts\angel_connection_test.py
-$LASTEXITCODE
 Remove-Item Env:\ANGEL_API_KEY
 ```
 
-Type your client ID, PIN and current TOTP into the three hidden terminal prompts.
-`-B` prevents Python bytecode-cache writes, including a fresh wrapper import.
-The wrapper avoids SDK log constructors and public-IP/DNS/hardware probes.
-It sends both IP headers as `127.0.0.1`, and MAC `00:00:00:00:00:00`.
+`--check` confirms the setup without logging in and without reading the key; it
+must end "Setup ready for the connection test." The full test then asks for your
+client ID, PIN and current TOTP in three hidden prompts.
+
+`-B` prevents Python bytecode-cache writes. The wrapper avoids the SDK's log
+constructors and its public-IP, DNS and hardware probes. It sends both IP headers
+as `127.0.0.1`, and MAC `00:00:00:00:00:00`.
 **It is not verified whether Angel accepts `127.0.0.1` in these IP headers.**
 No authenticated call has been made; if the account requires a real or
 registered IP there, login will fail. The wrapper does not query an
 unapproved IP-discovery service or guess a real public address.
 
-After prompt labels, successful stdout consists only of:
+## 3. What it prints
+
+On success, after the prompt labels:
 
 ```text
 <quote timestamp> <SBIN last price>
@@ -69,20 +56,32 @@ After prompt labels, successful stdout consists only of:
 ...one line per returned minute...
 <live exchange timestamp> <SBIN live price>
 ...live ticks for 30 seconds, if open...
+Connection test completed: login, quote, candles, ... and logout.
 ```
 
 These are format placeholders, not actual prices. The script fetches one day of
 ONE_MINUTE candles, 2026-09-01, from 09:15 to 15:30 IST. The broker determines
-which minute bars are available. There are no token/header/profile dumps,
-credential-bearing exceptions, status banners, saved logs or store writes.
+which minute bars are available.
+
+On failure it prints one plain line saying why it stopped, and exits `1`
+(P8-071: it used to exit silently). Examples:
+
+```text
+Stopped before login: Angel library not installed or incomplete: smartapi-python (not installed: see setup step 1)
+Stopped at login: ANGEL_API_KEY is not set in this window: see setup step 2
+Stopped at login: login failed: check the client ID, PIN, TOTP and API key; Angel may also refuse the 127.0.0.1 IP headers (not yet verified)
+Stopped at quote: SmartAPI request failed.
+```
+
+No raw error, response, token, header or credential is ever printed, and nothing
+is saved to a log or store.
 
 When the market is closed, the quote and historical candles still run; only the
-30-second stream is skipped. The open proxy requires a weekday, 09:15 <= IST time
-< 15:30, and an exchange quote timestamp no more than 120 seconds old. Missing
-or stale timestamps also skip streaming. Holidays and special sessions are not
-authoritatively resolved because the repository has no forward calendar.
+30-second stream is skipped, and the last line says so. The open proxy requires a
+weekday, 09:15 <= IST time < 15:30, and an exchange quote timestamp no more than
+120 seconds old. Holidays and special sessions are not authoritatively resolved
+because the repository has no forward calendar.
 
-Logout is attempted on success, failure or interruption. Exit `0` means the
-requested operations completed; `1` means failure/interruption, with no raw error
-printed. Live authentication, IP acceptance and historical availability remain
-DOCUMENTED, NOT VERIFIED until you run this check.
+Logout is attempted on success, failure or interruption. Live authentication, IP
+acceptance and historical availability remain DOCUMENTED, NOT VERIFIED until you
+run this check.

@@ -1,3 +1,16 @@
+## 2026-10-14 (07:50): Angel connection test says why it stops; library installed (Claude)
+
+- P8-071 (Low, closed): the connection test exited 1 silently. Now one plain stop line every run,
+  a setup check before login, and `--check` (no login, never reads ANGEL_API_KEY): run on the
+  nightly's Python, "Setup ready for the connection test." 45 Angel tests OK.
+- Library: `pip --dry-run` on Python313 showed only smartapi-python 1.5.5 and logzero 1.7.0, both
+  new; nothing installed would change. Installed hash-checked with --no-deps (wheel hash matches the
+  reviewed one). pip check: only pre-existing tensorflow/keras/tensorboard/astunparse gaps,
+  unrelated. requirements-angel.txt pins the exact versions.
+- The user runs the connection test next (lines in docs/desk/angel_connection_setup.md section 2),
+  then the capacity probe; R1 waits for both. Tonight's after-run checks (ticks recorded, announcement
+  check passed, the brief) are still pending.
+
 ## 2026-10-14 (from 01:13): P8-069 fixed; 13 Oct note; T1 phase 2 (Claude)
 
 - P8-069 (user approval): the bulk refresh's whole/split comparison covers completed days only;

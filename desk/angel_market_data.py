@@ -32,7 +32,7 @@ from unittest.mock import patch as _patch
 import requests as _requests
 from shared.market_time import IST as _IST
 
-__all__ = ['AngelMarketData', 'AngelError']
+__all__ = ['AngelMarketData', 'AngelError', 'check_setup']
 
 _SDK_VERSION = '1.5.5'
 _ROOT = 'https://apiconnect.angelone.in'
@@ -157,6 +157,30 @@ def _sdk_types():
         raise AngelError('Install the pinned optional Angel requirements.') from None
     finally:
         _sys.dont_write_bytecode = previous_bytecode
+
+
+def check_setup():
+    """Offline setup check for the user's terminal (P8-071): never reads ANGEL_API_KEY or any other
+    credential and never contacts Angel. [(item, ok, detail)] for the Python in use, the pinned SDK,
+    its two optional dependencies, and loading the SDK the way the wrapper does (network, logging
+    and bytecode blocked)."""
+    results = [('Python', True, f'{_sys.executable} {_sys.version.split()[0]}')]
+    for name, required in (('smartapi-python', _SDK_VERSION), ('logzero', None), ('websocket-client', None)):
+        try:
+            version = _metadata.version(name)
+        except _metadata.PackageNotFoundError:
+            results.append((name, False, 'not installed: see setup step 1'))
+            continue
+        if required and version != required:
+            results.append((name, False, f'{version} installed, {required} required: see setup step 1'))
+        else:
+            results.append((name, True, version))
+    try:
+        _sdk_types()
+        results.append(('SDK load', True, 'loads offline through the wrapper'))
+    except AngelError:
+        results.append(('SDK load', False, 'the SDK could not be loaded: see setup step 1'))
+    return results
 
 
 def _number(value):
