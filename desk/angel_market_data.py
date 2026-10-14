@@ -74,7 +74,29 @@ _ERRORS = _MappingProxyType({
     'broker_date': 'Broker reports invalid date or time format',
     'candle_date': 'Invalid candle date; use a completed session in YYYY-MM-DD format',
     'rate_limit': 'Server reports rate limiting',
+    'rate_limited': 'RATE_LIMITED (Angel\'s "exceeding access rate" reply)',
 })
+
+# Angel's own wording for a throttled request, matched whole (ignoring case, spacing and a final
+# full stop) against the reply or its JSON "message"; the reply itself is never kept or shown.
+# Sources: https://smartapi.angelone.in/docs/RateLimit ("returns 403 Access denied because of
+# exceeding rate limit"), the docs FAQ ("Access denied because of exceeding access rate") and
+# https://smartapi.angelone.in/smartapi/forum/topic/5595 (getCandleData, same wording).
+_RATE_LIMIT_PHRASES = frozenset(('access denied because of exceeding access rate',
+                                 'access denied because of exceeding rate limit'))
+
+
+def _normal(text):
+    if isinstance(text, (bytes, bytearray)):
+        text = bytes(text).decode('utf-8', 'replace')
+    return ' '.join(text.split()).lower().rstrip('.') if isinstance(text, str) else None
+
+
+def _rate_limited_reply(body=None, parsed=None):
+    candidates = [_normal(body)]
+    if isinstance(parsed, dict):
+        candidates.append(_normal(parsed.get('message')))
+    return any(c in _RATE_LIMIT_PHRASES for c in candidates if c)
 
 # SDK 1.5.5 smartExceptions / official API error table. Only exact indicators
 # become fixed categories; never surface broker messages or arbitrary error codes.
@@ -147,15 +169,15 @@ def _response_json(response, *, api_errors=False):
         if api_errors and 400 <= status < 500:
             category = {401: 'authentication', 403: 'access_denied', 429: 'rate_limit'}.get(status, 'http')
             try:
-                category = _broker_category(response.json()) or category
+                parsed = response.json()
             except Exception:
-                # HTML/empty/malformed error bodies must not erase the HTTP status.
-                # This exact gateway indicator is observed on the official support forum;
-                # it reports a server claim, not proof that this client exceeded its quota.
-                content = response.content
-                if (status == 403 and isinstance(content, bytes)
-                        and content.strip() == b'Access denied because of exceeding access rate'):
-                    category = 'rate_limit'
+                parsed = None          # HTML/empty/malformed bodies must not erase the HTTP status
+            body = response.content if isinstance(response.content, (bytes, bytearray)) else None
+            if _rate_limited_reply(body, parsed):
+                # A server claim of throttling, not proof that this client exceeded its quota.
+                category = 'rate_limited'
+            else:
+                category = _broker_category(parsed) or category
         raise _Failure(category, status) from None
     try:
         return response.json()
@@ -167,6 +189,8 @@ def _api_result(result, http_status=None):
     if not isinstance(result, dict):
         raise _Failure('structure')
     if result.get('status') is False or result.get('error_type'):
+        if _rate_limited_reply(None, result):
+            raise _Failure('rate_limited', http_status)
         raise _Failure(_broker_category(result) or 'api_rejection', http_status)
     if result.get('status') is not True:
         raise _Failure('structure')

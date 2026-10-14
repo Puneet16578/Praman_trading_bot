@@ -2608,6 +2608,8 @@ Found/fixed 2026-10-14; offline verification only. Full evidence and limitations
   and preserve only enumerated diagnostics. Reproduced with mocks before fixing.
 - **P8-073 (Low):** hardcoded smoke-test candle date; replace with a recent completed SBIN EQ
   session evidenced by the knowledge-filtered local store. No weekday-only calendar assumption.
+  *Reversed 2026-10-14 by user decision (P8-078): the fixed 2026-09-01 date is back, with an optional
+  `--candle-date` limited to stored sessions before the forward window.*
 - **P8-074 (Medium):** feed failures lost their category; recv() hid control-frame identity and
   delayed outer deadline checks on control-only traffic. Use recv_data(control_frame=True),
   distinguish closure/parsing/callback/interruption, and preserve automatic protocol PONG.
@@ -2660,3 +2662,26 @@ also treated as fatal; the new summary would show it. Tests: tests/test_angel_fe
 a fake server that drops quiet clients keeps our feed for 10 fake minutes and drops a feed without
 protocol PINGs at 30 s; server PINGs, text and protocol pongs never ticks; the close summary's fields
 with a secret close reason withheld; the library's own PING answer and lack of a pong timeout).
+
+## P8-078 - Angel's own throttling reply was reported as an unexplained 403, and the candle date moved
+
+**Severity.** Low (diagnostics). **Status.** Closed — fixed 2026-10-14 (user decision); the 11:22 403's cause is still unknown.
+At 11:22 on 2026-10-14 the candle call returned HTTP 403 and the test could not say whether the
+reply was Angel's documented throttling phrase: 967729e turned every non-200 reply into an "http"
+failure without looking at it, and Codex's later fix (P8-076) matched only one exact, case-sensitive,
+non-JSON form. The same run also asked for a different date from the 08:10 run that worked
+(2026-10-13 instead of 2026-09-01), because P8-073 had replaced the fixed date with the latest stored
+session, so two things changed at once.
+Fix: the wrapper recognises Angel's two phrases, "Access denied because of exceeding access rate"
+(docs FAQ; forum topic 5595) and "Access denied because of exceeding rate limit" (docs RateLimit
+page), whole and ignoring case, spacing and a final full stop, in the reply or its JSON "message",
+and reports `RATE_LIMITED (Angel's "exceeding access rate" reply)`; the reply is never printed or
+kept, and any other 403 stays unclassified. Angel's error-code page (docs/Exceptions, 61 codes) has
+no rate-limit code, so none was added. **P8-073 is reversed by the user's decision:** the connection
+test asks for the fixed 2026-09-01 again; `--candle-date YYYY-MM-DD` accepts only a stored SBIN EQ
+session before the forward window's start. It prints one summary line instead of every bar, and a
+candle failure says whether the market was open at that moment. Request unchanged; one request, no
+retry. Tests: tests/test_angel_candle_403.py (phrases in body and JSON, a phrase plus anything else
+is not throttling, the two failure lines with a fixed clock), tests/test_angel_connection_test.py
+(date validation, the summary of the 08:10 pattern: 361 bars, 15:15-15:28 missing),
+tests/test_angel_diagnostics.py. Evidence: docs/desk/angel_candle_403_20261014.md.

@@ -41,12 +41,12 @@ client ID, PIN and current TOTP in three hidden prompts.
 `-B` prevents Python bytecode-cache writes. The wrapper avoids the SDK's log
 constructors and its public-IP, DNS and hardware probes. It sends both IP headers
 as `127.0.0.1`, and MAC `00:00:00:00:00:00`.
-The user's 2026-10-14 test succeeded through login and quote retrieval, then candles
-returned HTTP 403. This does not establish historical access or acceptance of these
-metadata values by that endpoint. Current SmartAPI team guidance requires static-IP
-registration for data access too. Verify the app's actual policy and outbound IP with
-Angel support; the wrapper does not discover or guess an address. See the
-[historical 403 investigation](angel_candle_403_20261014.md) for the exact checks.
+On 2026-10-14 the candles worked at 08:10 (for 2026-09-01) and returned HTTP 403 at 11:22
+(for 2026-10-13), with login and quote working both times. The cause is not known. Angel's
+Moderator_3 wrote on the forum on 7 Oct 2026 that "Static IP is required to access any
+smartAPI" (topics 5679 and 5671); the wrapper does not discover or guess an address. See the
+[historical 403 investigation](angel_candle_403_20261014.md) for the differences between the
+two runs and what the next runs would show.
 
 ## 3. What it prints
 
@@ -54,34 +54,42 @@ On success, after the prompt labels:
 
 ```text
 <quote timestamp> <SBIN last price>
-<completed-session minute timestamp> <open> <high> <low> <close>
-...one line per returned minute...
+Candles SBIN 2026-09-01: <bars> bars, first <HH:MM>, last <HH:MM>; open <o>, high <h>, low <l>, last <c>; missing minutes 09:15-15:29: <none | count (ranges)>
 <live exchange timestamp> <SBIN live price>
 ...live ticks for 30 seconds, if open...
 Connection test completed: login, quote, candles, ... and logout.
 ```
 
 These are format placeholders, not actual prices. The script fetches one day of
-ONE_MINUTE candles from 09:15 to 15:30 IST for the latest locally evidenced SBIN EQ
-session before today, known by today and within 14 calendar days. It reads the local
-Praman store without writing. Missing/stale session evidence stops the test explicitly;
-weekdays are not assumed to be trading days. The broker determines which bars are available.
+ONE_MINUTE candles from 09:15 to 15:30 IST for the fixed session **2026-09-01** (one request,
+no retry) and prints one summary line, not every bar. To ask for another day:
 
-On failure it prints a plain stop line and exits `1`; candle failures also print
-the validated session and request window
-(P8-071: it used to exit silently). Examples:
+```powershell
+python -u -B scripts\angel_connection_test.py --candle-date 2026-09-15
+```
+
+It accepts only a completed session before 2026-09-16 (the forward window's start) that the
+local store holds for SBIN EQ; it reads the store without writing. Anything else stops before
+login: `Stopped before login: --candle-date refused: <why>`. The broker decides which bars exist;
+"missing minutes" lists the minutes from 09:15 to 15:29 with no bar.
+
+On failure it prints a plain stop line and exits `1` (P8-071: it used to exit silently).
+A candle failure prints the request and whether the market was open at that moment. Examples:
 
 ```text
 Stopped before login: Angel library not installed or incomplete: smartapi-python (not installed: see setup step 1)
 Stopped at login: ANGEL_API_KEY is not set in this window: see setup step 2
 Stopped at login: login failed: check the client ID, PIN, TOTP and API key; Angel may also refuse the 127.0.0.1 IP headers (not yet verified)
 Stopped at quote: HTTP failure (HTTP 503).
-Candle request: NSE SBIN ONE_MINUTE 2026-10-13 09:15-15:30 IST; completed session evidenced locally.
-Stopped at candles: Access denied; cause unclassified (HTTP 403). Verify app access and registered static IP with Angel support; do not retry in a loop.
+Candle request: NSE SBIN ONE_MINUTE 2026-09-01 09:15-15:30 IST, one request, no retry.
+Stopped at candles: RATE_LIMITED (Angel's "exceeding access rate" reply) (HTTP 403). Market open at that moment: yes (weekday 09:15-15:30 IST with a fresh quote).
+Stopped at candles: Access denied; cause unclassified (HTTP 403). Verify app access and registered static IP with Angel support; do not retry in a loop. Market open at that moment: no (weekday 09:15-15:30 IST with a fresh quote).
 Stopped at live feed: WebSocket disconnected.
+Feed close: by <server|client|connection_lost>, code <n|none>, reason <kind> (<n> bytes, text never shown); connected <s>; since last message <s>, PING sent <s>, PONG back <s>, text ping <s>, text pong <s>; frames {...}
 ```
 
-No raw error, response, token, header or credential is ever printed, and nothing
+RATE_LIMITED means the reply was exactly Angel's throttling phrase; the reply itself is never
+printed. No raw error, response, token, header or credential is ever printed, and nothing
 is saved to a log or store.
 
 When the market is closed, the quote and historical candles still run; only the

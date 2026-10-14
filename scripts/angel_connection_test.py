@@ -1,13 +1,15 @@
 """User-terminal smoke test: raw SBIN prices/timestamps only, no store writes.
 
 Run: python -B scripts/angel_connection_test.py          (the full test; logs in)
+     python -B scripts/angel_connection_test.py --candle-date YYYY-MM-DD   (another stored session
+                                                          before 2026-09-16; default 2026-09-01)
      python -B scripts/angel_connection_test.py --check  (setup only; no login, no credentials read)
 Install optional requirements-angel.txt first; set ANGEL_API_KEY privately in the environment.
 Client ID/PIN/TOTP are hidden terminal prompts, never arguments.
 Exit 0 means the requested steps completed; 1 means failure. Every run ends with one plain line
 saying why it stopped (P8-071); no raw error, response or credential is ever printed.
 """
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time
 from pathlib import Path
 import sys
 
@@ -21,27 +23,62 @@ from shared.sqlite_readonly import open_readonly
 PRAMAN_DB = Path(__file__).resolve().parents[1] / 'data' / 'processed' / 'praman.db'
 
 
-def recent_session(as_of, symbol='SBIN'):
-    """Use observed EQ sessions, never infer a session from a weekday.
+# The measuring instrument: one fixed, repeatable session before the forward window, which worked
+# on 2026-10-14 08:10 (user decision 2026-10-14; it replaces 967729e's "recent session" choice).
+CANDLE_DATE = '2026-09-01'
 
-    Only prior dates known by today's as-of are eligible. A 14-calendar-day
-    freshness bound fails closed if local ingestion cannot evidence a recent session.
-    This is a smoke-test selection policy, not a broker historical-data limit.
-    """
-    oldest = (date.fromisoformat(as_of) - timedelta(days=14)).isoformat()
+
+class CandleDateRefused(ValueError):
+    pass
+
+
+def validate_candle_date(text, today):
+    """A completed NSE trading session before the forward window: ISO format, before
+    desk.outcome_firewall.FORWARD_START, before today, and a stored SBIN EQ session known by today."""
+    from desk.outcome_firewall import FORWARD_START
+    try:
+        day = date.fromisoformat(text)
+    except (TypeError, ValueError):
+        raise CandleDateRefused('use YYYY-MM-DD') from None
+    if text != day.isoformat():
+        raise CandleDateRefused('use YYYY-MM-DD')
+    if day >= FORWARD_START or text >= today:
+        raise CandleDateRefused(f'choose a completed session before {FORWARD_START.isoformat()}')
     try:
         conn = open_readonly(PRAMAN_DB)
         try:
-            row = conn.execute("SELECT MAX(event_date) FROM bhavcopy WHERE symbol = ? AND series = 'EQ' "
-                               "AND event_date < ? AND event_date >= ? AND knowledge_date <= ?",
-                               (symbol, as_of, oldest, as_of)).fetchone()
+            row = conn.execute("SELECT 1 FROM bhavcopy WHERE symbol='SBIN' AND series='EQ' AND event_date=? "
+                               "AND knowledge_date<=? LIMIT 1", (text, today)).fetchone()
         finally:
             conn.close()
     except Exception:
-        raise AngelError('Completed-session evidence unavailable in the local NSE store.') from None
-    if not row or not row[0]:
-        raise AngelError('No recent completed NSE EQ session in the local store.')
-    return row[0]
+        raise CandleDateRefused('the local store could not be read to confirm the session') from None
+    if row is None:
+        raise CandleDateRefused(f'{text} is not a stored SBIN trading session')
+    return text
+
+
+def candle_summary(rows, day):
+    """One line instead of every bar: count, first and last minute, the day's open/high/low/last
+    and the minutes from 09:15 to 15:29 with no bar."""
+    minutes = sorted({row['timestamp'][11:16] for row in rows})
+    grid = [f'{h:02d}:{m:02d}' for h in range(9, 16) for m in range(60) if '09:15' <= f'{h:02d}:{m:02d}' <= '15:29']
+    present = set(minutes)
+    missing = [t for t in grid if t not in present]
+    ranges, start = [], None
+    for i, t in enumerate(missing):
+        if start is None:
+            start = t
+        nxt = missing[i + 1] if i + 1 < len(missing) else None
+        if nxt is None or grid.index(nxt) != grid.index(t) + 1:
+            ranges.append(start if start == t else f'{start}-{t}')
+            start = None
+    ordered = sorted(rows, key=lambda r: r['timestamp'])
+    gaps = f"{len(missing)} ({', '.join(ranges)})" if missing else 'none'
+    return (f"Candles SBIN {day}: {len(rows)} bars, first {minutes[0]}, last {minutes[-1]}; open "
+            f"{ordered[0]['open']:.2f}, high {max(r['high'] for r in rows):.2f}, low {min(r['low'] for r in rows):.2f}, "
+            f"last {ordered[-1]['close']:.2f}; missing minutes 09:15-15:29: {gaps}")
+
 
 # The wrapper's errors are fixed, credential-free messages; these say what to do about them.
 PLAIN = {
@@ -107,16 +144,22 @@ def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     if argv == ['--check']:
         return check()
-    if argv:
-        print('Usage: python -B scripts/angel_connection_test.py [--check]')
+    candle_day = CANDLE_DATE
+    if len(argv) == 2 and argv[0] == '--candle-date':
+        try:
+            candle_day = validate_candle_date(argv[1], datetime.now(IST).date().isoformat())
+        except CandleDateRefused as exc:
+            print(f'Stopped before login: --candle-date refused: {exc}')
+            return 1
+    elif argv:
+        print('Usage: python -B scripts/angel_connection_test.py [--check | --candle-date YYYY-MM-DD]')
         return 1
     missing = [f'{item} ({detail})' for item, ok, detail in check_setup() if not ok]
     if missing:
         print('Stopped before login: Angel library not installed or incomplete: ' + '; '.join(missing))
         return 1
     client = AngelMarketData()
-    result, stage, streamed = 0, 'login', False
-    candle_day = None
+    result, stage, streamed, quote = 0, 'login', False, None
     try:
         client.login()
         day = datetime.now(IST).date().isoformat()
@@ -124,9 +167,7 @@ def main(argv=None):
         quote = client.quote('SBIN', as_of=day)
         print(f"{quote['exchange_timestamp'] or quote['recorded_at']} {quote['price']:.2f}", flush=True)
         stage = 'candles'
-        candle_day = date.fromisoformat(recent_session(day)).isoformat()
-        for row in client.candles('SBIN', candle_day, as_of=day):
-            print(f"{row['timestamp']} {row['open']:.2f} {row['high']:.2f} {row['low']:.2f} {row['close']:.2f}", flush=True)
+        print(candle_summary(client.candles('SBIN', candle_day, as_of=day), candle_day), flush=True)
         if _market_open(datetime.now(IST), quote):
             stage = 'live feed'
             client.stream(['SBIN'], _print_tick, as_of=day, seconds=30)
@@ -134,10 +175,14 @@ def main(argv=None):
         stage = 'logout'
     except (Exception, KeyboardInterrupt) as exc:
         result = 1
-        if stage == 'candles' and candle_day is not None:
-            print(f'Candle request: NSE SBIN ONE_MINUTE {candle_day} 09:15-15:30 IST; '
-                  'completed session evidenced locally.', flush=True)
-        print(f'Stopped at {stage}: {_reason(exc)}', flush=True)
+        if stage == 'candles':
+            print(f'Candle request: NSE SBIN ONE_MINUTE {candle_day} 09:15-15:30 IST, one request, no retry.', flush=True)
+            opened = quote is not None and _market_open(datetime.now(IST), quote)
+            reason = _reason(exc)
+            print(f'Stopped at candles: {reason}{" " if reason.endswith(".") else ". "}Market open at that moment: '
+                  f'{"yes" if opened else "no"} (weekday 09:15-15:30 IST with a fresh quote).', flush=True)
+        else:
+            print(f'Stopped at {stage}: {_reason(exc)}', flush=True)
         stream_summary = error_details(exc).get('stream') if isinstance(exc, AngelError) else None
         if stage == 'live feed' and stream_summary:
             print(feed_close_line(stream_summary), flush=True)

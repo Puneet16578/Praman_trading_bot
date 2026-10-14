@@ -17,6 +17,14 @@
   (who closed, code, reason length only, idle and heartbeat seconds, frame counts), printed by the
   connection test and stored by the probe. Angel docs read (2 pages; see the 403 note's URL list).
   The 239-second drop is still unexplained by the code.
+- A4 (P8-078): connection test back on the fixed 2026-09-01 (P8-073 reversed by user decision);
+  `--candle-date` accepts only a stored SBIN EQ session before the forward window; one summary
+  line instead of every bar; Angel's two throttling phrases reported as RATE_LIMITED (reply never
+  shown), any other 403 unclassified; the failure line says whether the market was open. Request
+  unchanged, one request, no retry. The 403 note now lists the four differences between 08:10 and
+  11:22, the forum reports (5595, 5677, 5691, 5692), the moderator's static-IP posts (5679, and
+  Codex's 5671, verified), and what each explanation predicts for the next two runs. No cause
+  claimed. smartapi.angelone.in pages read today: 8 (2 docs, 6 forum topics).
 
 ## 2026-10-14: Historical candle HTTP 403 follow-up (Codex)
 

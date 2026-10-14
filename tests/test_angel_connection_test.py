@@ -24,19 +24,19 @@ class AngelSmokeTest(unittest.TestCase):
         output = io.StringIO()
         with patch.object(smoke, 'AngelMarketData', return_value=client), patch.object(smoke, 'datetime', wraps=datetime) as clock, \
                 patch.object(smoke, 'check_setup', return_value=READY), \
-                patch.object(smoke, 'recent_session', return_value='2026-10-12'), contextlib.redirect_stdout(output):
+                contextlib.redirect_stdout(output):
             clock.now.return_value = now
             self.assertEqual(smoke.main([]), 0)
         client.login.assert_called_once()
         client.logout.assert_called_once()
         client.quote.assert_called_once_with('SBIN', as_of='2026-10-13')
-        client.candles.assert_called_once_with('SBIN', '2026-10-12', as_of='2026-10-13')
+        client.candles.assert_called_once_with('SBIN', '2026-09-01', as_of='2026-10-13')
         lines = output.getvalue().splitlines()
         self.assertEqual(len(lines), 3)
-        for line in lines[:2]:
-            timestamp, *prices = line.split()
-            datetime.fromisoformat(timestamp)
-            self.assertTrue(all(float(p) > 0 for p in prices))
+        timestamp, price = lines[0].split()
+        datetime.fromisoformat(timestamp)
+        self.assertGreater(float(price), 0)
+        self.assertTrue(lines[1].startswith('Candles SBIN 2026-09-01: 1 bars, first 09:15, last 09:15; open 700.00'))
         self.assertTrue(lines[2].startswith('Connection test completed: login, quote, candles'))
         return client, lines[2]
 
@@ -150,10 +150,52 @@ class FeedCloseLineTest(unittest.TestCase):
         client.candles.return_value = [{'timestamp': '2026-09-01T09:15:00+05:30', 'open': 700, 'high': 702, 'low': 699, 'close': 701}]
         client.stream.side_effect = failure
         output = io.StringIO()
-        with patch.object(smoke, 'AngelMarketData', return_value=client), patch.object(smoke, 'datetime', wraps=datetime) as clock,                 patch.object(smoke, 'check_setup', return_value=READY), patch.object(smoke, 'recent_session', return_value='2026-10-12'),                 contextlib.redirect_stdout(output):
+        with patch.object(smoke, 'AngelMarketData', return_value=client), patch.object(smoke, 'datetime', wraps=datetime) as clock,                 patch.object(smoke, 'check_setup', return_value=READY),                 contextlib.redirect_stdout(output):
             clock.now.return_value = now
             self.assertEqual(smoke.main([]), 1)
         lines = output.getvalue().splitlines()
         self.assertEqual(lines[-2], 'Stopped at live feed: WebSocket disconnected.')
         self.assertTrue(lines[-1].startswith('Feed close: by server, code 1008, reason withheld (12 bytes, text never shown); '
                                              'connected 239.4s; since last message 0.4s, PING sent 9.1s, PONG back never'))
+
+
+class CandleDateAndSummaryTest(unittest.TestCase):
+    def test_candle_date_must_be_a_stored_completed_session_before_the_forward_window(self):
+        import sqlite3, tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'p.db'
+            conn = sqlite3.connect(path)
+            conn.execute('CREATE TABLE bhavcopy(symbol TEXT, series TEXT, event_date TEXT, knowledge_date TEXT)')
+            conn.executemany('INSERT INTO bhavcopy VALUES (?,?,?,?)', [
+                ('SBIN', 'EQ', '2026-09-01', '2026-09-01'), ('SBIN', 'EQ', '2026-09-15', '2026-09-15'),
+                ('SBIN', 'EQ', '2026-09-16', '2026-09-16'), ('SBIN', 'BE', '2026-08-28', '2026-08-28')])
+            conn.commit()
+            conn.close()
+            with patch.object(smoke, 'PRAMAN_DB', path):
+                self.assertEqual(smoke.validate_candle_date('2026-09-15', '2026-10-14'), '2026-09-15')
+                for text, words in (('2026-9-1', 'YYYY-MM-DD'), ('01-09-2026', 'YYYY-MM-DD'),
+                                    ('2026-09-16', 'before 2026-09-16'), ('2026-10-14', 'before 2026-09-16'),
+                                    ('2026-08-28', 'not a stored SBIN trading session'),
+                                    ('2026-08-30', 'not a stored SBIN trading session')):
+                    with self.subTest(text=text), self.assertRaises(smoke.CandleDateRefused) as caught:
+                        smoke.validate_candle_date(text, '2026-10-14')
+                    self.assertIn(words, str(caught.exception))
+            with patch.object(smoke, 'PRAMAN_DB', Path(folder) / 'absent.db'), self.assertRaises(smoke.CandleDateRefused):
+                smoke.validate_candle_date('2026-09-01', '2026-10-14')
+        output = io.StringIO()
+        with patch.object(smoke, 'AngelMarketData') as constructor, contextlib.redirect_stdout(output):
+            self.assertEqual(smoke.main(['--candle-date', '2026-09-16']), 1)
+        constructor.assert_not_called()
+        self.assertIn('Stopped before login: --candle-date refused', output.getvalue())
+
+    def test_the_summary_reports_the_day_and_the_missing_minutes(self):
+        """The user's 08:10 pattern: 09:15 to 15:14, then a single 15:29 bar."""
+        grid = [f'{h:02d}:{m:02d}' for h in range(9, 16) for m in range(60) if '09:15' <= f'{h:02d}:{m:02d}' <= '15:14']
+        rows = [dict(timestamp=f'2026-09-01T{t}:00+05:30', open=1040.0, high=1041.0, low=1039.0, close=1040.0) for t in grid]
+        rows[0].update(open=1051.30, high=1051.30)
+        rows[5]['low'] = 1027.10
+        rows.append(dict(timestamp='2026-09-01T15:29:00+05:30', open=1034.5, high=1034.5, low=1034.5, close=1034.5))
+        self.assertEqual(smoke.candle_summary(rows, '2026-09-01'),
+                         'Candles SBIN 2026-09-01: 361 bars, first 09:15, last 15:29; open 1051.30, high 1051.30, '
+                         'low 1027.10, last 1034.50; missing minutes 09:15-15:29: 14 (15:15-15:28)')

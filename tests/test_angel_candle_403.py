@@ -87,8 +87,16 @@ class Candle403Test(unittest.TestCase):
                     self.assertEqual(exc.category, category)
 
     def test_rate_limit_indicator_requires_exact_match_and_never_retries(self):
+        for body in (b'Access denied because of exceeding access rate', b'  ACCESS DENIED because of exceeding access rate. ',
+                     b'Access denied because of exceeding rate limit'):
+            with self.subTest(body=body):
+                exc = self.failure(self.response(403, content=body))
+                self.assertEqual((exc.category, exc.http_status), ('rate_limited', 403))
+                self.assertNotIn('access rate', str(exc).replace('"exceeding access rate"', ''))
+        exc = self.failure(self.response(403, {'status': False, 'message': 'Access denied because of exceeding access rate',
+                                               'errorcode': '', 'data': None}))
+        self.assertEqual(exc.category, 'rate_limited')
         marker = b'Access denied because of exceeding access rate'
-        self.assertEqual(self.failure(self.response(403, content=marker)).category, 'rate_limit')
         self.assertEqual(self.failure(self.response(403, content=marker + self.secret.encode())).category,
                          'access_denied')
         self.assertEqual(self.failure(self.response(429)).category, 'rate_limit')
@@ -116,17 +124,48 @@ class Candle403Test(unittest.TestCase):
         output = io.StringIO()
         with patch.object(smoke, 'AngelMarketData', return_value=client), \
                 patch.object(smoke, 'check_setup', return_value=[]), \
-                patch.object(smoke, 'recent_session', return_value='2026-10-13'), \
                 contextlib.redirect_stdout(output):
             self.assertEqual(smoke.main([]), 1)
         client.candles.assert_called_once()
         client.stream.assert_not_called()
         client.logout.assert_called_once()
         text = output.getvalue()
-        self.assertIn('2026-10-13 09:15-15:30 IST', text)
+        self.assertIn('2026-09-01 09:15-15:30 IST, one request, no retry', text)
+        self.assertIn('Market open at that moment: ', text)
         self.assertIn('HTTP 403', text)
         self.assertIn('cause unclassified', text)
         self.assertNotIn(self.secret, text)
+
+    def smoke_lines(self, now, reply):
+        class Clock(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return now
+        client = Mock()
+        client.quote.return_value = {'exchange_timestamp': (now.replace(second=0)).isoformat(), 'price': 946.90}
+        client.candles.side_effect = self.failure(reply)
+        output = io.StringIO()
+        with patch.object(smoke, 'AngelMarketData', return_value=client), \
+                patch.object(smoke, 'check_setup', return_value=[]), patch.object(smoke, 'datetime', Clock), \
+                contextlib.redirect_stdout(output):
+            self.assertEqual(smoke.main([]), 1)
+        client.candles.assert_called_once_with('SBIN', '2026-09-01', as_of=now.date().isoformat())
+        client.stream.assert_not_called()
+        return output.getvalue().splitlines()
+
+    def test_failure_line_names_the_category_and_whether_the_market_was_open(self):
+        throttled = self.smoke_lines(datetime(2026, 10, 14, 11, 22, 40, tzinfo=IST),
+                                     self.response(403, content=b'Access denied because of exceeding access rate'))
+        self.assertEqual(throttled[-2:], [
+            'Candle request: NSE SBIN ONE_MINUTE 2026-09-01 09:15-15:30 IST, one request, no retry.',
+            'Stopped at candles: RATE_LIMITED (Angel\'s "exceeding access rate" reply) (HTTP 403). '
+            'Market open at that moment: yes (weekday 09:15-15:30 IST with a fresh quote).'])
+        self.assertNotIn('access denied because', '\n'.join(throttled).lower())
+        closed = self.smoke_lines(datetime(2026, 10, 14, 15, 45, 10, tzinfo=IST), self.response(403))
+        self.assertEqual(closed[-1], 'Stopped at candles: Access denied; cause unclassified (HTTP 403). Verify app '
+                         'access and registered static IP with Angel support; do not retry in a loop. '
+                         'Market open at that moment: no (weekday 09:15-15:30 IST with a fresh quote).')
+        self.assertNotIn('RATE_LIMITED', '\n'.join(closed))
 
     def test_pinned_sdk_quote_and_candle_wire_contract(self):
         try:

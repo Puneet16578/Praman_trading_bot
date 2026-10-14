@@ -192,7 +192,7 @@ class DiagnosticsTest(unittest.TestCase):
 
 
 class SessionSelectionTest(unittest.TestCase):
-    def test_observed_sessions_exclude_today_future_knowledge_wrong_series_and_stale(self):
+    def test_candle_date_option_accepts_only_stored_eq_sessions_known_by_today(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / 'test.db'
             conn = sqlite3.connect(path)
@@ -205,12 +205,12 @@ class SessionSelectionTest(unittest.TestCase):
             conn.commit()
             conn.close()
             with patch.object(smoke, 'PRAMAN_DB', path):
-                self.assertEqual(smoke.recent_session(DAY), '2026-10-09')
-                with self.assertRaises(a.AngelError):
-                    smoke.recent_session('2026-11-14')
+                for day in ('2026-10-09', '2026-10-12', '2026-10-13'):   # after the forward line, late, or BE
+                    with self.subTest(day=day), self.assertRaises(smoke.CandleDateRefused):
+                        smoke.validate_candle_date(day, DAY)
             with patch.object(smoke, 'PRAMAN_DB', Path(folder) / 'absent.db'):
-                with self.assertRaises(a.AngelError):
-                    smoke.recent_session(DAY)
+                with self.assertRaises(smoke.CandleDateRefused):
+                    smoke.validate_candle_date('2026-09-01', DAY)
 
     def test_capacity_rejects_early_clean_return_and_retains_safe_category(self):
         stats = capacity.TierStats(25, ['SBIN'], Mock(pending=[]), NOW)
