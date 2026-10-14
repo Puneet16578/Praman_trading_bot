@@ -11,6 +11,31 @@ User's live results today (recorded as observations, no cause claimed; prices le
 - 15:21 connection test: login and quote OK; candles for 2026-09-01 RATE_LIMITED (HTTP 403),
   market open. The first real Angel reply the RATE_LIMITED check has matched.
 
+Done (one commit each, tests where there is code):
+- 1 f5b6bcb: the unclassified-denial line drops Codex's app/static-IP hint and ends with
+  "see docs/desk/angel_candle_403_20261014.md" (also the permission-denied line).
+- 2 09e4e02 (P8-079): a feed we stop ourselves says so: fixed label + message length, never text.
+- 3 09765e1 (P8-080): an unclassified 403 records its shape only (JSON/HTML/plain text/empty,
+  bytes, error code only if exactly two capitals + four digits).
+- 4 eb0b4ef: the capacity probe needs a working login and quote, not candles.
+- 5 22b18df: setup guide's public-IP check with a placeholder; cites Moderator_3 in topic 5671.
+- 6 9f2d9c5 (P8-081): the probe gives the connection test's fixed stop reasons.
+- 7 a4bc84f: R1 design note: no historical candles during market hours; bars from the stream.
+- 24abac4: 403 note gains the afternoon results (date ruled out; IP-tied limit not ruled out).
+- B1 46e5543: docs/desk/angel_minute_completeness_20261014.md (15:29 flat bar = official close;
+  candle extremes = stored high/low; proposed R1 treatment, design only).
+- B2 STOPPED, nothing recorded: the requested addendum's V3 ("equal-weight average 20-session
+  return of all EQ stocks in the store") differs from addendum 2 (3535590) and the T1 build
+  (compounded equal-weight daily return of all other eligible equities, focal excluded); and T1
+  data has already been fetched (phase 1, phase 2) and inputs built (1a3991d), so "before any T1
+  data is fetched" cannot hold. Items 1, 3 and 4 fit the current text. For the user to settle.
+- B3 635688f (P8-082): price-band list missed by the 18:00 nightly (13 Oct 404 at 18:07:58) is now
+  fetched on later nights (at most 5 sessions back, own Last-Modified date as knowledge date);
+  Data health shows a Price bands line (WARN when missing). NSE pages read: 2 (no timing stated).
+  Tonight's run should fetch the 13 Oct list as well as 14 Oct's.
+- Pages read today: smartapi.angelone.in 8; nseindia.com 2. No downloads; no NSE during a run.
+- Full suite after B3: 974 tests in 222.837s, OK, exit 0 (15:53-15:57). Nothing stashed.
+
 ## 2026-10-14 (from 13:55): finishing Codex's Angel work, Part A (Claude)
 
 - A1: Codex's uncommitted 403 diagnostics (P8-076) reviewed against the user's criteria and
