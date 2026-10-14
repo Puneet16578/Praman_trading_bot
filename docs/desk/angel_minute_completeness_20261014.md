@@ -1,6 +1,8 @@
 # Angel one-minute candles: completeness, SBIN 2026-09-01 (14 October 2026)
 
-Design note for R1. Nothing is built. Prices are left out; where the candles and the store agree,
+Design note for R1. Nothing is built. **The proposed treatment below was approved by the user on
+2026-10-14 (never fill missing minutes; the flat 15:29 bar is a close marker; the official close
+comes from the bhavcopy). Design only; build nothing.** Prices are left out; where the candles and the store agree,
 the agreement is stated instead of the number. Sources: the user's 08:10 connection test on
 2026-10-14 (candles for 2026-09-01) and the local store's bhavcopy row (read-only).
 
@@ -53,5 +55,4 @@ Row: SBIN EQ, event date 2026-09-01, knowledge date 2026-09-01, from NSE's
 5. **Still to find out.** Whether the 15:15-15:28 gap repeats on other days and symbols (tonight's
    after-market run asks for 1 Sep again; `--candle-date` can ask for another stored session), and
    whether the candles' total volume matches the bhavcopy quantity. The connection test's summary
-   line does not print total volume yet; adding it is a small change, offered to the user and not
-   made.
+   line prints the bars' total volume from 2026-10-14 (user decision), for that comparison.

@@ -201,10 +201,16 @@ class CandleDateAndSummaryTest(unittest.TestCase):
     def test_the_summary_reports_the_day_and_the_missing_minutes(self):
         """The user's 08:10 pattern: 09:15 to 15:14, then a single 15:29 bar."""
         grid = [f'{h:02d}:{m:02d}' for h in range(9, 16) for m in range(60) if '09:15' <= f'{h:02d}:{m:02d}' <= '15:14']
-        rows = [dict(timestamp=f'2026-09-01T{t}:00+05:30', open=1040.0, high=1041.0, low=1039.0, close=1040.0) for t in grid]
+        rows = [dict(timestamp=f'2026-09-01T{t}:00+05:30', open=1040.0, high=1041.0, low=1039.0, close=1040.0,
+                     volume=21000.0) for t in grid]
         rows[0].update(open=1051.30, high=1051.30)
         rows[5]['low'] = 1027.10
-        rows.append(dict(timestamp='2026-09-01T15:29:00+05:30', open=1034.5, high=1034.5, low=1034.5, close=1034.5))
+        rows.append(dict(timestamp='2026-09-01T15:29:00+05:30', open=1034.5, high=1034.5, low=1034.5, close=1034.5,
+                         volume=45132.0))
         self.assertEqual(smoke.candle_summary(rows, '2026-09-01'),
                          'Candles SBIN 2026-09-01: 361 bars, first 09:15, last 15:29; open 1051.30, high 1051.30, '
-                         'low 1027.10, last 1034.50; missing minutes 09:15-15:29: 14 (15:15-15:28)')
+                         'low 1027.10, last 1034.50; volume 7,605,132; missing minutes 09:15-15:29: 14 (15:15-15:28)')
+        rows[3]['volume'] = None
+        del rows[4]['volume']
+        self.assertIn('; volume unknown (2 bars without one); missing minutes',
+                      smoke.candle_summary(rows, '2026-09-01'))

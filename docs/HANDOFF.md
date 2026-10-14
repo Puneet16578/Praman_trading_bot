@@ -36,6 +36,19 @@ Done (one commit each, tests where there is code):
 - Pages read today: smartapi.angelone.in 8; nseindia.com 2. No downloads; no NSE during a run.
 - Full suite after B3: 974 tests in 222.837s, OK, exit 0 (15:53-15:57). Nothing stashed.
 
+User decisions on that report (from 16:05):
+- B2 closed with no change: the user's V3 wording was wrong and addendum 2's definition stands
+  (compounded equal-weight daily return of all other eligible equities, focal stock excluded);
+  items 1, 3 and 4 are already in the pre-registration, so a new addendum would only repeat them.
+- P8-083 (3d7423e): checking the user's statement that a late-fetched band list is known from when
+  we fetched it found it was not (knowledge date was NSE's Last-Modified date; direct band reads
+  filter on knowledge date only). Fixed: knowledge date = later of Last-Modified date and fetch date;
+  an identical re-fetch adds nothing. No waiting in the nightly; tonight is the catch-up's first test.
+- Candle summary prints the bars' total volume (compare with the bhavcopy's traded quantity).
+- B1's R1 treatment approved (no filled minutes; flat 15:29 bar = close marker; official close from
+  the bhavcopy). Design only; nothing built.
+- Full suite after these: 976 tests in 215.552s, OK, exit 0 (16:08-16:12). Nothing stashed.
+
 ## 2026-10-14 (from 13:55): finishing Codex's Angel work, Part A (Claude)
 
 - A1: Codex's uncommitted 403 diagnostics (P8-076) reviewed against the user's criteria and

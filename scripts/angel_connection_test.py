@@ -59,8 +59,9 @@ def validate_candle_date(text, today):
 
 
 def candle_summary(rows, day):
-    """One line instead of every bar: count, first and last minute, the day's open/high/low/last
-    and the minutes from 09:15 to 15:29 with no bar."""
+    """One line instead of every bar: count, first and last minute, the day's open/high/low/last,
+    the bars' total volume (to compare with the bhavcopy's traded quantity) and the minutes from
+    09:15 to 15:29 with no bar."""
     minutes = sorted({row['timestamp'][11:16] for row in rows})
     grid = [f'{h:02d}:{m:02d}' for h in range(9, 16) for m in range(60) if '09:15' <= f'{h:02d}:{m:02d}' <= '15:29']
     present = set(minutes)
@@ -75,9 +76,13 @@ def candle_summary(rows, day):
             start = None
     ordered = sorted(rows, key=lambda r: r['timestamp'])
     gaps = f"{len(missing)} ({', '.join(ranges)})" if missing else 'none'
+    volumes = [r.get('volume') for r in rows]
+    unknown = sum(v is None for v in volumes)
+    volume = (f"volume unknown ({unknown} bars without one)" if unknown
+              else f"volume {round(sum(volumes)):,}")
     return (f"Candles SBIN {day}: {len(rows)} bars, first {minutes[0]}, last {minutes[-1]}; open "
             f"{ordered[0]['open']:.2f}, high {max(r['high'] for r in rows):.2f}, low {min(r['low'] for r in rows):.2f}, "
-            f"last {ordered[-1]['close']:.2f}; missing minutes 09:15-15:29: {gaps}")
+            f"last {ordered[-1]['close']:.2f}; {volume}; missing minutes 09:15-15:29: {gaps}")
 
 
 # The wrapper's errors are fixed, credential-free messages; these say what to do about them.

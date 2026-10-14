@@ -70,7 +70,7 @@ On success, after the prompt labels:
 
 ```text
 <quote timestamp> <SBIN last price>
-Candles SBIN 2026-09-01: <bars> bars, first <HH:MM>, last <HH:MM>; open <o>, high <h>, low <l>, last <c>; missing minutes 09:15-15:29: <none | count (ranges)>
+Candles SBIN 2026-09-01: <bars> bars, first <HH:MM>, last <HH:MM>; open <o>, high <h>, low <l>, last <c>; volume <total of the bars>; missing minutes 09:15-15:29: <none | count (ranges)>
 <live exchange timestamp> <SBIN live price>
 ...live ticks for 30 seconds, if open...
 Connection test completed: login, quote, candles, ... and logout.
@@ -87,7 +87,9 @@ python -u -B scripts\angel_connection_test.py --candle-date 2026-09-15
 It accepts only a completed session before 2026-09-16 (the forward window's start) that the
 local store holds for SBIN EQ; it reads the store without writing. Anything else stops before
 login: `Stopped before login: --candle-date refused: <why>`. The broker decides which bars exist;
-"missing minutes" lists the minutes from 09:15 to 15:29 with no bar.
+"missing minutes" lists the minutes from 09:15 to 15:29 with no bar. "volume" is the bars' total,
+to compare with NSE's traded quantity for that day in the local store; it reads "volume unknown"
+if any bar came without one.
 
 On failure it prints a plain stop line and exits `1` (P8-071: it used to exit silently).
 A candle failure prints the request and whether the market was open at that moment. Examples:
