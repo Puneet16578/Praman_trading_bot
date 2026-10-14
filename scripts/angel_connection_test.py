@@ -14,7 +14,7 @@ import sys
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from desk.angel_market_data import AngelError, AngelMarketData, check_setup
+from desk.angel_market_data import AngelError, AngelMarketData, check_setup, error_details
 from shared.market_time import IST
 from shared.sqlite_readonly import open_readonly
 
@@ -73,6 +73,8 @@ def _reason(exc):
         return 'interrupted'
     if isinstance(exc, AngelError):
         message = str(exc)
+        if error_details(exc)['category'] in ('access_denied', 'permission_denied'):
+            return message + ' Verify app access and registered static IP with Angel support; do not retry in a loop.'
         return PLAIN.get(message, message)
     return f'unexpected error ({type(exc).__name__})'
 
@@ -101,6 +103,7 @@ def main(argv=None):
         return 1
     client = AngelMarketData()
     result, stage, streamed = 0, 'login', False
+    candle_day = None
     try:
         client.login()
         day = datetime.now(IST).date().isoformat()
@@ -108,7 +111,8 @@ def main(argv=None):
         quote = client.quote('SBIN', as_of=day)
         print(f"{quote['exchange_timestamp'] or quote['recorded_at']} {quote['price']:.2f}", flush=True)
         stage = 'candles'
-        for row in client.candles('SBIN', recent_session(day), as_of=day):
+        candle_day = date.fromisoformat(recent_session(day)).isoformat()
+        for row in client.candles('SBIN', candle_day, as_of=day):
             print(f"{row['timestamp']} {row['open']:.2f} {row['high']:.2f} {row['low']:.2f} {row['close']:.2f}", flush=True)
         if _market_open(datetime.now(IST), quote):
             stage = 'live feed'
@@ -117,6 +121,9 @@ def main(argv=None):
         stage = 'logout'
     except (Exception, KeyboardInterrupt) as exc:
         result = 1
+        if stage == 'candles' and candle_day is not None:
+            print(f'Candle request: NSE SBIN ONE_MINUTE {candle_day} 09:15-15:30 IST; '
+                  'completed session evidenced locally.', flush=True)
         print(f'Stopped at {stage}: {_reason(exc)}', flush=True)
     finally:
         try:

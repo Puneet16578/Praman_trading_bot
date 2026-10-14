@@ -67,7 +67,38 @@ _ERRORS = _MappingProxyType({
     'api_rejection': 'API rejection', 'ws_closed': 'WebSocket disconnected',
     'feed_parse': 'Feed parsing error', 'callback': 'Consumer callback error',
     'interrupted': 'Interrupted', 'unknown': 'Unexpected internal failure',
+    'access_denied': 'Access denied; cause unclassified',
+    'permission_denied': 'Broker reports permission denied',
+    'authentication': 'Authentication or session rejected',
+    'request_validation': 'Broker reports invalid request parameters',
+    'broker_date': 'Broker reports invalid date or time format',
+    'candle_date': 'Invalid candle date; use a completed session in YYYY-MM-DD format',
+    'rate_limit': 'Server reports rate limiting',
 })
+
+# SDK 1.5.5 smartExceptions / official API error table. Only exact indicators
+# become fixed categories; never surface broker messages or arbitrary error codes.
+_BROKER_TYPES = _MappingProxyType({
+    'PermissionException': 'permission_denied', 'TokenException': 'authentication',
+    'InputException': 'request_validation',
+})
+_BROKER_CODES = _MappingProxyType({
+    'AG8001': 'authentication', 'AG8002': 'authentication', 'AG8003': 'authentication',
+    'AB1010': 'authentication', 'AB1011': 'authentication',
+    'AB13000': 'broker_date', 'AB1021': 'rate_limit',
+})
+
+
+def _broker_category(result):
+    if not isinstance(result, dict):
+        return None
+    categories = set()
+    for field, choices in (('error_type', _BROKER_TYPES), ('errorcode', _BROKER_CODES)):
+        value = result.get(field)
+        if isinstance(value, str) and value in choices:
+            categories.add(choices[value])
+    # Conflicting indicators cannot reliably identify a cause.
+    return next(iter(categories)) if len(categories) == 1 else None
 
 
 class _Failure(AngelError):
@@ -105,20 +136,36 @@ def error_details(exc):
     return {'category': 'unknown', 'http_status': None}
 
 
-def _response_json(response):
+def _response_json(response, *, api_errors=False):
     if response.status_code != 200:
-        raise _Failure('http', response.status_code)
+        status = response.status_code
+        category = 'http'
+        if api_errors and 400 <= status < 500:
+            category = {401: 'authentication', 403: 'access_denied', 429: 'rate_limit'}.get(status, 'http')
+            try:
+                category = _broker_category(response.json()) or category
+            except Exception:
+                # HTML/empty/malformed error bodies must not erase the HTTP status.
+                # This exact gateway indicator is observed on the official support forum;
+                # it reports a server claim, not proof that this client exceeded its quota.
+                content = response.content
+                if (status == 403 and isinstance(content, bytes)
+                        and content.strip() == b'Access denied because of exceeding access rate'):
+                    category = 'rate_limit'
+        raise _Failure(category, status) from None
     try:
         return response.json()
     except ValueError:
         raise _Failure('json') from None
 
 
-def _api_result(result):
-    if not isinstance(result, dict) or type(result.get('status')) is not bool:
+def _api_result(result, http_status=None):
+    if not isinstance(result, dict):
         raise _Failure('structure')
-    if result['status'] is False:
-        raise _Failure('api_rejection')
+    if result.get('status') is False or result.get('error_type'):
+        raise _Failure(_broker_category(result) or 'api_rejection', http_status)
+    if result.get('status') is not True:
+        raise _Failure('structure')
     if 'data' not in result:
         raise _Failure('structure')
     return result
@@ -174,8 +221,8 @@ def _request(sdk, route, method, parameters=None):
                                data=_json.dumps(parameters or {}) if method == 'POST' else None,
                                params=_json.dumps(parameters or {}) if method == 'GET' else None,
                                timeout=15, verify=True, allow_redirects=False) as response:
-            result = _response_json(response)
-        return _api_result(result)
+            result = _response_json(response, api_errors=True)
+        return _api_result(result, http_status=200)
     except _Failure:
         raise
     except Exception as exc:
@@ -441,11 +488,11 @@ class AngelMarketData:
         try:
             event_day = _dt.date.fromisoformat(day)
         except (ValueError, TypeError):
-            raise AngelError('Invalid candle date.') from None
+            raise _Failure('candle_date') from None
         if day != event_day.isoformat():
-            raise AngelError('Invalid candle date.')
+            raise _Failure('candle_date')
         if event_day >= _now().date():
-            raise AngelError('Request a completed historical session.')
+            raise _Failure('candle_date')
         token = self._token(symbol, as_of)
         data = self._call(self._sdk.getCandleData, {'exchange': 'NSE', 'symboltoken': token,
                           'interval': 'ONE_MINUTE', 'fromdate': day + ' 09:15', 'todate': day + ' 15:30'})

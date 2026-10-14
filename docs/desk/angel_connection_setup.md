@@ -41,10 +41,12 @@ client ID, PIN and current TOTP in three hidden prompts.
 `-B` prevents Python bytecode-cache writes. The wrapper avoids the SDK's log
 constructors and its public-IP, DNS and hardware probes. It sends both IP headers
 as `127.0.0.1`, and MAC `00:00:00:00:00:00`.
-**It is not verified whether Angel accepts `127.0.0.1` in these IP headers.**
-No authenticated call has been made; if the account requires a real or
-registered IP there, login will fail. The wrapper does not query an
-unapproved IP-discovery service or guess a real public address.
+The user's 2026-10-14 test succeeded through login and quote retrieval, then candles
+returned HTTP 403. This does not establish historical access or acceptance of these
+metadata values by that endpoint. Current SmartAPI team guidance requires static-IP
+registration for data access too. Verify the app's actual policy and outbound IP with
+Angel support; the wrapper does not discover or guess an address. See the
+[historical 403 investigation](angel_candle_403_20261014.md) for the exact checks.
 
 ## 3. What it prints
 
@@ -65,7 +67,8 @@ session before today, known by today and within 14 calendar days. It reads the l
 Praman store without writing. Missing/stale session evidence stops the test explicitly;
 weekdays are not assumed to be trading days. The broker determines which bars are available.
 
-On failure it prints one plain line saying why it stopped, and exits `1`
+On failure it prints a plain stop line and exits `1`; candle failures also print
+the validated session and request window
 (P8-071: it used to exit silently). Examples:
 
 ```text
@@ -73,7 +76,8 @@ Stopped before login: Angel library not installed or incomplete: smartapi-python
 Stopped at login: ANGEL_API_KEY is not set in this window: see setup step 2
 Stopped at login: login failed: check the client ID, PIN, TOTP and API key; Angel may also refuse the 127.0.0.1 IP headers (not yet verified)
 Stopped at quote: HTTP failure (HTTP 503).
-Stopped at candles: API rejection.
+Candle request: NSE SBIN ONE_MINUTE 2026-10-13 09:15-15:30 IST; completed session evidenced locally.
+Stopped at candles: Access denied; cause unclassified (HTTP 403). Verify app access and registered static IP with Angel support; do not retry in a loop.
 Stopped at live feed: WebSocket disconnected.
 ```
 
@@ -86,6 +90,6 @@ weekday, 09:15 <= IST time < 15:30, and an exchange quote timestamp no more than
 120 seconds old. Holidays and special sessions are not authoritatively resolved
 because the repository has no forward calendar.
 
-Logout is attempted on success, failure or interruption. Live authentication, IP
-acceptance and historical availability remain DOCUMENTED, NOT VERIFIED until you
-run this check.
+Logout is attempted on success, failure or interruption. The user has confirmed a
+successful login/quote; historical access remains unresolved. No authenticated test
+has been run by the agent. Do not proceed to capacity testing until candles succeed.

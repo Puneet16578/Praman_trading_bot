@@ -2618,3 +2618,18 @@ Regression coverage: tests/test_angel_diagnostics.py plus the existing Angel sui
 The exact causes of the previously observed live master/candle/239-second feed failures remain
 unresolved because the old errors discarded the evidence. Authenticated re-verification is pending
 separate user-run tests; no claim of restored live reliability follows from mocked tests.
+
+
+## P8-076 - historical HTTP 403 discarded available broker error classifications
+
+**Severity:** Low (diagnostics). **Status:** Fixed offline; historical access itself unresolved.
+The 2026-10-14 user test succeeded through quote retrieval, then candles returned HTTP 403.
+The dispatcher rejected non-200 responses before inspecting SDK error envelopes: explicit
+PermissionException, TokenException and InputException all became generic HTTP failures.
+Reproduced offline before the change. Now only exact allowlisted indicators become fixed
+categories; ambiguous 403 remains unclassified, status is retained, and no response text or
+sensitive headers escape. Local candle dates are distinguished from broker date-format errors.
+No retry, credential/header workaround, endpoint change, or policy bypass. Request comparison
+with SDK 1.5.5 found no wire-format defect explaining the denial. App entitlement, registered
+static IP and gateway restrictions require account-side verification. Details and evidence:
+[historical 403 investigation](desk/angel_candle_403_20261014.md).

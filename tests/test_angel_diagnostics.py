@@ -87,7 +87,7 @@ class DiagnosticsTest(unittest.TestCase):
         sdk = SimpleNamespace(api_key='', access_token='', clientLocalIp='', clientPublicIp='', clientMacAddress='')
         invalid = self.response(None)
         invalid.json.side_effect = ValueError('private')
-        cases = [(self.response(None, 429), 'http'), (self.response(None, 302), 'http'),
+        cases = [(self.response(None, 429), 'rate_limit'), (self.response(None, 302), 'http'),
                  (invalid, 'json'), (self.response([]), 'structure'),
                  (self.response({'status': True}), 'structure'),
                  (a._requests.exceptions.Timeout('private'), 'timeout'),

@@ -1,3 +1,22 @@
+## 2026-10-14: Historical candle HTTP 403 follow-up (Codex)
+
+- User confirms successful login/master/SBIN quote, then historical HTTP 403. Exact broker/gateway
+  cause is unresolved; no authenticated requests were made by this agent.
+- Compared POST endpoint, JSON serialization, all header fields, token selection and date window
+  with installed SmartAPI 1.5.5 and official docs. No request mismatch explains the denial.
+  Selected 2026-10-13 is an evidenced completed SBIN EQ session; one-day window is valid.
+- P8-076 fixed: non-200 responses previously discarded explicit broker error types. Allowlisted
+  permission/authentication/input/date/rate-limit indicators now survive as fixed categories;
+  generic 403 is unclassified, HTTP status retained, no secrets/raw responses emitted, no retries.
+  Smoke failure prints its canonical candle window. Login/quote/master request behavior unchanged.
+- Current SmartAPI team guidance says static IP applies to data access too. Ask support to verify
+  this app's historical entitlement, migration status, registered source IP and gateway restriction;
+  do not invent a permission checkbox or spoof IP headers. Details: docs/desk/angel_candle_403_20261014.md.
+- Initial tree clean, nightly Ready. Baseline: 936 tests in 227.928s, OK. Focused: 68 tests OK
+  before two additional isolation/error-envelope regressions. Final full-suite result pending.
+- Next user-private verification (after account checks): python -u -B scripts\angel_connection_test.py
+  No capacity test until candles succeed. No SDK changes, external messages or portal changes.
+
 ## 2026-10-14: Angel integration diagnosis and safe fixes (Codex)
 
 - User task: diagnose master, candle and 239-second capacity failures; no authenticated tests
