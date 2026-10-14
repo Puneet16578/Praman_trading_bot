@@ -101,4 +101,9 @@ because the repository has no forward calendar.
 
 Logout is attempted on success, failure or interruption. The user has confirmed a
 successful login/quote; historical access remains unresolved. No authenticated test
-has been run by the agent. Do not proceed to capacity testing until candles succeed.
+has been run by the agent.
+
+The capacity probe (`scriptsngel_stream_capacity_test.py`) needs a working login and
+quote, not candles: it uses the scrip master, a quote and the live feed, and never asks
+for historical data. Run it during market hours once the connection test's login and quote
+work, whatever the candle line says (user decision 2026-10-14).

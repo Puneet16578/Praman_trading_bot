@@ -1,6 +1,7 @@
 """Angel market-feed capacity probe for R1 (user decision 2026-10-13). User-run, never scheduled.
 
-Run in your own terminal during market hours, after scripts/angel_connection_test.py passes:
+Run in your own terminal during market hours, once the connection test's login and quote work
+(candles are not needed; the probe never asks for historical data):
     python -B scripts/angel_stream_capacity_test.py
 Same private ANGEL_API_KEY setup as the connection check; client ID, PIN and TOTP are the
 wrapper's hidden prompts. It refuses to start unless master is checked out with a clean tree and
