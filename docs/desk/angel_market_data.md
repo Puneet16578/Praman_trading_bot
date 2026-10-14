@@ -121,7 +121,9 @@ Exact Python path, private environment setup and expected output:
 After installing the optional requirements and privately setting ANGEL_API_KEY,
 run `python -B scripts/angel_connection_test.py` in your own interactive terminal.
 It prompts privately, prints one SBIN quote, then raw OHLC prices/timestamps for
-2026-09-01 one-minute candles. During regular weekday hours, a fresh exchange
+the most recent locally evidenced completed SBIN EQ session (within 14 calendar days).
+The store is read-only and knowledge-filtered; no weekday-only holiday assumption is used.
+During regular weekday hours, a fresh exchange
 quote (at most 120 seconds old) enables 30 seconds of live SBIN prices, then it
 logs out. Otherwise streaming is skipped. No holiday calendar exists: this is
 a conservative open-market proxy, not special-session/calendar verification.
@@ -132,3 +134,6 @@ labels). Exit code 0 means the requested operations completed; 1 means a failure
 or interruption. Raw errors and credentials are never printed. In PowerShell,
 inspect `$LASTEXITCODE` after it exits. It writes no store or log file and always
 attempts logout. The agent has not run this authenticated connection check.
+
+See [2026-10-14 diagnosis](angel_diagnosis_20261014.md) for safe failure categories,
+master parsing and WebSocket fixes, evidence limits, and the subsequent `--only-25` capacity test.

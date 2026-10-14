@@ -132,7 +132,7 @@ assert not any(n.startswith('SmartApi') for n in sys.modules)
                 return angel._request(self, 'api.logout', 'POST', {'clientcode': client})
 
         sock = Mock()
-        sock.recv.return_value = b'packet'
+        sock.recv_data.return_value = (2, b'packet')
         feed = type('Feed', (), {'subscribe': Mock(), '_parse_binary_data': Mock(return_value={
             'token': '3045', 'exchange_type': 1, 'subscription_mode': 1,
             'exchange_timestamp': now.timestamp() * 1000, 'last_traded_price': 1000, 'feedToken': feed_token})})
@@ -142,7 +142,8 @@ assert not any(n.startswith('SmartApi') for n in sys.modules)
             logger.critical(repr(kwargs))
             return sock
 
-        websocket = types.SimpleNamespace(enableTrace=Mock(), create_connection=connect, WebSocketTimeoutException=TimeoutError)
+        websocket = types.SimpleNamespace(enableTrace=Mock(), create_connection=connect, WebSocketTimeoutException=TimeoutError, WebSocketConnectionClosedException=ConnectionError,
+                                     ABNF=types.SimpleNamespace(OPCODE_CLOSE=8, OPCODE_PING=9, OPCODE_PONG=10, OPCODE_BINARY=2))
         with contextlib.ExitStack() as stack:
             for target in ('builtins.open', 'io.open', 'os.open', 'os.mkdir', 'os.makedirs'):
                 stack.enter_context(patch(target, side_effect=AssertionError('Unexpected file/folder access')))

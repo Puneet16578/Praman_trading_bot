@@ -52,7 +52,7 @@ On success, after the prompt labels:
 
 ```text
 <quote timestamp> <SBIN last price>
-<2026-09-01 minute timestamp> <open> <high> <low> <close>
+<completed-session minute timestamp> <open> <high> <low> <close>
 ...one line per returned minute...
 <live exchange timestamp> <SBIN live price>
 ...live ticks for 30 seconds, if open...
@@ -60,8 +60,10 @@ Connection test completed: login, quote, candles, ... and logout.
 ```
 
 These are format placeholders, not actual prices. The script fetches one day of
-ONE_MINUTE candles, 2026-09-01, from 09:15 to 15:30 IST. The broker determines
-which minute bars are available.
+ONE_MINUTE candles from 09:15 to 15:30 IST for the latest locally evidenced SBIN EQ
+session before today, known by today and within 14 calendar days. It reads the local
+Praman store without writing. Missing/stale session evidence stops the test explicitly;
+weekdays are not assumed to be trading days. The broker determines which bars are available.
 
 On failure it prints one plain line saying why it stopped, and exits `1`
 (P8-071: it used to exit silently). Examples:
@@ -70,7 +72,9 @@ On failure it prints one plain line saying why it stopped, and exits `1`
 Stopped before login: Angel library not installed or incomplete: smartapi-python (not installed: see setup step 1)
 Stopped at login: ANGEL_API_KEY is not set in this window: see setup step 2
 Stopped at login: login failed: check the client ID, PIN, TOTP and API key; Angel may also refuse the 127.0.0.1 IP headers (not yet verified)
-Stopped at quote: SmartAPI request failed.
+Stopped at quote: HTTP failure (HTTP 503).
+Stopped at candles: API rejection.
+Stopped at live feed: WebSocket disconnected.
 ```
 
 No raw error, response, token, header or credential is ever printed, and nothing

@@ -269,8 +269,9 @@ class AngelClientTest(unittest.TestCase):
         feed = type('Feed', (), {'subscribe': Mock()})
         self.client._feed_type = feed
         fake = types.SimpleNamespace(enableTrace=Mock(), create_connection=Mock(return_value=sock),
-                                     WebSocketTimeoutException=Timeout)
-        sock.recv.side_effect = Timeout
+                                     WebSocketTimeoutException=Timeout, WebSocketConnectionClosedException=ConnectionError,
+                                     ABNF=types.SimpleNamespace(OPCODE_CLOSE=8, OPCODE_PING=9, OPCODE_PONG=10, OPCODE_BINARY=2))
+        sock.recv_data.side_effect = Timeout
         with patch.dict('sys.modules', {'websocket': fake}), \
                 patch.object(angel._time, 'monotonic', side_effect=[0, 0, 0, 0, 31]):
             self.client.stream(['SBIN'], ticks, as_of=DAY, seconds=30)
@@ -280,14 +281,15 @@ class AngelClientTest(unittest.TestCase):
 
     def test_stream_only_emits_validated_price_and_timestamps(self):
         sock = Mock()
-        sock.recv.return_value = b'packet'
+        sock.recv_data.return_value = (2, b'packet')
         feed = type('Feed', (), {'subscribe': Mock(), '_parse_binary_data': Mock(return_value={
             'token': '3045', 'exchange_type': 1, 'subscription_mode': 1,
             'exchange_timestamp': int(NOW.timestamp() * 1000), 'last_traded_price': 80125,
             'jwtToken': self.secret})})
         self.client._feed_type = feed
         fake = types.SimpleNamespace(enableTrace=Mock(), create_connection=Mock(return_value=sock),
-                                     WebSocketTimeoutException=TimeoutError)
+                                     WebSocketTimeoutException=TimeoutError, WebSocketConnectionClosedException=ConnectionError,
+                                     ABNF=types.SimpleNamespace(OPCODE_CLOSE=8, OPCODE_PING=9, OPCODE_PONG=10, OPCODE_BINARY=2))
         emitted = []
         with patch.dict('sys.modules', {'websocket': fake}), \
                 patch.object(angel._time, 'monotonic', side_effect=[0, 0, 0, 0, 31]):

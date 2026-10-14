@@ -173,15 +173,33 @@ class ProbeRunTest(unittest.TestCase):
             patcher.start()
             self.addCleanup(patcher.stop)
 
-    def run_probe(self, client, clock):
+    def run_probe(self, client, clock, **kwargs):
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
-            code = probe.run(client, now=clock)
+            code = probe.run(client, now=clock, **kwargs)
         summaries = sorted(probe.logs_dir().glob('angel_capacity_*.json'))
         summary = json.loads(summaries[-1].read_text(encoding='utf-8')) if summaries else None
         for path in summaries:
             path.unlink()
         return code, summary, output.getvalue()
+
+    def test_only_25_does_not_escalate_after_passing(self):
+        clock = FakeClock(datetime(2026, 10, 14, 10, 0, tzinfo=IST))
+        client = FakeClient(clock)
+        code, summary, _ = self.run_probe(client, clock, tiers=(25,))
+        self.assertEqual(code, 0)
+        self.assertEqual([t['tier'] for t in summary['tiers']], [25])
+        self.assertEqual([c for c in client.calls if c[0] == 'stream'], [('stream', 25, 300)])
+
+    def test_safe_failure_category_is_persisted_and_printed(self):
+        from desk.angel_market_data import _Failure
+        clock = FakeClock(datetime(2026, 10, 14, 10, 0, tzinfo=IST))
+        client = FakeClient(clock)
+        client.stream = Mock(side_effect=_Failure('ws_closed'))
+        _, summary, output = self.run_probe(client, clock, tiers=(25,))
+        self.assertEqual(summary['tiers'][0]['feed_diagnostic'],
+                         {'category': 'ws_closed', 'http_status': None})
+        self.assertIn('feed category: ws_closed', output)
 
     def test_escalates_until_the_first_failed_tier_and_keeps_prices_out_of_the_summary(self):
         clock = FakeClock(datetime(2026, 10, 14, 10, 0, tzinfo=IST))

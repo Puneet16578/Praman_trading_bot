@@ -1,3 +1,24 @@
+## 2026-10-14: Angel integration diagnosis and safe fixes (Codex)
+
+- User task: diagnose master, candle and 239-second capacity failures; no authenticated tests
+  authorized or run. Public GET succeeded (HTTP 200, 35,325,024 bytes, 150,726 records), old parser
+  found a unique SBIN-EQ match; exact earlier live failure causes remain unresolved.
+- P8-072..075: robust fail-closed master records; safe transport/API categories; recent completed
+  smoke-test session from read-only knowledge-filtered SBIN EQ bhavcopy (14-day freshness bound);
+  explicit WebSocket control/close handling, parsing/callback/interruption categories; capacity
+  minimum-duration check and --only-25. SDK 1.5.5, TLS, pacing and read-only allowlist unchanged.
+- Existing user edit replacing the smoke date with 2026-10-13 was incorporated into automatic
+  selection. No other initial dirty files. Baseline: 922 tests, two date-expectation failures.
+- Focused verification: 57 Angel tests OK before two further capacity-run regressions were added.
+  Offline --check reports setup ready, SDK 1.5.5, websocket-client 1.8.0, logzero 1.7.0.
+  Final full-suite: python -B -m unittest discover -s tests -p "test_*.py"
+  ran 936 tests in 187.616s, OK (exit 0). Existing SQLite ResourceWarnings remain.
+- Detailed findings, test scope, limits and primary references:
+  docs/desk/angel_diagnosis_20261014.md. No claim of restored live reliability from mock tests.
+- Next user-private command: python -u -B scripts\angel_connection_test.py
+  Only after success: python -u -B scripts\angel_stream_capacity_test.py --only-25
+  Each authenticated test requires explicit user initiation and hidden terminal credential input.
+
 ## 2026-10-14 (07:50): Angel connection test says why it stops; library installed (Claude)
 
 - P8-071 (Low, closed): the connection test exited 1 silently. Now one plain stop line every run,

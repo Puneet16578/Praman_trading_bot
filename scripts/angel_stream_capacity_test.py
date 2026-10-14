@@ -34,7 +34,7 @@ sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from desk.angel_market_data import AngelError, AngelMarketData
+from desk.angel_market_data import AngelError, AngelMarketData, error_details
 from scripts.weekly_ingest import NIGHTLY_BRANCH, _prevent_sleep, head_branch, uncommitted_nightly_inputs
 from shared.log_paths import logs_dir
 from shared.market_time import IST
@@ -186,6 +186,7 @@ class TierStats:
         self.last_receipt, self.max_silence = started, 0.0
         self.last_flush = started
         self.feed_error = False
+        self.feed_diagnostic = None
 
     def on_tick(self, tick: dict):
         received = datetime.fromisoformat(tick["recorded_at"])
@@ -219,7 +220,7 @@ class TierStats:
         self.store.flush()
 
 
-def evaluate(stats: TierStats, sentinels: list[str]) -> dict:
+def evaluate(stats: TierStats, sentinels: list[str], required_seconds=None) -> dict:
     """Metrics and PASS/FAIL against the proposed targets; no prices."""
     duration = (stats.ended - stats.started).total_seconds()
     first = [lag for lag, at in zip(stats.lags, stats.lag_at) if at <= DRIFT_WINDOW]
@@ -235,10 +236,13 @@ def evaluate(stats: TierStats, sentinels: list[str]) -> dict:
         lag_p50=percentile(stats.lags, 50), lag_p95=percentile(stats.lags, 95),
         lag_p99=percentile(stats.lags, 99), lag_max=max(stats.lags) if stats.lags else None,
         initial_snapshots=stats.initial, negative_lags=stats.negative, unparsed_timestamps=stats.unparsed,
-        max_silence=round(stats.max_silence, 3), lag_drift=drift, feed_stopped=stats.feed_error)
+        max_silence=round(stats.max_silence, 3), lag_drift=drift, feed_stopped=stats.feed_error,
+        feed_diagnostic=stats.feed_diagnostic)
     reasons = []
     if stats.feed_error:
         reasons.append("the feed stopped, failed or was interrupted")
+    if required_seconds is not None and duration < required_seconds:
+        reasons.append('the feed did not complete the required duration')
     if not stats.ticks:
         reasons.append("no ticks received")
     if result["sentinels_ticking"] < len(watched):
@@ -264,10 +268,11 @@ def tier_line(r: dict) -> str:
             f"{r['symbols_ticking']}/{r['subscribed']} | sentinels {r['sentinels_ticking']}/{r['sentinels']} | "
             f"receipt lag p50/p95/p99/max {_fmt(r['lag_p50'])}/{_fmt(r['lag_p95'])}/{_fmt(r['lag_p99'])}/"
             f"{_fmt(r['lag_max'])} s | max silence {_fmt(r['max_silence'], 1)} s | lag drift {_fmt(r['lag_drift'])} s"
+            + (f" | feed category: {r['feed_diagnostic']['category']}" if r.get('feed_diagnostic') else '')
             + (f" | {'; '.join(r['reasons'])}" if r["reasons"] else ""))
 
 
-def run(client=None, *, now=now_ist) -> int:
+def run(client=None, *, now=now_ist, tiers=None) -> int:
     """0: the probe ran (tiers may have failed); 1: failure or interruption; 2: refused to start."""
     reasons = preflight()
     if reasons:
@@ -300,7 +305,7 @@ def run(client=None, *, now=now_ist) -> int:
             if not sentinels or not market_open(now(), client.quote(sentinels[0], as_of=day)):
                 summary["stopped"] = "market not confirmed open (no fresh exchange quote)"
                 return result
-            for tier in TIERS:
+            for tier in (TIERS if tiers is None else tiers):
                 begin = now()
                 if tier > len(symbols):
                     summary["stopped"] = f"only {len(symbols)} mapped liquid symbols for tier {tier}"
@@ -316,10 +321,11 @@ def run(client=None, *, now=now_ist) -> int:
                 cpu = clock.process_time()
                 try:
                     client.stream(symbols[:tier], stats.on_tick, as_of=day, seconds=TIER_SECONDS)
-                except AngelError:
+                except AngelError as exc:
                     stats.feed_error = True
+                    stats.feed_diagnostic = error_details(exc)
                 stats.finish(now())
-                outcome = evaluate(stats, sentinels)
+                outcome = evaluate(stats, sentinels, required_seconds=TIER_SECONDS)
                 outcome.update(cpu_seconds=round(clock.process_time() - cpu, 3),
                                bytes_written=store.size() - before, peak_memory_bytes=peak_memory_bytes())
                 summary["tiers"].append(outcome)
@@ -351,4 +357,8 @@ def run(client=None, *, now=now_ist) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(run())
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--only-25', action='store_true', help='Run only the 25-symbol, 600-second tier.')
+    args = parser.parse_args()
+    raise SystemExit(run(tiers=(25,) if args.only_25 else None))

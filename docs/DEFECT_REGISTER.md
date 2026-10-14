@@ -2596,3 +2596,25 @@ reports the Python, the pinned library and its two dependencies and loads the SD
 logging in and without reading `ANGEL_API_KEY` (a test fails if it touches the variable). Run on the
 nightly's Python: "Setup ready for the connection test." Tests: `tests/test_angel_connection_test.py`
 (8). The pinned library was installed the same day after a dry run showed only two new packages.
+
+
+## P8-072 through P8-075 - Angel parsing, diagnosis and bounded smoke tests
+
+Found/fixed 2026-10-14; offline verification only. Full evidence and limitations:
+[Angel diagnosis](desk/angel_diagnosis_20261014.md).
+
+- **P8-072 (Medium):** malformed master rows aborted all mapping; broad exception handlers
+  erased transport/HTTP/JSON/API categories. Type-check records, reject ambiguous identities,
+  and preserve only enumerated diagnostics. Reproduced with mocks before fixing.
+- **P8-073 (Low):** hardcoded smoke-test candle date; replace with a recent completed SBIN EQ
+  session evidenced by the knowledge-filtered local store. No weekday-only calendar assumption.
+- **P8-074 (Medium):** feed failures lost their category; recv() hid control-frame identity and
+  delayed outer deadline checks on control-only traffic. Use recv_data(control_frame=True),
+  distinguish closure/parsing/callback/interruption, and preserve automatic protocol PONG.
+- **P8-075 (Low):** capacity evaluation lacked an explicit minimum-duration check. Pass required
+  duration from the runner, retain safe error metadata, and provide an isolated --only-25 run.
+
+Regression coverage: tests/test_angel_diagnostics.py plus the existing Angel suites.
+The exact causes of the previously observed live master/candle/239-second feed failures remain
+unresolved because the old errors discarded the evidence. Authenticated re-verification is pending
+separate user-run tests; no claim of restored live reliability follows from mocked tests.

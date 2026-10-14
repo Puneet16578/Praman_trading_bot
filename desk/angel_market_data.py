@@ -57,6 +57,71 @@ _LAST_REQUEST = float('-inf')
 
 class AngelError(RuntimeError):
     """Only static, credential-free errors cross this boundary."""
+    category = 'unknown'
+
+
+_ERRORS = _MappingProxyType({
+    'http': 'HTTP failure', 'timeout': 'Network timeout',
+    'tls': 'TLS verification or handshake failure', 'network': 'Network connection failure',
+    'json': 'JSON decoding failure', 'structure': 'Unexpected response structure',
+    'api_rejection': 'API rejection', 'ws_closed': 'WebSocket disconnected',
+    'feed_parse': 'Feed parsing error', 'callback': 'Consumer callback error',
+    'interrupted': 'Interrupted', 'unknown': 'Unexpected internal failure',
+})
+
+
+class _Failure(AngelError):
+    """Only enumerated categories and validated HTTP integers may be exposed."""
+    def __init__(self, category, status=None):
+        self.category = category if category in _ERRORS else 'unknown'
+        self.http_status = status if type(status) is int and 100 <= status <= 599 else None
+        super().__init__(_ERRORS[self.category] +
+                         (f' (HTTP {self.http_status})' if self.http_status is not None else '') + '.')
+
+
+def _transport_failure(exc):
+    # Optional websocket module is loaded only by stream(); classify without importing the SDK.
+    ws = _sys.modules.get('websocket')
+    if ws is not None:
+        if isinstance(exc, ws.WebSocketConnectionClosedException):
+            return _Failure('ws_closed')
+        if isinstance(exc, ws.WebSocketTimeoutException):
+            return _Failure('timeout')
+        if isinstance(exc, getattr(ws, 'WebSocketBadStatusException', ())):
+            return _Failure('http', getattr(exc, 'status_code', None))
+    if isinstance(exc, (_requests.exceptions.SSLError, _ssl.SSLError)):
+        return _Failure('tls')
+    if isinstance(exc, (_requests.exceptions.Timeout, TimeoutError)):
+        return _Failure('timeout')
+    if isinstance(exc, (_requests.exceptions.ConnectionError, ConnectionError, OSError)):
+        return _Failure('network')
+    return _Failure('unknown')
+
+
+def error_details(exc):
+    """Safe summary metadata; never serialize arbitrary exception attributes or text."""
+    if type(exc) is _Failure:
+        return {'category': exc.category, 'http_status': exc.http_status}
+    return {'category': 'unknown', 'http_status': None}
+
+
+def _response_json(response):
+    if response.status_code != 200:
+        raise _Failure('http', response.status_code)
+    try:
+        return response.json()
+    except ValueError:
+        raise _Failure('json') from None
+
+
+def _api_result(result):
+    if not isinstance(result, dict) or type(result.get('status')) is not bool:
+        raise _Failure('structure')
+    if result['status'] is False:
+        raise _Failure('api_rejection')
+    if 'data' not in result:
+        raise _Failure('structure')
+    return result
 
 
 def _now():
@@ -109,14 +174,12 @@ def _request(sdk, route, method, parameters=None):
                                data=_json.dumps(parameters or {}) if method == 'POST' else None,
                                params=_json.dumps(parameters or {}) if method == 'GET' else None,
                                timeout=15, verify=True, allow_redirects=False) as response:
-            if response.status_code != 200:
-                raise AngelError('SmartAPI request failed.')
-            result = response.json()
-        if not isinstance(result, dict) or result.get('status') is not True:
-            raise AngelError('SmartAPI request failed.')
-        return result
-    except Exception:
-        raise AngelError('SmartAPI request failed.') from None
+            result = _response_json(response)
+        return _api_result(result)
+    except _Failure:
+        raise
+    except Exception as exc:
+        raise _transport_failure(exc) from None
 
 
 class _Silent:
@@ -242,12 +305,11 @@ class AngelMarketData:
 
     def _call(self, method, *args):
         try:
-            result = method(*args)
-            if not isinstance(result, dict) or result.get('status') is not True:
-                raise AngelError('SmartAPI request failed.')
-            return result['data']
-        except Exception:
-            raise AngelError('SmartAPI request failed.') from None
+            return _api_result(method(*args))['data']
+        except _Failure:
+            raise
+        except Exception as exc:
+            raise _transport_failure(exc) from None
 
     def login(self):
         """Prompt in the user's terminal only. Reuse an active same-day session."""
@@ -274,7 +336,7 @@ class AngelMarketData:
             if _now().date() != day:
                 raise AngelError('Login crossed the IST session boundary.')
             self._session_day = day
-        except (Exception, KeyboardInterrupt):
+        except (Exception, KeyboardInterrupt) as exc:
             # Login can have minted a token before its implicit profile read fails.
             # Best-effort revoke that partial session, then always clear local state.
             try:
@@ -283,6 +345,8 @@ class AngelMarketData:
             except Exception:
                 pass
             self._clear()
+            if isinstance(exc, _Failure):
+                raise exc from None
             raise AngelError('Login failed; use a private interactive terminal.') from None
 
     def logout(self):
@@ -306,24 +370,40 @@ class AngelMarketData:
         if self._master_day != as_of:
             _pace()
             try:
-                with _requests.get(_MASTER, timeout=60, verify=True, allow_redirects=False) as response:
-                    if response.status_code != 200:
-                        raise AngelError('Scrip master unavailable.')
-                    rows = response.json()
+                with _quiet_transport(), _requests.get(_MASTER, timeout=(10, 60), verify=True,
+                                                       allow_redirects=False) as response:
+                    rows = _response_json(response)
                 if not isinstance(rows, list):
-                    raise AngelError('Scrip master unavailable.')
-                candidates = {}
+                    raise _Failure('structure')
+                candidates, invalid = {}, set()
                 for row in rows:
-                    name, token = row.get('symbol', ''), str(row.get('token', ''))
-                    if row.get('exch_seg') == 'NSE' and name.endswith('-EQ') and not row.get('expiry') \
-                            and row.get('instrumenttype', '') in ('', 'EQ') and token.isdigit():
-                        candidates.setdefault(name[:-3], set()).add(token)
+                    if not isinstance(row, dict):
+                        continue
+                    name, token = row.get('symbol'), row.get('token')
+                    if (row.get('exch_seg') != 'NSE' or not isinstance(name, str)
+                            or not name.endswith('-EQ') or len(name) <= 3
+                            or row.get('expiry') or row.get('instrumenttype', '') not in ('', 'EQ')):
+                        continue
+                    symbol = name[:-3]
+                    if (type(token) not in (str, int) or not str(token).isascii()
+                            or not str(token).isdigit() or len(str(token)) > 20 or int(token) <= 0):
+                        invalid.add(symbol)
+                        continue
+                    candidates.setdefault(symbol, set()).add(str(token))
+                # A token shared by different identities is not a usable exact mapping.
+                owners = {}
+                for symbol, tokens in candidates.items():
+                    for token in tokens:
+                        owners.setdefault(token, set()).add(symbol)
                 self._as_of(as_of)
-                self._master = {s: next(iter(v)) for s, v in candidates.items() if len(v) == 1}
+                self._master = {s: next(iter(v)) for s, v in candidates.items()
+                                if s not in invalid and len(v) == 1 and len(owners[next(iter(v))]) == 1}
                 self._master_day = as_of
                 self._master_observed_at = _now().isoformat()
-            except Exception:
-                raise AngelError('Scrip master unavailable.') from None
+            except AngelError:
+                raise
+            except Exception as exc:
+                raise _transport_failure(exc) from None
         requested = sorted(set(symbols))
         return {'mapped': {s: self._master[s] for s in requested if s in self._master},
                 'unmapped': [s for s in requested if s not in self._master], 'observed_at': self._master_observed_at}
@@ -362,6 +442,8 @@ class AngelMarketData:
             event_day = _dt.date.fromisoformat(day)
         except (ValueError, TypeError):
             raise AngelError('Invalid candle date.') from None
+        if day != event_day.isoformat():
+            raise AngelError('Invalid candle date.')
         if event_day >= _now().date():
             raise AngelError('Request a completed historical session.')
         token = self._token(symbol, as_of)
@@ -369,8 +451,12 @@ class AngelMarketData:
                           'interval': 'ONE_MINUTE', 'fromdate': day + ' 09:15', 'todate': day + ' 15:30'})
         self._active(as_of)
         try:
+            if not isinstance(data, list):
+                raise _Failure('structure')
             rows, seen = [], set()
             for bar in data:
+                if not isinstance(bar, list) or len(bar) != 6:
+                    raise _Failure('structure')
                 stamp = _exchange_time(bar[0])
                 moment = _dt.datetime.fromisoformat(stamp)
                 if moment.date() != event_day or not _dt.time(9, 15) <= moment.time() <= _dt.time(15, 30) or stamp in seen:
@@ -385,6 +471,8 @@ class AngelMarketData:
             if not rows:
                 raise AngelError('No candle data returned.')
             return sorted(rows, key=lambda row: row['timestamp'])
+        except AngelError:
+            raise
         except Exception:
             raise AngelError('Invalid or unavailable candle data.') from None
 
@@ -410,7 +498,6 @@ class AngelMarketData:
             try:
                 import websocket
                 websocket.enableTrace(False)
-                deadline = _time.monotonic() + seconds
                 sock = websocket.create_connection(_FEED, timeout=min(10, seconds), redirect_limit=0,
                         sslopt={'cert_reqs': _ssl.CERT_REQUIRED, 'check_hostname': True},
                         header={'Authorization': 'Bearer ' + self._sdk.access_token, 'x-api-key': self._api_key,
@@ -419,6 +506,7 @@ class AngelMarketData:
                 parser = self._feed_type.__new__(self._feed_type)
                 parser.wsapp, parser.input_request_dict = sock, {}
                 parser.subscribe('praman', 1, [{'exchangeType': 1, 'tokens': list(reverse)}])
+                deadline = _time.monotonic() + seconds
                 heartbeat = _time.monotonic()
                 while _time.monotonic() < deadline:
                     self._active(as_of)
@@ -428,24 +516,43 @@ class AngelMarketData:
                         heartbeat = now + 10
                     sock.settimeout(max(0.001, min(deadline - now, heartbeat - now, 1)))
                     try:
-                        message = sock.recv()
+                        # Surface control frames so a control-only feed still reaches the deadline.
+                        # recv_data answers genuine PINGs itself and preserves CLOSE identity.
+                        opcode, message = sock.recv_data(control_frame=True)
                     except websocket.WebSocketTimeoutException:
+                        continue
+                    except websocket.WebSocketConnectionClosedException:
+                        raise _Failure('ws_closed') from None
+                    if opcode == websocket.ABNF.OPCODE_CLOSE:
+                        raise _Failure('ws_closed')
+                    if opcode in (websocket.ABNF.OPCODE_PING, websocket.ABNF.OPCODE_PONG):
                         continue
                     if message in ('pong', b'pong'):
                         continue
-                    if not isinstance(message, bytes):
-                        raise AngelError('Feed closed or rejected subscription.')
-                    raw = parser._parse_binary_data(message)
+                    if opcode != websocket.ABNF.OPCODE_BINARY or not isinstance(message, bytes):
+                        raise _Failure('api_rejection')
+                    try:
+                        raw = parser._parse_binary_data(message)
+                        token = raw.get('token')
+                        if token not in reverse or raw.get('exchange_type') != 1 or raw.get('subscription_mode') != 1:
+                            raise ValueError
+                        stamp = _dt.datetime.fromtimestamp(_number(raw['exchange_timestamp']) / 1000, _IST)
+                        tick = {'symbol': reverse[token], 'timestamp': stamp.isoformat(),
+                                'price': _number(raw['last_traded_price']) / 100,
+                                'recorded_at': _now().isoformat(), 'knowledge_date': as_of}
+                    except Exception:
+                        raise _Failure('feed_parse') from None
                     self._active(as_of)
-                    token = raw.get('token')
-                    if token not in reverse or raw.get('exchange_type') != 1 or raw.get('subscription_mode') != 1:
-                        raise AngelError('Feed identity mismatch.')
-                    stamp = _dt.datetime.fromtimestamp(_number(raw['exchange_timestamp']) / 1000, _IST)
-                    on_tick({'symbol': reverse[token], 'timestamp': stamp.isoformat(),
-                             'price': _number(raw['last_traded_price']) / 100,
-                             'recorded_at': _now().isoformat(), 'knowledge_date': as_of})
-            except (Exception, KeyboardInterrupt):
-                raise AngelError('Market feed stopped or failed.') from None
+                    try:
+                        on_tick(tick)
+                    except Exception:
+                        raise _Failure('callback') from None
+            except AngelError:
+                raise
+            except KeyboardInterrupt:
+                raise _Failure('interrupted') from None
+            except Exception as exc:
+                raise _transport_failure(exc) from None
             finally:
                 self._streaming = False
                 if sock is not None:

@@ -23,13 +23,14 @@ class AngelSmokeTest(unittest.TestCase):
         client.candles.return_value = [{'timestamp': '2026-09-01T09:15:00+05:30', 'open': 700, 'high': 702, 'low': 699, 'close': 701}]
         output = io.StringIO()
         with patch.object(smoke, 'AngelMarketData', return_value=client), patch.object(smoke, 'datetime', wraps=datetime) as clock, \
-                patch.object(smoke, 'check_setup', return_value=READY), contextlib.redirect_stdout(output):
+                patch.object(smoke, 'check_setup', return_value=READY), \
+                patch.object(smoke, 'recent_session', return_value='2026-10-12'), contextlib.redirect_stdout(output):
             clock.now.return_value = now
             self.assertEqual(smoke.main([]), 0)
         client.login.assert_called_once()
         client.logout.assert_called_once()
         client.quote.assert_called_once_with('SBIN', as_of='2026-10-13')
-        client.candles.assert_called_once_with('SBIN', '2026-09-01', as_of='2026-10-13')
+        client.candles.assert_called_once_with('SBIN', '2026-10-12', as_of='2026-10-13')
         lines = output.getvalue().splitlines()
         self.assertEqual(len(lines), 3)
         for line in lines[:2]:

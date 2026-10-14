@@ -7,7 +7,7 @@ Client ID/PIN/TOTP are hidden terminal prompts, never arguments.
 Exit 0 means the requested steps completed; 1 means failure. Every run ends with one plain line
 saying why it stopped (P8-071); no raw error, response or credential is ever printed.
 """
-from datetime import datetime, time
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
 import sys
 
@@ -16,6 +16,32 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from desk.angel_market_data import AngelError, AngelMarketData, check_setup
 from shared.market_time import IST
+from shared.sqlite_readonly import open_readonly
+
+PRAMAN_DB = Path(__file__).resolve().parents[1] / 'data' / 'processed' / 'praman.db'
+
+
+def recent_session(as_of, symbol='SBIN'):
+    """Use observed EQ sessions, never infer a session from a weekday.
+
+    Only prior dates known by today's as-of are eligible. A 14-calendar-day
+    freshness bound fails closed if local ingestion cannot evidence a recent session.
+    This is a smoke-test selection policy, not a broker historical-data limit.
+    """
+    oldest = (date.fromisoformat(as_of) - timedelta(days=14)).isoformat()
+    try:
+        conn = open_readonly(PRAMAN_DB)
+        try:
+            row = conn.execute("SELECT MAX(event_date) FROM bhavcopy WHERE symbol = ? AND series = 'EQ' "
+                               "AND event_date < ? AND event_date >= ? AND knowledge_date <= ?",
+                               (symbol, as_of, oldest, as_of)).fetchone()
+        finally:
+            conn.close()
+    except Exception:
+        raise AngelError('Completed-session evidence unavailable in the local NSE store.') from None
+    if not row or not row[0]:
+        raise AngelError('No recent completed NSE EQ session in the local store.')
+    return row[0]
 
 # The wrapper's errors are fixed, credential-free messages; these say what to do about them.
 PLAIN = {
@@ -82,7 +108,7 @@ def main(argv=None):
         quote = client.quote('SBIN', as_of=day)
         print(f"{quote['exchange_timestamp'] or quote['recorded_at']} {quote['price']:.2f}", flush=True)
         stage = 'candles'
-        for row in client.candles('SBIN', '2026-09-01', as_of=day):
+        for row in client.candles('SBIN', recent_session(day), as_of=day):
             print(f"{row['timestamp']} {row['open']:.2f} {row['high']:.2f} {row['low']:.2f} {row['close']:.2f}", flush=True)
         if _market_open(datetime.now(IST), quote):
             stage = 'live feed'
