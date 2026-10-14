@@ -118,15 +118,23 @@ def feed_close_line(summary):
             f"frames {summary.get('frames')}")
 
 
+# An unexplained denial names no suspect; the evidence so far is in the 403 note (user, 2026-10-14).
+NOTE_403 = 'see docs/desk/angel_candle_403_20261014.md'
+
+
 def _reason(exc):
     if isinstance(exc, KeyboardInterrupt):
         return 'interrupted'
     if isinstance(exc, AngelError):
         message = str(exc)
-        if error_details(exc)['category'] in ('access_denied', 'permission_denied'):
-            return message + ' Verify app access and registered static IP with Angel support; do not retry in a loop.'
         return PLAIN.get(message, message)
     return f'unexpected error ({type(exc).__name__})'
+
+
+def _with_note(line, exc):
+    if isinstance(exc, AngelError) and error_details(exc)['category'] in ('access_denied', 'permission_denied'):
+        return line.rstrip('.') + '; ' + NOTE_403
+    return line
 
 
 def check():
@@ -179,10 +187,11 @@ def main(argv=None):
             print(f'Candle request: NSE SBIN ONE_MINUTE {candle_day} 09:15-15:30 IST, one request, no retry.', flush=True)
             opened = quote is not None and _market_open(datetime.now(IST), quote)
             reason = _reason(exc)
-            print(f'Stopped at candles: {reason}{" " if reason.endswith(".") else ". "}Market open at that moment: '
-                  f'{"yes" if opened else "no"} (weekday 09:15-15:30 IST with a fresh quote).', flush=True)
+            print(_with_note(f'Stopped at candles: {reason}{" " if reason.endswith(".") else ". "}Market open at '
+                             f'that moment: {"yes" if opened else "no"} (weekday 09:15-15:30 IST with a fresh quote).',
+                             exc), flush=True)
         else:
-            print(f'Stopped at {stage}: {_reason(exc)}', flush=True)
+            print(_with_note(f'Stopped at {stage}: {_reason(exc)}', exc), flush=True)
         stream_summary = error_details(exc).get('stream') if isinstance(exc, AngelError) else None
         if stage == 'live feed' and stream_summary:
             print(feed_close_line(stream_summary), flush=True)

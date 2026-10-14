@@ -162,10 +162,22 @@ class Candle403Test(unittest.TestCase):
             'Market open at that moment: yes (weekday 09:15-15:30 IST with a fresh quote).'])
         self.assertNotIn('access denied because', '\n'.join(throttled).lower())
         closed = self.smoke_lines(datetime(2026, 10, 14, 15, 45, 10, tzinfo=IST), self.response(403))
-        self.assertEqual(closed[-1], 'Stopped at candles: Access denied; cause unclassified (HTTP 403). Verify app '
-                         'access and registered static IP with Angel support; do not retry in a loop. '
-                         'Market open at that moment: no (weekday 09:15-15:30 IST with a fresh quote).')
+        self.assertEqual(closed[-1], 'Stopped at candles: Access denied; cause unclassified (HTTP 403). '
+                         'Market open at that moment: no (weekday 09:15-15:30 IST with a fresh quote); '
+                         'see docs/desk/angel_candle_403_20261014.md')
         self.assertNotIn('RATE_LIMITED', '\n'.join(closed))
+        self.assertNotIn('static ip', '\n'.join(closed).lower())
+        self.assertNotIn('angel_candle_403', '\n'.join(throttled))     # the note only ends unexplained denials
+
+    def test_an_unexplained_denial_outside_candles_also_ends_with_the_note_and_names_no_suspect(self):
+        client = Mock()
+        client.quote.side_effect = self.failure(self.response(403))
+        output = io.StringIO()
+        with patch.object(smoke, 'AngelMarketData', return_value=client), \
+                patch.object(smoke, 'check_setup', return_value=[]), contextlib.redirect_stdout(output):
+            self.assertEqual(smoke.main([]), 1)
+        self.assertEqual(output.getvalue().splitlines()[-1], 'Stopped at quote: Access denied; cause unclassified '
+                         '(HTTP 403); see docs/desk/angel_candle_403_20261014.md')
 
     def test_pinned_sdk_quote_and_candle_wire_contract(self):
         try:

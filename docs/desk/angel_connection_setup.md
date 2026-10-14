@@ -83,7 +83,7 @@ Stopped at login: login failed: check the client ID, PIN, TOTP and API key; Ange
 Stopped at quote: HTTP failure (HTTP 503).
 Candle request: NSE SBIN ONE_MINUTE 2026-09-01 09:15-15:30 IST, one request, no retry.
 Stopped at candles: RATE_LIMITED (Angel's "exceeding access rate" reply) (HTTP 403). Market open at that moment: yes (weekday 09:15-15:30 IST with a fresh quote).
-Stopped at candles: Access denied; cause unclassified (HTTP 403). Verify app access and registered static IP with Angel support; do not retry in a loop. Market open at that moment: no (weekday 09:15-15:30 IST with a fresh quote).
+Stopped at candles: Access denied; cause unclassified (HTTP 403). Market open at that moment: no (weekday 09:15-15:30 IST with a fresh quote); see docs/desk/angel_candle_403_20261014.md
 Stopped at live feed: WebSocket disconnected.
 Feed close: by <server|client|connection_lost>, code <n|none>, reason <kind> (<n> bytes, text never shown); connected <s>; since last message <s>, PING sent <s>, PONG back <s>, text ping <s>, text pong <s>; frames {...}
 ```
