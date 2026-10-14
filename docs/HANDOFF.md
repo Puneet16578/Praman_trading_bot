@@ -1,3 +1,18 @@
+## 2026-10-14 (from 13:55): finishing Codex's Angel work, Part A (Claude)
+
+- A1: Codex's uncommitted 403 diagnostics (P8-076) reviewed against the user's criteria and
+  committed unchanged as 0d353e1 (one request, no retry; fixed categories only; unexplained 403
+  unclassified; login/quote/master, IP/MAC headers, TLS, endpoints and allowlist unchanged).
+  Notes: exact rate-limit phrase match was case-sensitive and non-JSON only; a success reply with a
+  non-empty error_type is now rejected.
+- A2: 967729e reviewed. Scrip master: stricter rows (dict, -EQ symbol, ASCII-digit token, no shared
+  tokens, symbols with an invalid token row dropped) and categorised errors. Candle date: the latest
+  SBIN EQ session in the store before today (within 14 days), so 2026-10-13 at 11:22; this replaced
+  the fixed 2026-09-01. Control frames: recv_data(control_frame=True); CLOSE stops the feed, PING/PONG
+  and text "pong" are skipped, other text frames are an api_rejection. Duration: the deadline starts
+  after the subscribe; the probe fails a tier whose feed ended early. Nothing weakened; added a test
+  that the feed keeps CERT_REQUIRED + hostname checks and the master keeps verify=True.
+
 ## 2026-10-14: Historical candle HTTP 403 follow-up (Codex)
 
 - User confirms successful login/master/SBIN quote, then historical HTTP 403. Exact broker/gateway

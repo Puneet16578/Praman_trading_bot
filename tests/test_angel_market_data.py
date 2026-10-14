@@ -298,6 +298,31 @@ class AngelClientTest(unittest.TestCase):
         self.assertNotIn(self.secret, str(emitted))
         sock.close.assert_called_once()
 
+    def test_stream_and_scrip_master_keep_certificate_verification(self):
+        """967729e review: the feed keeps CERT_REQUIRED with hostname checks (the SDK itself uses
+        CERT_NONE), and the public master keeps verify=True with no redirects."""
+        import itertools, ssl
+        class Timeout(Exception):
+            pass
+        sock = Mock()
+        sock.recv_data.side_effect = Timeout
+        self.client._feed_type = type('Feed', (), {'subscribe': Mock()})
+        fake = types.SimpleNamespace(enableTrace=Mock(), create_connection=Mock(return_value=sock),
+                                     WebSocketTimeoutException=Timeout, WebSocketConnectionClosedException=ConnectionError,
+                                     ABNF=types.SimpleNamespace(OPCODE_CLOSE=8, OPCODE_PING=9, OPCODE_PONG=10, OPCODE_BINARY=2))
+        clock = itertools.count(0, 5)
+        with patch.dict('sys.modules', {'websocket': fake}), patch.object(angel._time, 'monotonic', side_effect=lambda: next(clock)):
+            self.client.stream(['SBIN'], Mock(), as_of=DAY, seconds=30)
+        self.assertEqual(fake.create_connection.call_args.kwargs['sslopt'], {'cert_reqs': ssl.CERT_REQUIRED, 'check_hostname': True})
+        response = MagicMock(status_code=200)
+        response.__enter__.return_value = response
+        response.json.return_value = [dict(symbol='SBIN-EQ', token='3045', exch_seg='NSE', expiry='', instrumenttype='')]
+        self.client._master_day = None
+        with patch.object(angel._requests, 'get', return_value=response) as get:
+            self.assertEqual(self.client.download_scrip_master(['SBIN'], as_of=DAY)['mapped'], {'SBIN': '3045'})
+        self.assertTrue(get.call_args.kwargs['verify'])
+        self.assertFalse(get.call_args.kwargs['allow_redirects'])
+
     def test_tls_redirect_and_payload_are_fixed_at_the_dispatcher(self):
         sdk = types.SimpleNamespace(api_key=self.secret, access_token=self.secret,
                                     clientLocalIp='local', clientPublicIp='public', clientMacAddress='mac')
