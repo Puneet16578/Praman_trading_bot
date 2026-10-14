@@ -215,10 +215,14 @@ def open_risk_lines(desk_conn, rulebook, run):
     return lines
 
 
-def health_lines(praman_conn, run_date, current_run_start=None):
-    from desk.ingestion_health import ingestion_health_line, isin_map_health_line, latest_trading_date_line
-    return [ingestion_health_line(current_run_start), latest_trading_date_line(praman_conn),
-            isin_map_health_line(praman_conn, run_date)]
+def health_lines(praman_conn, run_date, current_run_start=None, desk_conn=None):
+    from desk.ingestion_health import (ingestion_health_line, isin_map_health_line, latest_trading_date_line,
+                                       price_band_health_line)
+    lines = [ingestion_health_line(current_run_start), latest_trading_date_line(praman_conn),
+             isin_map_health_line(praman_conn, run_date)]
+    if desk_conn is not None:
+        lines.append(price_band_health_line(desk_conn, run_date))
+    return lines
 
 
 def record_skipped_run(day, notice, *, out_dir=None):
@@ -249,7 +253,7 @@ def write_brief(run_date=None, *, out_dir=None, current_run_start=None):
     try:
         run_date = run_date or praman.execute('SELECT MAX(event_date) FROM bhavcopy').fetchone()[0]
         text = build_brief(praman, desk, run_date, rulebook=load_active_rulebook().rulebook,
-                           health_lines=health_lines(praman, run_date, current_run_start))
+                           health_lines=health_lines(praman, run_date, current_run_start, desk))
     finally:
         desk.close()
         praman.close()

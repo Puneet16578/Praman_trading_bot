@@ -47,6 +47,22 @@ def latest_trading_date_line(conn) -> str:
     return f"Latest trading date in store: {row[0] or 'NONE (no bhavcopy rows)'}"
 
 
+def price_band_health_line(desk_conn, run_date: str | None) -> str:
+    """NSE's price-band list dated the latest trading date: the bands for the next session
+    (P8-082). Missing is a WARN: those bands stay UNKNOWN and a flat bar counts as possibly locked."""
+    if run_date is None:
+        return "Price bands: UNKNOWN (no trading dates in store)."
+    row = desk_conn.execute("SELECT COUNT(*), MIN(published_at) FROM circuit_bands WHERE event_date=? "
+                            "AND knowledge_date<=?", (run_date, run_date)).fetchone()
+    if not row or not row[0]:
+        return (f"Price bands: WARN, no NSE list dated {run_date} yet; the next session's bands are UNKNOWN, "
+                "so a flat bar counts as possibly locked (a later run fetches the list).")
+    from datetime import datetime
+    from shared.market_time import IST
+    published = datetime.fromisoformat(row[1]).astimezone(IST)
+    return f"Price bands: OK, list dated {run_date} ({row[0]} rows, published {published:%H:%M} IST)."
+
+
 def isin_map_health_line(conn, as_of_date: str | None) -> str:
     from shared.isin_map_metadata import MAX_AGE_TRADING_DAYS, read_metadata, trading_days_since_build
     try:

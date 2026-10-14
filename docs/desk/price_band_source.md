@@ -25,6 +25,17 @@ Observed Last-Modified values: 2020-01-02 17:10:05 IST; 2025-01-02 17:40:37 IST;
 2026-09-30 17:58:10 IST. No guaranteed daily publication time was found. The rolling
 30 September file was modified one second after its dated counterpart.
 
+### Publication timing, checked 2026-10-14 (P8-082)
+
+NSE gives no publication time for the complete list. Pages read on 2026-10-14 (no downloads):
+`https://www.nseindia.com/regulations/daily-price-bands-reports` ("The downward revision is a
+daily process whereas upward revision is a bi-monthly process"; it links the "Complete List of
+Price Bands (.csv)") and `https://www.nseindia.com/reports/price-band-changes`; neither states a
+time. Last-Modified of the lists in the Desk store, IST: 1 Oct 19:39, 5 Oct 17:58, 6 Oct 17:55,
+7 Oct 19:24, 8 Oct 18:01, 9 Oct 19:16, 12 Oct 18:23. The 18:00 nightly reaches the step at about
+18:07, so it often asks before the list exists (13 Oct: 404 at 18:07:58). The step now asks again
+on later nights for lists it missed; each keeps its own Last-Modified date as its knowledge date.
+
 ## Effective session — important distinction
 
 The complete list dated D is the snapshot published after D's close **for the next

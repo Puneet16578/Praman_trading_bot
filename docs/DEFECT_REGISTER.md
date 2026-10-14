@@ -2722,3 +2722,25 @@ because ANGEL_API_KEY was not set; the summary and the last line said only "fail
 ANGEL_API_KEY is not set in this window: see setup step 2". A missing or wrong SDK is refused before
 login with the connection test's words. The reasons are fixed text and hold no secrets; an unexpected
 exception gives only its type. Tests: tests/test_angel_stream_capacity_test.py.
+
+## P8-082 - a price-band list published after the 18:00 nightly was never fetched
+
+**Severity.** Medium (a lock input left UNKNOWN for good). **Status.** Closed — fixed 2026-10-14 (user request; Part B3).
+On 2026-10-13 the nightly started at 18:00 and its circuit_bands step asked for
+`sec_list_13102026.csv` at 18:07:58; NSE answered 404, so the bands for 14 Oct stayed UNKNOWN (the
+step WARNed, as designed). The URL and file name were right: NSE's report metadata names the same
+file ("CM - Price Band complete list", content/equities/). The timing was the problem: NSE publishes
+no time for the list (its "Daily review of Price Bands" and "price band changes" pages, read
+2026-10-14, give none), and the lists' Last-Modified times in the Desk store were 17:55 to 19:39 IST
+from 1 to 12 Oct (earlier probes: 17:10 to 17:58). The step then never asked for 13 Oct again: it
+only ever requested the store's latest trading date, so one early night lost that list permanently.
+Fix, inside the existing step: with no explicit range it now asks for the latest trading date plus
+the store's sessions after the latest stored list (at most 5), so a list missed one night is
+fetched the next. Each list keeps its own Last-Modified date as its knowledge date (fetch_report
+already refuses any other), so an earlier run's view is never changed; recorded_at shows the late
+arrival. A catch-up list NSE has since rewritten, or that no longer parses, stays UNKNOWN with a WARN
+instead of stopping tonight's list. The brief's Data health gains a price-band line: "Price bands:
+WARN, no NSE list dated D yet; the next session's bands are UNKNOWN, so a flat bar counts as possibly
+locked" (FLAT_UNKNOWN, P8-064), or "OK, list dated D (N rows, published HH:MM IST)". Not changed: the
+18:00 start; a same-evening wait for a late list would lengthen the nightly and is left to the user.
+Tests: tests/test_price_band_catch_up.py.
