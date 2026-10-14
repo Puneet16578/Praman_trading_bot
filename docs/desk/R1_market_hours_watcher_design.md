@@ -5,6 +5,9 @@ capacity probe, `scripts/angel_stream_capacity_test.py`, is built; the watcher, 
 tables and any nightly integration wait for the user's review of the probe's
 results. No scheduled task. NSE RSS requests need separate approval with a budget.
 
+**Note, 14 October 2026:** R1 must not depend on Angel's historical candles during market
+hours; intraday one-minute bars come from the stream. See the changelog's 2026-10-14 entry.
+
 ## Lifecycle and sources
 
 The user starts `.\desk live` in a private terminal each trading morning,
@@ -287,3 +290,17 @@ Logout: <completed/failed>; report/table reconciliation: <counts/hash>
 - Built now: only `scripts/angel_stream_capacity_test.py`, with offline tests.
   The watcher waits for the user's review of the probe's results. NSE RSS
   requests need the user's approval with a stated budget when reached.
+
+**2026-10-14 — note (user decision in their message of 2026-10-14). Design only;
+nothing is built.**
+- Observed today: Angel refused getCandleData during market hours twice, each time on a
+  single request: 11:22 IST (HTTP 403, reply not examined by that code) and 15:21 IST
+  (HTTP 403, confirmed RATE_LIMITED, Angel's "exceeding access rate" reply), both for SBIN
+  ONE_MINUTE. Login, quote and the live feed worked in the same runs; the 25-symbol feed
+  tier passed for 600 seconds at 15:04-15:14. Every run came from a public IP that is not
+  the one registered with Angel.
+- So R1 must not depend on historical candles during market hours. Intraday one-minute
+  bars come from the stream (built in memory, as approved on 2026-10-13); candle requests
+  run only outside market hours.
+- Still being tested: whether candles are reliable outside market hours, and whether the
+  unregistered IP plays a part. Evidence: docs/desk/angel_candle_403_20261014.md.
