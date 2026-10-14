@@ -2633,3 +2633,30 @@ No retry, credential/header workaround, endpoint change, or policy bypass. Reque
 with SDK 1.5.5 found no wire-format defect explaining the denial. App entitlement, registered
 static IP and gateway restrictions require account-side verification. Details and evidence:
 [historical 403 investigation](desk/angel_candle_403_20261014.md).
+
+## P8-077 - the feed sent no protocol PING and kept no record of how it closed
+
+**Severity.** Medium. **Status.** Closed — fixed 2026-10-14 (user request); the 239-second drop's cause is still unknown.
+The wrapper sent only Angel's documented text heartbeat ("ping" every 10 seconds; the WebSocket 2.0
+page says "The client must send a heartbeat message for each WebSocket connection every 30 sec to
+keep the connection alive", request "ping", response "pong"). The SDK it wraps also sends a
+protocol PING frame every 10 seconds (smartWebSocketV2.connect: run_forever(ping_interval=10)), and
+the wrapper did not. When the feed ended it recorded only a category, so the 239-second drop on
+2026-10-14 left no evidence of who closed it or how idle it was.
+Fix: every 10 seconds the feed sends a protocol PING and the text "ping"; websocket-client 1.8.0
+answers the server's PINGs itself (recv_data_frame), and its plain socket never closes the
+connection on a late PONG (only WebSocketApp.run_forever with ping_timeout does). A text "pong"
+(any case or spacing) is counted, never a tick or an error; any other text frame still stops the
+feed (api_rejection) and is counted. Every exit records a close summary with numbers and fixed
+words only: who closed (server, client, connection_lost), the close code, the reason's length (its
+text is never kept), seconds connected, since the last message, since the last PING sent and PONG
+received, since the last text ping and text pong, and frame counts. It rides on the error
+(`error_details(...)['stream']`) and is returned on a normal finish; the connection test prints it
+as one "Feed close:" line and the capacity probe stores it per tier.
+The code does not explain the 239-second drop: that run was busy (7,252 ticks over 25 symbols,
+longest silence 1.8 s), so an idle timeout is unlikely, and the text heartbeat already met Angel's
+documented rule. One remaining possibility is a text frame other than "pong", which the old code
+also treated as fatal; the new summary would show it. Tests: tests/test_angel_feed_keepalive.py (6:
+a fake server that drops quiet clients keeps our feed for 10 fake minutes and drops a feed without
+protocol PINGs at 30 s; server PINGs, text and protocol pongs never ticks; the close summary's fields
+with a secret close reason withheld; the library's own PING answer and lack of a pong timeout).

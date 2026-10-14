@@ -130,9 +130,13 @@ def _transport_failure(exc):
 
 
 def error_details(exc):
-    """Safe summary metadata; never serialize arbitrary exception attributes or text."""
+    """Safe summary metadata; never serialize arbitrary exception attributes or text. A feed
+    failure also carries its close summary (numbers and fixed words only)."""
     if type(exc) is _Failure:
-        return {'category': exc.category, 'http_status': exc.http_status}
+        details = {'category': exc.category, 'http_status': exc.http_status}
+        if isinstance(getattr(exc, 'stream_summary', None), dict):
+            details['stream'] = exc.stream_summary
+        return details
     return {'category': 'unknown', 'http_status': None}
 
 
@@ -316,6 +320,57 @@ def _exchange_time(value):
         except (ValueError, TypeError):
             raise AngelError('Invalid exchange timestamp.') from None
     return (stamp if stamp.tzinfo else stamp.replace(tzinfo=_IST)).astimezone(_IST).isoformat()
+
+
+HEARTBEAT_SECONDS = 10      # protocol PING and text "ping"; Angel documents "every 30 sec" for the text one
+
+
+def _is_text_pong(message):
+    if isinstance(message, str):
+        message = message.encode('utf-8', 'replace')
+    return isinstance(message, (bytes, bytearray)) and bytes(message).strip().lower() == b'pong'
+
+
+class _FeedLog:
+    """Close summary for one feed connection: numbers and fixed words only, never frame text."""
+    def __init__(self, started):
+        self.started = started
+        self.last_message = self.ping_sent = self.pong_received = None
+        self.text_ping_sent = self.text_pong_received = None
+        self.frames = dict(binary=0, text_pong=0, text_other=0, server_ping=0, pong=0)
+        self.closed_by = self.close_code = self.reason_kind = None
+        self.reason_bytes = 0
+        self.ended = None
+
+    def count(self, kind):
+        self.frames[kind] += 1
+
+    def close(self, side, at, frame=None, reason_kind=None):
+        if self.closed_by is not None:
+            return
+        self.closed_by, self.ended, self.reason_kind = side, at, reason_kind
+        if isinstance(frame, (bytes, bytearray)) and len(frame) >= 2:
+            code = int.from_bytes(bytes(frame[:2]), 'big')
+            self.close_code = code if 1000 <= code <= 4999 else None
+            self.reason_bytes = len(frame) - 2
+            self.reason_kind = 'withheld' if self.reason_bytes else 'none'
+
+    def _since(self, mark):
+        return None if mark is None or self.ended is None else round(self.ended - mark, 3)
+
+    def summary(self):
+        return {'closed_by': self.closed_by, 'close_code': self.close_code, 'close_reason': self.reason_kind,
+                'close_reason_bytes': self.reason_bytes, 'connected_seconds': self._since(self.started),
+                'seconds_since_last_message': self._since(self.last_message),
+                'seconds_since_ping_sent': self._since(self.ping_sent),
+                'seconds_since_pong_received': self._since(self.pong_received),
+                'seconds_since_text_ping_sent': self._since(self.text_ping_sent),
+                'seconds_since_text_pong_received': self._since(self.text_pong_received),
+                'frames': dict(self.frames)}
+
+    def attach(self, failure):
+        failure.stream_summary = self.summary()
+        return failure
 
 
 class AngelMarketData:
@@ -540,7 +595,7 @@ class AngelMarketData:
             raise AngelError('Feed contains unmapped NSE EQ symbols.')
         reverse = {token: symbol for symbol, token in mapped['mapped'].items()}
         with _quiet_transport():
-            sock = None
+            sock = log = None
             self._streaming = True
             try:
                 import websocket
@@ -553,31 +608,49 @@ class AngelMarketData:
                 parser = self._feed_type.__new__(self._feed_type)
                 parser.wsapp, parser.input_request_dict = sock, {}
                 parser.subscribe('praman', 1, [{'exchangeType': 1, 'tokens': list(reverse)}])
-                deadline = _time.monotonic() + seconds
-                heartbeat = _time.monotonic()
+                log = _FeedLog(_time.monotonic())
+                deadline = log.started + seconds
+                heartbeat = log.started
                 while _time.monotonic() < deadline:
                     self._active(as_of)
                     now = _time.monotonic()
                     if now >= heartbeat:
+                        # Protocol PING (the SDK's run_forever(ping_interval=10)) and Angel's documented
+                        # text heartbeat ("ping" at least every 30 seconds; "pong" comes back).
+                        sock.ping()
                         sock.send('ping')
-                        heartbeat = now + 10
+                        log.ping_sent = log.text_ping_sent = now
+                        heartbeat = now + HEARTBEAT_SECONDS
                     sock.settimeout(max(0.001, min(deadline - now, heartbeat - now, 1)))
                     try:
-                        # Surface control frames so a control-only feed still reaches the deadline.
-                        # recv_data answers genuine PINGs itself and preserves CLOSE identity.
+                        # recv_data answers the server's PINGs itself (websocket-client 1.8.0
+                        # recv_data_frame) and returns control frames so they can be counted.
                         opcode, message = sock.recv_data(control_frame=True)
                     except websocket.WebSocketTimeoutException:
                         continue
                     except websocket.WebSocketConnectionClosedException:
-                        raise _Failure('ws_closed') from None
+                        log.close('connection_lost', _time.monotonic())
+                        raise log.attach(_Failure('ws_closed')) from None
+                    log.last_message = _time.monotonic()
                     if opcode == websocket.ABNF.OPCODE_CLOSE:
-                        raise _Failure('ws_closed')
-                    if opcode in (websocket.ABNF.OPCODE_PING, websocket.ABNF.OPCODE_PONG):
+                        log.close('server', log.last_message, message)
+                        raise log.attach(_Failure('ws_closed'))
+                    if opcode == websocket.ABNF.OPCODE_PING:
+                        log.count('server_ping')
                         continue
-                    if message in ('pong', b'pong'):
+                    if opcode == websocket.ABNF.OPCODE_PONG:
+                        log.count('pong')
+                        log.pong_received = log.last_message
+                        continue
+                    if _is_text_pong(message):
+                        log.count('text_pong')
+                        log.text_pong_received = log.last_message
                         continue
                     if opcode != websocket.ABNF.OPCODE_BINARY or not isinstance(message, bytes):
-                        raise _Failure('api_rejection')
+                        log.count('text_other')
+                        log.close('client', log.last_message)
+                        raise log.attach(_Failure('api_rejection'))
+                    log.count('binary')
                     try:
                         raw = parser._parse_binary_data(message)
                         token = raw.get('token')
@@ -588,18 +661,34 @@ class AngelMarketData:
                                 'price': _number(raw['last_traded_price']) / 100,
                                 'recorded_at': _now().isoformat(), 'knowledge_date': as_of}
                     except Exception:
-                        raise _Failure('feed_parse') from None
+                        log.close('client', _time.monotonic())
+                        raise log.attach(_Failure('feed_parse')) from None
                     self._active(as_of)
                     try:
                         on_tick(tick)
                     except Exception:
-                        raise _Failure('callback') from None
-            except AngelError:
+                        log.close('client', _time.monotonic())
+                        raise log.attach(_Failure('callback')) from None
+                log.close('client', _time.monotonic(), reason_kind='deadline')
+                return log.summary()
+            except AngelError as exc:
+                if log is not None and getattr(exc, 'stream_summary', None) is None:
+                    log.close('client', _time.monotonic())
+                    log.attach(exc)
                 raise
             except KeyboardInterrupt:
-                raise _Failure('interrupted') from None
+                failure = _Failure('interrupted')
+                if log is not None:
+                    log.close('client', _time.monotonic(), reason_kind='interrupted')
+                    log.attach(failure)
+                raise failure from None
             except Exception as exc:
-                raise _transport_failure(exc) from None
+                failure = _transport_failure(exc)
+                if log is not None:
+                    log.close('connection_lost' if failure.category in ('ws_closed', 'network') else 'client',
+                              _time.monotonic())
+                    log.attach(failure)
+                raise failure from None
             finally:
                 self._streaming = False
                 if sock is not None:

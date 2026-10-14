@@ -68,6 +68,19 @@ def _print_tick(tick):
     print(f"{tick['timestamp']} {tick['price']:.2f}", flush=True)
 
 
+def feed_close_line(summary):
+    """One line from the wrapper's close summary: numbers and fixed words only."""
+    def secs(key):
+        value = summary.get(key)
+        return 'never' if value is None else f'{value:.1f}s'
+    return (f"Feed close: by {summary.get('closed_by')}, code {summary.get('close_code') or 'none'}, reason "
+            f"{summary.get('close_reason') or 'none'} ({summary.get('close_reason_bytes', 0)} bytes, text never shown); "
+            f"connected {secs('connected_seconds')}; since last message {secs('seconds_since_last_message')}, "
+            f"PING sent {secs('seconds_since_ping_sent')}, PONG back {secs('seconds_since_pong_received')}, "
+            f"text ping {secs('seconds_since_text_ping_sent')}, text pong {secs('seconds_since_text_pong_received')}; "
+            f"frames {summary.get('frames')}")
+
+
 def _reason(exc):
     if isinstance(exc, KeyboardInterrupt):
         return 'interrupted'
@@ -125,6 +138,9 @@ def main(argv=None):
             print(f'Candle request: NSE SBIN ONE_MINUTE {candle_day} 09:15-15:30 IST; '
                   'completed session evidenced locally.', flush=True)
         print(f'Stopped at {stage}: {_reason(exc)}', flush=True)
+        stream_summary = error_details(exc).get('stream') if isinstance(exc, AngelError) else None
+        if stage == 'live feed' and stream_summary:
+            print(feed_close_line(stream_summary), flush=True)
     finally:
         try:
             client.logout()

@@ -187,6 +187,7 @@ class TierStats:
         self.last_flush = started
         self.feed_error = False
         self.feed_diagnostic = None
+        self.stream_summary = None
 
     def on_tick(self, tick: dict):
         received = datetime.fromisoformat(tick["recorded_at"])
@@ -237,7 +238,8 @@ def evaluate(stats: TierStats, sentinels: list[str], required_seconds=None) -> d
         lag_p99=percentile(stats.lags, 99), lag_max=max(stats.lags) if stats.lags else None,
         initial_snapshots=stats.initial, negative_lags=stats.negative, unparsed_timestamps=stats.unparsed,
         max_silence=round(stats.max_silence, 3), lag_drift=drift, feed_stopped=stats.feed_error,
-        feed_diagnostic=stats.feed_diagnostic)
+        feed_diagnostic=stats.feed_diagnostic,
+        feed_close=stats.stream_summary or (stats.feed_diagnostic or {}).get('stream'))
     reasons = []
     if stats.feed_error:
         reasons.append("the feed stopped, failed or was interrupted")
@@ -269,6 +271,8 @@ def tier_line(r: dict) -> str:
             f"receipt lag p50/p95/p99/max {_fmt(r['lag_p50'])}/{_fmt(r['lag_p95'])}/{_fmt(r['lag_p99'])}/"
             f"{_fmt(r['lag_max'])} s | max silence {_fmt(r['max_silence'], 1)} s | lag drift {_fmt(r['lag_drift'])} s"
             + (f" | feed category: {r['feed_diagnostic']['category']}" if r.get('feed_diagnostic') else '')
+            + (f" | feed closed by {r['feed_close']['closed_by']} after {_fmt(r['feed_close']['connected_seconds'], 1)} s"
+               f" (code {r['feed_close']['close_code'] or 'none'})" if r.get('feed_close') else '')
             + (f" | {'; '.join(r['reasons'])}" if r["reasons"] else ""))
 
 
@@ -320,7 +324,7 @@ def run(client=None, *, now=now_ist, tiers=None) -> int:
                 before = store.size()
                 cpu = clock.process_time()
                 try:
-                    client.stream(symbols[:tier], stats.on_tick, as_of=day, seconds=TIER_SECONDS)
+                    stats.stream_summary = client.stream(symbols[:tier], stats.on_tick, as_of=day, seconds=TIER_SECONDS)
                 except AngelError as exc:
                     stats.feed_error = True
                     stats.feed_diagnostic = error_details(exc)

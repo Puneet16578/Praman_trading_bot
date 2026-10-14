@@ -1,4 +1,5 @@
 """Side-effect proof with synthetic secrets and completely mocked transports."""
+import itertools
 import contextlib
 import io
 import json
@@ -163,7 +164,7 @@ assert not any(n.startswith('SmartApi') for n in sys.modules)
             client.login()
             client._master_day, client._master = '2026-10-13', {'SBIN': '3045'}
             clean = [client.quote('SBIN', as_of='2026-10-13'), client.candles('SBIN', '2026-09-01', as_of='2026-10-13')]
-            with patch.object(angel._time, 'monotonic', side_effect=[0, 0, 0, 0, 31]):
+            with patch.object(angel._time, 'monotonic', side_effect=itertools.chain([0, 0, 0, 0], itertools.repeat(31)).__next__):
                 client.stream(['SBIN'], clean.append, as_of='2026-10-13')
             client.logout()
         self.assertEqual(len(calls), 5)

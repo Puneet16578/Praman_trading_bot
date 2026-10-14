@@ -12,6 +12,11 @@
   and text "pong" are skipped, other text frames are an api_rejection. Duration: the deadline starts
   after the subscribe; the probe fails a tier whose feed ended early. Nothing weakened; added a test
   that the feed keeps CERT_REQUIRED + hostname checks and the master keeps verify=True.
+- A3 (P8-077): the feed now sends a protocol PING and Angel's text "ping" every 10 s; server PINGs
+  are answered by websocket-client; text "pong" never a tick; every exit records a close summary
+  (who closed, code, reason length only, idle and heartbeat seconds, frame counts), printed by the
+  connection test and stored by the probe. Angel docs read (2 pages; see the 403 note's URL list).
+  The 239-second drop is still unexplained by the code.
 
 ## 2026-10-14: Historical candle HTTP 403 follow-up (Codex)
 

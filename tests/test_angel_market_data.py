@@ -1,4 +1,5 @@
 """Offline SDK mocks; ephemeral synthetic authentication values, never real credentials."""
+import itertools
 import ast
 import contextlib
 import io
@@ -273,7 +274,7 @@ class AngelClientTest(unittest.TestCase):
                                      ABNF=types.SimpleNamespace(OPCODE_CLOSE=8, OPCODE_PING=9, OPCODE_PONG=10, OPCODE_BINARY=2))
         sock.recv_data.side_effect = Timeout
         with patch.dict('sys.modules', {'websocket': fake}), \
-                patch.object(angel._time, 'monotonic', side_effect=[0, 0, 0, 0, 31]):
+                patch.object(angel._time, 'monotonic', side_effect=itertools.chain([0, 0, 0, 0], itertools.repeat(31)).__next__):
             self.client.stream(['SBIN'], ticks, as_of=DAY, seconds=30)
         sock.close.assert_called_once()
         ticks.assert_not_called()
@@ -292,7 +293,7 @@ class AngelClientTest(unittest.TestCase):
                                      ABNF=types.SimpleNamespace(OPCODE_CLOSE=8, OPCODE_PING=9, OPCODE_PONG=10, OPCODE_BINARY=2))
         emitted = []
         with patch.dict('sys.modules', {'websocket': fake}), \
-                patch.object(angel._time, 'monotonic', side_effect=[0, 0, 0, 0, 31]):
+                patch.object(angel._time, 'monotonic', side_effect=itertools.chain([0, 0, 0, 0], itertools.repeat(31)).__next__):
             self.client.stream(['SBIN'], emitted.append, as_of=DAY)
         self.assertEqual(emitted[0]['price'], 801.25)
         self.assertNotIn(self.secret, str(emitted))

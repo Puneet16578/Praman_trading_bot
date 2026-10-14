@@ -134,3 +134,26 @@ class CheckModeTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class FeedCloseLineTest(unittest.TestCase):
+    def test_a_feed_failure_prints_one_close_summary_line_without_text(self):
+        failure = angel._Failure('ws_closed')
+        failure.stream_summary = dict(closed_by='server', close_code=1008, close_reason='withheld', close_reason_bytes=12,
+                                      connected_seconds=239.4, seconds_since_last_message=0.4, seconds_since_ping_sent=9.1,
+                                      seconds_since_pong_received=None, seconds_since_text_ping_sent=9.1,
+                                      seconds_since_text_pong_received=19.0,
+                                      frames=dict(binary=900, text_pong=23, text_other=0, server_ping=0, pong=0))
+        client = Mock()
+        now = datetime(2026, 10, 13, 10, 0, tzinfo=IST)
+        client.quote.return_value = {'exchange_timestamp': now.isoformat(), 'recorded_at': now.isoformat(), 'price': 800}
+        client.candles.return_value = [{'timestamp': '2026-09-01T09:15:00+05:30', 'open': 700, 'high': 702, 'low': 699, 'close': 701}]
+        client.stream.side_effect = failure
+        output = io.StringIO()
+        with patch.object(smoke, 'AngelMarketData', return_value=client), patch.object(smoke, 'datetime', wraps=datetime) as clock,                 patch.object(smoke, 'check_setup', return_value=READY), patch.object(smoke, 'recent_session', return_value='2026-10-12'),                 contextlib.redirect_stdout(output):
+            clock.now.return_value = now
+            self.assertEqual(smoke.main([]), 1)
+        lines = output.getvalue().splitlines()
+        self.assertEqual(lines[-2], 'Stopped at live feed: WebSocket disconnected.')
+        self.assertTrue(lines[-1].startswith('Feed close: by server, code 1008, reason withheld (12 bytes, text never shown); '
+                                             'connected 239.4s; since last message 0.4s, PING sent 9.1s, PONG back never'))

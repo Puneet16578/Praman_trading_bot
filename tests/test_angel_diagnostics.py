@@ -1,4 +1,5 @@
 """Credential-free regressions for malformed master rows and transport diagnostics."""
+import itertools
 import unittest
 import sqlite3
 import tempfile
@@ -160,7 +161,7 @@ class DiagnosticsTest(unittest.TestCase):
         sock = Mock()
         sock.recv_data.return_value = (websocket.ABNF.OPCODE_PONG, b'private')
         with patch.object(websocket, 'create_connection', return_value=sock), \
-                patch.object(a._time, 'monotonic', side_effect=[0, 0, 0, 0, 31]):
+                patch.object(a._time, 'monotonic', side_effect=itertools.chain([0, 0, 0, 0], itertools.repeat(31)).__next__):
             client.stream(['SBIN'], Mock(), as_of=DAY)
         sock.recv_data.assert_called_once_with(control_frame=True)
         sock.send.assert_called_once_with('ping')
