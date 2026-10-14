@@ -34,7 +34,9 @@ Price Bands (.csv)") and `https://www.nseindia.com/reports/price-band-changes`; 
 time. Last-Modified of the lists in the Desk store, IST: 1 Oct 19:39, 5 Oct 17:58, 6 Oct 17:55,
 7 Oct 19:24, 8 Oct 18:01, 9 Oct 19:16, 12 Oct 18:23. The 18:00 nightly reaches the step at about
 18:07, so it often asks before the list exists (13 Oct: 404 at 18:07:58). The step now asks again
-on later nights for lists it missed; each keeps its own Last-Modified date as its knowledge date.
+on later nights for lists it missed. A list's knowledge date is the later of its Last-Modified date
+and the date we fetched it (P8-083, user decision 2026-10-14), so a list fetched on a later night is
+invisible to every decision dated before that night; the same file fetched again adds nothing.
 
 ## Effective session — important distinction
 

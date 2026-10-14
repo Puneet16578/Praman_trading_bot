@@ -77,6 +77,23 @@ class CircuitBandTest(unittest.TestCase):
         self.assertEqual(band_as_of(self.conn, "A2ZINFRA", "2026-10-02", report_date="2026-09-30").percent, 10)
         self.assertEqual(self.conn.execute("SELECT COUNT(*) FROM circuit_bands").fetchone()[0], 4)
 
+    def test_a_list_fetched_on_a_later_night_is_known_only_from_that_night(self):
+        late = ingest_report(self.conn, self.content, report_date="2026-09-30", published_at=PUBLISHED,
+                             recorded_at=datetime.fromisoformat("2026-10-01T18:07:58+05:30"))
+        self.assertEqual(late, 2)
+        self.assertEqual([r[0] for r in self.conn.execute("SELECT DISTINCT knowledge_date FROM circuit_bands")],
+                         ["2026-10-01"])
+        self.assertEqual(band_as_of(self.conn, "A2ZINFRA", "2026-09-30").kind, "UNKNOWN")
+        self.assertEqual(band_as_of(self.conn, "A2ZINFRA", "2026-10-01", report_date="2026-09-30").percent, 5)
+        again = ingest_report(self.conn, self.content, report_date="2026-09-30", published_at=PUBLISHED,
+                              recorded_at=datetime.fromisoformat("2026-10-05T18:07:58+05:30"))
+        self.assertEqual(again, 0)                                  # the first knowledge date stands
+
+    def test_a_list_fetched_the_same_evening_is_known_that_day(self):
+        self.ingest()
+        self.assertEqual([r[0] for r in self.conn.execute("SELECT DISTINCT knowledge_date FROM circuit_bands")],
+                         ["2026-09-30"])
+
     def test_append_only_and_duplicate_safe(self):
         self.assertEqual(self.ingest(), 2)
         self.assertEqual(self.ingest(), 0)

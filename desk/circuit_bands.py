@@ -77,6 +77,14 @@ def ingest_report(conn, content: bytes, *, report_date: str, published_at: datet
     recorded = recorded_at or datetime.now(timezone.utc)
     if recorded.utcoffset() is None or published_at > recorded:
         raise ValueError("Price-band publication cannot be in the future")
+    # Knowledge begins at the later of NSE's Last-Modified date and the date we fetched the list
+    # (user decision 2026-10-14, P8-083): a list fetched on a later night is invisible to every
+    # decision dated before that night. recorded_at keeps the exact fetch time. The same file
+    # fetched again adds nothing, so its first knowledge date stands.
+    known = max(published_at.astimezone(IST).date(), recorded.astimezone(IST).date()).isoformat()
+    if conn.execute("SELECT 1 FROM circuit_bands WHERE event_date=? AND source_sha256=? LIMIT 1",
+                    (report_date, digest)).fetchone():
+        return 0
     before = conn.total_changes
     with conn:
         conn.executemany(
@@ -85,7 +93,7 @@ def ingest_report(conn, content: bytes, *, report_date: str, published_at: datet
             "VALUES (:symbol,:series,:security_name,:event_date,:knowledge_date,:recorded_at,"
             ":band_kind,:band_pct,:remarks,:source_url,:source_sha256,:published_at) "
             "ON CONFLICT(symbol,series,event_date,knowledge_date,source_sha256) DO NOTHING",
-            [{**row, "event_date": report_date, "knowledge_date": published_at.astimezone(IST).date().isoformat(),
+            [{**row, "event_date": report_date, "knowledge_date": known,
               "recorded_at": recorded.astimezone(timezone.utc).isoformat(), "source_url": report_url(report_date),
               "source_sha256": digest, "published_at": published_at.isoformat()} for row in rows],
         )

@@ -21,9 +21,9 @@ CATCH_UP_SESSIONS = 5
 
 def sessions_to_fetch(praman, desk) -> list[str]:
     """The store's latest trading date, plus the store's sessions after the latest stored band
-    list (a list that 404'd on an earlier night), at most CATCH_UP_SESSIONS in all. Each list keeps
-    its own Last-Modified date as its knowledge date (fetch_report refuses any other), so a late
-    fetch never backdates what an earlier run could see; recorded_at shows when it arrived."""
+    list (a list that 404'd on an earlier night), at most CATCH_UP_SESSIONS in all. A list fetched
+    on a later night is known only from that night (ingest_report, P8-083), so a decision dated
+    earlier never sees it; recorded_at keeps the exact fetch time."""
     latest = praman.execute("SELECT MAX(event_date) FROM bhavcopy").fetchone()[0]
     if latest is None:
         raise ValueError("No trading date in Praman store")

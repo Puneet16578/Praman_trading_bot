@@ -5,7 +5,7 @@ import json
 import sqlite3
 import sys
 import unittest
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -16,6 +16,7 @@ from requests import HTTPError
 from desk.circuit_bands import ingest_report
 from desk.ingestion_health import price_band_health_line
 from desk.lib.schema import init_desk_db
+from shared.market_time import IST
 
 FIXTURE = Path(__file__).parent / "fixtures/circuit_bands/nse_20260930_sample.csv"
 
@@ -32,8 +33,9 @@ def desk(stored=()):
     conn.row_factory = sqlite3.Row
     init_desk_db(conn)
     for day, published in stored:
-        ingest_report(conn, FIXTURE.read_bytes(), report_date=day, published_at=datetime.fromisoformat(published),
-                      recorded_at=datetime.fromisoformat("2026-10-14T20:00:00+05:30"))
+        at = datetime.fromisoformat(published)
+        ingest_report(conn, FIXTURE.read_bytes(), report_date=day, published_at=at,
+                      recorded_at=at + timedelta(hours=1))           # fetched the same evening
     return conn
 
 
@@ -96,7 +98,7 @@ class RunTest(unittest.TestCase):
         self.assertEqual((report["reports"], report["missing"]), (1, ["2026-10-14"]))
         self.assertIn("WARN price-band report 2026-10-14 unavailable (404); remains UNKNOWN", output.getvalue())
         known = store.execute("SELECT DISTINCT knowledge_date FROM circuit_bands WHERE event_date='2026-10-13'").fetchall()
-        self.assertEqual([r[0] for r in known], ["2026-10-13"])      # its own Last-Modified date, not today
+        self.assertEqual([r[0] for r in known], [datetime.now(IST).date().isoformat()])   # the night we fetched it (P8-083)
         self.assertEqual(store_proxy.closed, 1)
 
     def test_a_rewritten_catch_up_list_stays_unknown_and_tonights_is_still_fetched(self):

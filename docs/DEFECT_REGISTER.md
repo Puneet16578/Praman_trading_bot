@@ -2744,3 +2744,16 @@ WARN, no NSE list dated D yet; the next session's bands are UNKNOWN, so a flat b
 locked" (FLAT_UNKNOWN, P8-064), or "OK, list dated D (N rows, published HH:MM IST)". Not changed: the
 18:00 start; a same-evening wait for a late list would lengthen the nightly and is left to the user.
 Tests: tests/test_price_band_catch_up.py.
+
+## P8-083 - a price-band list fetched late was known from its publication date, not from when we had it
+
+**Severity.** Medium (look-ahead risk). **Status.** Closed — fixed 2026-10-14 (user check of P8-082).
+A list's knowledge date was its Last-Modified date. With P8-082's catch-up, a list for 13 Oct fetched
+on the night of 14 Oct would have been stored as known on 13 Oct, so anything reading bands directly
+by knowledge date (the gate engine, the lock rule, the shadow analysis; only the replay views filter
+on recorded_at) could have seen it in a decision dated 13 Oct, although no 13 Oct run had it. Now the
+knowledge date is the later of the Last-Modified date and the date we fetched the list, and fetching
+the same file again adds nothing, so its first knowledge date stands. Same-evening fetches are
+unchanged. Rows already stored are untouched (append-only); a future explicit backfill of old lists
+will be known only from the day it runs. Tests: tests/test_circuit_bands.py,
+tests/test_price_band_catch_up.py. P8-082's entry describes the earlier rule.
