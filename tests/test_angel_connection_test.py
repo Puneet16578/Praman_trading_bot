@@ -150,13 +150,22 @@ class FeedCloseLineTest(unittest.TestCase):
         client.candles.return_value = [{'timestamp': '2026-09-01T09:15:00+05:30', 'open': 700, 'high': 702, 'low': 699, 'close': 701}]
         client.stream.side_effect = failure
         output = io.StringIO()
-        with patch.object(smoke, 'AngelMarketData', return_value=client), patch.object(smoke, 'datetime', wraps=datetime) as clock,                 patch.object(smoke, 'check_setup', return_value=READY),                 contextlib.redirect_stdout(output):
+        with patch.object(smoke, 'AngelMarketData', return_value=client), \
+                patch.object(smoke, 'datetime', wraps=datetime) as clock, \
+                patch.object(smoke, 'check_setup', return_value=READY), contextlib.redirect_stdout(output):
             clock.now.return_value = now
             self.assertEqual(smoke.main([]), 1)
         lines = output.getvalue().splitlines()
         self.assertEqual(lines[-2], 'Stopped at live feed: WebSocket disconnected.')
         self.assertTrue(lines[-1].startswith('Feed close: by server, code 1008, reason withheld (12 bytes, text never shown); '
                                              'connected 239.4s; since last message 0.4s, PING sent 9.1s, PONG back never'))
+
+    def test_a_feed_we_stopped_says_so_with_a_label_and_a_length(self):
+        line = smoke.feed_close_line(dict(closed_by='client', close_code=None, close_reason=None, close_reason_bytes=0,
+                                          connected_seconds=41.0, stopped_because='unexpected text message',
+                                          stopped_message_bytes=37, frames={}))
+        self.assertTrue(line.startswith('Feed close: by client (we stopped it: unexpected text message, 37 bytes, '
+                                        'text never shown), code none'), line)
 
 
 class CandleDateAndSummaryTest(unittest.TestCase):

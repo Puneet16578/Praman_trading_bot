@@ -126,6 +126,20 @@ class KeepaliveTest(unittest.TestCase):
             self.stream(server, 20)
         details = angel.error_details(caught.exception)
         self.assertEqual((details['category'], details['stream']['frames']['text_other']), ('api_rejection', 1))
+        self.assertEqual((details['stream']['closed_by'], details['stream']['stopped_because'],
+                          details['stream']['stopped_message_bytes']), ('client', 'unexpected text message', 14))
+        self.assertNotIn('error', json.dumps(details['stream']).replace('"stopped_because"', ''))
+
+    def test_a_normal_finish_and_a_server_close_are_labelled_differently(self):
+        summary, _ = self.stream(FakeServer(self.clock), 20)
+        self.assertEqual((summary['closed_by'], summary['stopped_because'], summary['stopped_message_bytes']),
+                         ('client', 'time up', None))
+        server = FakeServer(self.clock, drop_after=30)
+        server.ping = lambda payload='': None
+        with self.assertRaises(angel.AngelError) as caught:
+            self.stream(server, 100)
+        stream = angel.error_details(caught.exception)['stream']
+        self.assertEqual((stream['closed_by'], stream['stopped_because']), ('server', None))
 
     def test_the_close_summary_has_the_requested_fields_and_no_secrets(self):
         server = FakeServer(self.clock, drop_after=30, close_reason=self.secret.encode())
@@ -136,7 +150,8 @@ class KeepaliveTest(unittest.TestCase):
         self.assertEqual(set(summary), {'closed_by', 'close_code', 'close_reason', 'close_reason_bytes',
                                         'connected_seconds', 'seconds_since_last_message', 'seconds_since_ping_sent',
                                         'seconds_since_pong_received', 'seconds_since_text_ping_sent',
-                                        'seconds_since_text_pong_received', 'frames'})
+                                        'seconds_since_text_pong_received', 'stopped_because',
+                                        'stopped_message_bytes', 'frames'})
         self.assertEqual((summary['close_reason'], summary['close_reason_bytes']), ('withheld', len(self.secret)))
         self.assertNotIn(self.secret, json.dumps(summary))
         self.assertNotIn(self.secret, str(caught.exception))

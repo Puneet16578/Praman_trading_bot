@@ -265,14 +265,25 @@ def _fmt(value, digits=2):
     return "n/a" if value is None else f"{value:.{digits}f}"
 
 
+def feed_close_text(close) -> str:
+    """Who ended the feed. When we stopped it, a fixed label and the message's length, never its text."""
+    if not close:
+        return ''
+    after = f"after {_fmt(close.get('connected_seconds'), 1)} s"
+    if close.get('closed_by') == 'client' and close.get('stopped_because'):
+        size = close.get('stopped_message_bytes')
+        return (f" | feed stopped by us: {close['stopped_because']}"
+                + (f" ({size} bytes, text never shown)" if size is not None else '') + f" {after}")
+    return f" | feed closed by {close.get('closed_by')} {after} (code {close.get('close_code') or 'none'})"
+
+
 def tier_line(r: dict) -> str:
     return (f"Tier {r['tier']}: {r['outcome']} | ticks {r['ticks']} | symbols ticking "
             f"{r['symbols_ticking']}/{r['subscribed']} | sentinels {r['sentinels_ticking']}/{r['sentinels']} | "
             f"receipt lag p50/p95/p99/max {_fmt(r['lag_p50'])}/{_fmt(r['lag_p95'])}/{_fmt(r['lag_p99'])}/"
             f"{_fmt(r['lag_max'])} s | max silence {_fmt(r['max_silence'], 1)} s | lag drift {_fmt(r['lag_drift'])} s"
             + (f" | feed category: {r['feed_diagnostic']['category']}" if r.get('feed_diagnostic') else '')
-            + (f" | feed closed by {r['feed_close']['closed_by']} after {_fmt(r['feed_close']['connected_seconds'], 1)} s"
-               f" (code {r['feed_close']['close_code'] or 'none'})" if r.get('feed_close') else '')
+            + feed_close_text(r.get('feed_close'))
             + (f" | {'; '.join(r['reasons'])}" if r["reasons"] else ""))
 
 

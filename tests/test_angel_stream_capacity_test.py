@@ -305,3 +305,19 @@ class PreflightTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class FeedCloseTextTest(unittest.TestCase):
+    def test_the_tier_line_says_who_ended_the_feed(self):
+        self.assertEqual(probe.feed_close_text(dict(closed_by='client', connected_seconds=41.04, close_code=None,
+                                                    stopped_because='unexpected text message',
+                                                    stopped_message_bytes=37)),
+                         ' | feed stopped by us: unexpected text message (37 bytes, text never shown) after 41.0 s')
+        self.assertEqual(probe.feed_close_text(dict(closed_by='client', connected_seconds=600.0, close_code=None,
+                                                    stopped_because='time up', stopped_message_bytes=None)),
+                         ' | feed stopped by us: time up after 600.0 s')
+        self.assertEqual(probe.feed_close_text(dict(closed_by='server', connected_seconds=239.4, close_code=1008)),
+                         ' | feed closed by server after 239.4 s (code 1008)')
+        self.assertEqual(probe.feed_close_text(dict(closed_by='client', connected_seconds=600.0, close_code=None)),
+                         ' | feed closed by client after 600.0 s (code none)')     # summaries written before P8-079
+        self.assertEqual(probe.feed_close_text(None), '')

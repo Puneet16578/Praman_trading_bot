@@ -355,6 +355,10 @@ def _is_text_pong(message):
     return isinstance(message, (bytes, bytearray)) and bytes(message).strip().lower() == b'pong'
 
 
+STOP_LABELS = ('unexpected text message', 'unreadable tick', 'tick handler error', 'time up', 'interrupted',
+               'other')
+
+
 class _FeedLog:
     """Close summary for one feed connection: numbers and fixed words only, never frame text."""
     def __init__(self, started):
@@ -365,9 +369,22 @@ class _FeedLog:
         self.closed_by = self.close_code = self.reason_kind = None
         self.reason_bytes = 0
         self.ended = None
+        # When we stop the feed ourselves: a fixed label and the length of the message that caused
+        # it (never its text), so a tier line cannot read as if Angel had closed the connection.
+        self.stopped_because = self.stopped_message_bytes = None
 
     def count(self, kind):
         self.frames[kind] += 1
+
+    def stop(self, at, label, message=None):
+        """We close the feed: label is one of STOP_LABELS; message only gives its length."""
+        if self.closed_by is None:
+            self.stopped_because = label if label in STOP_LABELS else 'other'
+            if isinstance(message, str):
+                message = message.encode('utf-8', 'replace')
+            if isinstance(message, (bytes, bytearray)):
+                self.stopped_message_bytes = len(message)
+        self.close('client', at)
 
     def close(self, side, at, frame=None, reason_kind=None):
         if self.closed_by is not None:
@@ -390,6 +407,7 @@ class _FeedLog:
                 'seconds_since_pong_received': self._since(self.pong_received),
                 'seconds_since_text_ping_sent': self._since(self.text_ping_sent),
                 'seconds_since_text_pong_received': self._since(self.text_pong_received),
+                'stopped_because': self.stopped_because, 'stopped_message_bytes': self.stopped_message_bytes,
                 'frames': dict(self.frames)}
 
     def attach(self, failure):
@@ -672,7 +690,7 @@ class AngelMarketData:
                         continue
                     if opcode != websocket.ABNF.OPCODE_BINARY or not isinstance(message, bytes):
                         log.count('text_other')
-                        log.close('client', log.last_message)
+                        log.stop(log.last_message, 'unexpected text message', message)
                         raise log.attach(_Failure('api_rejection'))
                     log.count('binary')
                     try:
@@ -685,14 +703,15 @@ class AngelMarketData:
                                 'price': _number(raw['last_traded_price']) / 100,
                                 'recorded_at': _now().isoformat(), 'knowledge_date': as_of}
                     except Exception:
-                        log.close('client', _time.monotonic())
+                        log.stop(_time.monotonic(), 'unreadable tick', message)
                         raise log.attach(_Failure('feed_parse')) from None
                     self._active(as_of)
                     try:
                         on_tick(tick)
                     except Exception:
-                        log.close('client', _time.monotonic())
+                        log.stop(_time.monotonic(), 'tick handler error')
                         raise log.attach(_Failure('callback')) from None
+                log.stopped_because = 'time up'
                 log.close('client', _time.monotonic(), reason_kind='deadline')
                 return log.summary()
             except AngelError as exc:
@@ -703,6 +722,8 @@ class AngelMarketData:
             except KeyboardInterrupt:
                 failure = _Failure('interrupted')
                 if log is not None:
+                    if log.closed_by is None:
+                        log.stopped_because = 'interrupted'
                     log.close('client', _time.monotonic(), reason_kind='interrupted')
                     log.attach(failure)
                 raise failure from None

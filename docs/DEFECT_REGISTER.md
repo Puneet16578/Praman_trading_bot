@@ -2685,3 +2685,17 @@ retry. Tests: tests/test_angel_candle_403.py (phrases in body and JSON, a phrase
 is not throttling, the two failure lines with a fixed clock), tests/test_angel_connection_test.py
 (date validation, the summary of the 08:10 pattern: 361 bars, 15:15-15:28 missing),
 tests/test_angel_diagnostics.py. Evidence: docs/desk/angel_candle_403_20261014.md.
+
+## P8-079 - a feed we stopped ourselves read as if Angel had closed it
+
+**Severity.** Low (diagnostics). **Status.** Closed — fixed 2026-10-14 (user request).
+When the wrapper stopped the feed itself (an unexpected text message, an unreadable tick, a tick
+handler error, or the time being up), the close summary said only "closed by client", and the
+capacity probe's tier line read "feed closed by client after N s (code none)", which looks like a
+connection that ended on its own. The summary now carries `stopped_because`, a fixed label
+(unexpected text message, unreadable tick, tick handler error, time up, interrupted), and
+`stopped_message_bytes`, the length of the message that caused it, never its text. The tier line
+says "feed stopped by us: unexpected text message (N bytes, text never shown) after S s"; a close by
+the server keeps "feed closed by server after S s (code C)". The connection test's "Feed close:" line
+says "(we stopped it: ...)". Tests: tests/test_angel_feed_keepalive.py,
+tests/test_angel_stream_capacity_test.py (FeedCloseTextTest), tests/test_angel_connection_test.py.

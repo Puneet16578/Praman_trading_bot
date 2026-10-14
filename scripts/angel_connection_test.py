@@ -110,7 +110,12 @@ def feed_close_line(summary):
     def secs(key):
         value = summary.get(key)
         return 'never' if value is None else f'{value:.1f}s'
-    return (f"Feed close: by {summary.get('closed_by')}, code {summary.get('close_code') or 'none'}, reason "
+    stopped = ''
+    if summary.get('closed_by') == 'client' and summary.get('stopped_because'):
+        size = summary.get('stopped_message_bytes')
+        stopped = (f" (we stopped it: {summary['stopped_because']}"
+                   + (f", {size} bytes, text never shown" if size is not None else '') + ')')
+    return (f"Feed close: by {summary.get('closed_by')}{stopped}, code {summary.get('close_code') or 'none'}, reason "
             f"{summary.get('close_reason') or 'none'} ({summary.get('close_reason_bytes', 0)} bytes, text never shown); "
             f"connected {secs('connected_seconds')}; since last message {secs('seconds_since_last_message')}, "
             f"PING sent {secs('seconds_since_ping_sent')}, PONG back {secs('seconds_since_pong_received')}, "
