@@ -269,11 +269,47 @@ class ProbeRunTest(unittest.TestCase):
         client = FakeClient(clock)
         client.login = Mock(side_effect=KeyboardInterrupt)
         code, summary, output = self.run_probe(client, clock)
-        self.assertEqual((code, summary['stopped']), (1, 'failed or interrupted (no detail is printed)'))
+        self.assertEqual((code, summary['stopped']), (1, 'failed at login: interrupted'))
         self.assertNotIn('Traceback', output)
+
+    def test_setup_failures_give_the_connection_tests_fixed_reasons(self):
+        from desk import angel_market_data as angel
+        clock = FakeClock(datetime(2026, 10, 14, 10, 0, tzinfo=IST))
+        for error, stopped in ((angel.AngelError('Set ANGEL_API_KEY in the environment.'),
+                                'failed at login: ANGEL_API_KEY is not set in this window: see setup step 2'),
+                               (angel.AngelError('Install the pinned optional Angel requirements.'),
+                                'failed at login: Angel library not installed (smartapi-python 1.5.5): see setup step 1'),
+                               (angel._Failure('rate_limited', 403),
+                                'failed at login: RATE_LIMITED (Angel\'s "exceeding access rate" reply) (HTTP 403).'),
+                               (RuntimeError('secret detail'), 'failed at login: unexpected error (RuntimeError)')):
+            with self.subTest(stopped=stopped):
+                client = FakeClient(clock)
+                client.login = Mock(side_effect=error)
+                code, summary, output = self.run_probe(client, clock)
+                self.assertEqual((code, summary['stopped']), (1, stopped))
+                self.assertIn(f'Stopped: {stopped}. Largest passing tier today: None', output)
+                self.assertNotIn('secret detail', output + json.dumps(summary))
+        client = FakeClient(clock)
+        client.quote = Mock(side_effect=angel._Failure('access_denied', 403))
+        _, summary, _ = self.run_probe(client, clock)
+        self.assertEqual(summary['stopped'], 'failed at quote: Access denied; cause unclassified (HTTP 403).')
 
 
 class PreflightTest(unittest.TestCase):
+    def setUp(self):
+        patcher = patch.object(probe, 'check_setup', return_value=[('Python', True, 'x')])
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_a_missing_library_refuses_before_login_with_the_connection_tests_words(self):
+        with patch.object(probe, 'head_branch', return_value='master'), \
+                patch.object(probe, 'uncommitted_nightly_inputs', return_value=[]), \
+                patch.object(probe, 'nightly_running', return_value=False), \
+                patch.object(probe, 'check_setup', return_value=[('smartapi-python', False,
+                                                                  'not installed: see setup step 1')]):
+            self.assertEqual(probe.preflight(), ['Angel library not installed or incomplete: smartapi-python '
+                                                 '(not installed: see setup step 1)'])
+
     def test_dirty_tree_other_branch_or_nightly_state_refuse(self):
         cases = [(dict(branch='other'), 'HEAD is not master (other)'),
                  (dict(dirty=['desk/x.py']), 'uncommitted changes: desk/x.py'),

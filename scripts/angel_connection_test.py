@@ -127,7 +127,8 @@ def feed_close_line(summary):
 NOTE_403 = 'see docs/desk/angel_candle_403_20261014.md'
 
 
-def _reason(exc):
+def stop_reason(exc):
+    """The fixed, credential-free reason for a stop; also used by the capacity probe (P8-081)."""
     if isinstance(exc, KeyboardInterrupt):
         return 'interrupted'
     if isinstance(exc, AngelError):
@@ -203,12 +204,12 @@ def main(argv=None):
         if stage == 'candles':
             print(f'Candle request: NSE SBIN ONE_MINUTE {candle_day} 09:15-15:30 IST, one request, no retry.', flush=True)
             opened = quote is not None and _market_open(datetime.now(IST), quote)
-            reason = _reason(exc)
+            reason = stop_reason(exc)
             print(_with_note(f'Stopped at candles: {reason}{" " if reason.endswith(".") else ". "}Market open at '
                              f'that moment: {"yes" if opened else "no"} (weekday 09:15-15:30 IST with a fresh quote).',
                              exc), flush=True)
         else:
-            print(_with_note(f'Stopped at {stage}: {_reason(exc)}', exc), flush=True)
+            print(_with_note(f'Stopped at {stage}: {stop_reason(exc)}', exc), flush=True)
         stream_summary = error_details(exc).get('stream') if isinstance(exc, AngelError) else None
         if stage == 'live feed' and stream_summary:
             print(feed_close_line(stream_summary), flush=True)

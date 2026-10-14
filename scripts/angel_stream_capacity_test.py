@@ -35,7 +35,8 @@ sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from desk.angel_market_data import AngelError, AngelMarketData, error_details
+from desk.angel_market_data import AngelError, AngelMarketData, check_setup, error_details
+from scripts.angel_connection_test import stop_reason
 from scripts.weekly_ingest import NIGHTLY_BRANCH, _prevent_sleep, head_branch, uncommitted_nightly_inputs
 from shared.log_paths import logs_dir
 from shared.market_time import IST
@@ -107,6 +108,9 @@ def preflight() -> list[str]:
     running = nightly_running()
     if running is not False:
         reasons.append("the nightly is running" if running else "the nightly's state could not be read")
+    missing = [f"{item} ({detail})" for item, ok, detail in check_setup() if not ok]
+    if missing:
+        reasons.append("Angel library not installed or incomplete: " + "; ".join(missing))
     return reasons
 
 
@@ -310,14 +314,16 @@ def run(client=None, *, now=now_ist, tiers=None) -> int:
                                                            drift=DRIFT_LIMIT), ranked=len(ranked))
     stamp = started.strftime("%Y%m%d_%H%M%S")
     store = TickStore(PROBE_DIR / f"capacity_{stamp}.sqlite")
-    result = 0
+    result, stage = 0, "login"
     try:
         with _prevent_sleep():
             client.login()
+            stage = "scrip master"
             mapped = client.download_scrip_master(ranked, as_of=day)
             symbols = [s for s in ranked if s in mapped["mapped"]]
             sentinels = symbols[:SENTINEL_COUNT]
             summary.update(mapped=len(symbols), unmapped=mapped["unmapped"], sentinel_symbols=sentinels)
+            stage = "quote"
             if not sentinels or not market_open(now(), client.quote(sentinels[0], as_of=day)):
                 summary["stopped"] = "market not confirmed open (no fresh exchange quote)"
                 return result
@@ -332,6 +338,7 @@ def run(client=None, *, now=now_ist, tiers=None) -> int:
                 if nightly_running() is not False:
                     summary["stopped"] = "the nightly started or its state could not be read"
                     break
+                stage = f"tier {tier}"
                 stats = TierStats(tier, symbols[:tier], store, begin)
                 before = store.size()
                 cpu = clock.process_time()
@@ -351,9 +358,11 @@ def run(client=None, *, now=now_ist, tiers=None) -> int:
                     break
             else:
                 summary["stopped"] = "all tiers ran"
-    except (Exception, KeyboardInterrupt):
+    except (Exception, KeyboardInterrupt) as exc:
+        # The connection test's fixed reasons (key not set, SDK missing, login failed, ...): no
+        # secrets, no raw replies (P8-081; it used to say only "failed or interrupted").
         result = 1
-        summary["stopped"] = "failed or interrupted (no detail is printed)"
+        summary["stopped"] = f"failed at {stage}: {stop_reason(exc)}"
     finally:
         try:
             client.logout()

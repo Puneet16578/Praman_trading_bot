@@ -2711,3 +2711,14 @@ letters and four digits (Angel's pattern, e.g. AB1004). Never any message text. 
 `error_details(...)['reply']`; the connection test prints "Reply: <kind>, <n> bytes, error code
 <code> | no Angel error code (text never shown)." before its stop line. Throttling replies and
 classified denials carry no shape. Tests: tests/test_angel_candle_403.py.
+
+## P8-081 - the capacity probe hid why it stopped when setup was incomplete
+
+**Severity.** Low (usability). **Status.** Closed — fixed 2026-10-14 (user report).
+On 2026-10-14 at 14:59 and 15:01 the user's probe runs stopped within a second, before any feed,
+because ANGEL_API_KEY was not set; the summary and the last line said only "failed or interrupted
+(no detail is printed)". The probe now gives the connection test's fixed reasons (one owner,
+`stop_reason` in scripts/angel_connection_test.py) with the stage: for example "failed at login:
+ANGEL_API_KEY is not set in this window: see setup step 2". A missing or wrong SDK is refused before
+login with the connection test's words. The reasons are fixed text and hold no secrets; an unexpected
+exception gives only its type. Tests: tests/test_angel_stream_capacity_test.py.

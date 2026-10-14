@@ -1,3 +1,16 @@
+## 2026-10-14 (from 15:33): Part B, items 1-7 first (Claude)
+
+User's live results today (recorded as observations, no cause claimed; prices left out):
+- 14:5x IP check False: the user's public IP is not the one registered with Angel; every run
+  below came from this unregistered address.
+- 14:59 and 15:01 capacity summaries (logs/angel_capacity_20261014_145944.json, _150117.json):
+  setup failures, ANGEL_API_KEY not set, stopped within a second with no tier; they said only
+  "failed or interrupted (no detail is printed)". Not feed failures. Fixed as P8-081.
+- 15:04-15:14 `--only-25`: Tier 25 PASS, 21,889 ticks, 25/25 symbols, 10/10 sentinels, receipt lag
+  p50/p95/p99/max 1.02/1.47/1.53/2.09 s, max silence 0.8 s, drift 0.03 s, stopped by us at 600.0 s.
+- 15:21 connection test: login and quote OK; candles for 2026-09-01 RATE_LIMITED (HTTP 403),
+  market open. The first real Angel reply the RATE_LIMITED check has matched.
+
 ## 2026-10-14 (from 13:55): finishing Codex's Angel work, Part A (Claude)
 
 - A1: Codex's uncommitted 403 diagnostics (P8-076) reviewed against the user's criteria and
