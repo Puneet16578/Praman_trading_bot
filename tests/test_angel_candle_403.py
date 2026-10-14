@@ -169,6 +169,44 @@ class Candle403Test(unittest.TestCase):
         self.assertNotIn('static ip', '\n'.join(closed).lower())
         self.assertNotIn('angel_candle_403', '\n'.join(throttled))     # the note only ends unexplained denials
 
+    def test_an_unexplained_403_keeps_its_shape_never_its_content(self):
+        secret = self.secret
+        cases = [
+            (self.response(403, {'status': False, 'message': secret, 'errorcode': 'AB1004', 'data': None},
+                           content=b'{"x": 1}' + b' ' * 20), dict(kind='JSON', bytes=28, error_code='AB1004')),
+            (self.response(403, {'message': secret, 'errorcode': 'XY12345'}, content=b'{}'),
+             dict(kind='JSON', bytes=2, error_code=None)),          # five digits: not Angel's pattern
+            (self.response(403, {'message': secret, 'errorcode': 'ab1004'}, content=b'{}'),
+             dict(kind='JSON', bytes=2, error_code=None)),
+            (self.response(403, content=b'  <html><body>' + secret.encode() + b'</body></html>'),
+             dict(kind='HTML', bytes=28 + len(secret), error_code=None)),
+            (self.response(403, content=b'Forbidden ' + secret.encode()), dict(kind='plain text',
+                                                                             bytes=10 + len(secret), error_code=None)),
+            (self.response(403), dict(kind='empty', bytes=0, error_code=None)),
+        ]
+        for reply, shape in cases:
+            with self.subTest(shape=shape):
+                exc = self.failure(reply)
+                details = a.error_details(exc)
+                self.assertEqual((details['category'], details['reply']), ('access_denied', shape))
+                self.assertNotIn(secret, json.dumps(details))
+        throttled = a.error_details(self.failure(self.response(403, content=b'Access denied because of exceeding access rate')))
+        self.assertNotIn('reply', throttled)                                      # only unexplained 403s
+        self.assertNotIn('reply', a.error_details(self.failure(self.response(429))))
+
+    def test_the_connection_test_prints_the_shape_before_the_stop_line(self):
+        client = Mock()
+        client.quote.side_effect = self.failure(self.response(403, {'message': self.secret, 'errorcode': 'AB1004'},
+                                                              content=b'{"message": "..."}'))
+        output = io.StringIO()
+        with patch.object(smoke, 'AngelMarketData', return_value=client), \
+                patch.object(smoke, 'check_setup', return_value=[]), contextlib.redirect_stdout(output):
+            self.assertEqual(smoke.main([]), 1)
+        lines = output.getvalue().splitlines()
+        self.assertEqual(lines[-2], 'Reply: JSON, 18 bytes, error code AB1004 (text never shown).')
+        self.assertTrue(lines[-1].endswith('see docs/desk/angel_candle_403_20261014.md'))
+        self.assertNotIn(self.secret, output.getvalue())
+
     def test_an_unexplained_denial_outside_candles_also_ends_with_the_note_and_names_no_suspect(self):
         client = Mock()
         client.quote.side_effect = self.failure(self.response(403))

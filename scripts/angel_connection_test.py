@@ -136,6 +136,16 @@ def _reason(exc):
     return f'unexpected error ({type(exc).__name__})'
 
 
+def reply_shape_line(exc):
+    """An unexplained denial's shape (kind, bytes, Angel-pattern error code), never its text."""
+    shape = error_details(exc).get('reply') if isinstance(exc, AngelError) else None
+    if not shape:
+        return None
+    size = 'length unknown' if shape.get('bytes') is None else f"{shape['bytes']} bytes"
+    code = f"error code {shape['error_code']}" if shape.get('error_code') else 'no Angel error code'
+    return f"Reply: {shape.get('kind')}, {size}, {code} (text never shown)."
+
+
 def _with_note(line, exc):
     if isinstance(exc, AngelError) and error_details(exc)['category'] in ('access_denied', 'permission_denied'):
         return line.rstrip('.') + '; ' + NOTE_403
@@ -188,6 +198,8 @@ def main(argv=None):
         stage = 'logout'
     except (Exception, KeyboardInterrupt) as exc:
         result = 1
+        if reply_shape_line(exc):
+            print(reply_shape_line(exc), flush=True)
         if stage == 'candles':
             print(f'Candle request: NSE SBIN ONE_MINUTE {candle_day} 09:15-15:30 IST, one request, no retry.', flush=True)
             opened = quote is not None and _market_open(datetime.now(IST), quote)

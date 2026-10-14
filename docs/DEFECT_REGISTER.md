@@ -2699,3 +2699,15 @@ says "feed stopped by us: unexpected text message (N bytes, text never shown) af
 the server keeps "feed closed by server after S s (code C)". The connection test's "Feed close:" line
 says "(we stopped it: ...)". Tests: tests/test_angel_feed_keepalive.py,
 tests/test_angel_stream_capacity_test.py (FeedCloseTextTest), tests/test_angel_connection_test.py.
+
+## P8-080 - an unexplained 403 left no trace of what kind of reply it was
+
+**Severity.** Low (diagnostics). **Status.** Closed — fixed 2026-10-14 (user request).
+An HTTP 403 that matched no known indicator became "Access denied; cause unclassified" and nothing
+else, so a later run could not say whether Angel had answered with JSON, an HTML gateway page or a
+line of text. Such a 403 now carries its shape only: kind (JSON, HTML, plain text or empty), its
+length in bytes, and an error code only when the JSON's error-code field is exactly two capital
+letters and four digits (Angel's pattern, e.g. AB1004). Never any message text. It is in
+`error_details(...)['reply']`; the connection test prints "Reply: <kind>, <n> bytes, error code
+<code> | no Angel error code (text never shown)." before its stop line. Throttling replies and
+classified denials carry no shape. Tests: tests/test_angel_candle_403.py.

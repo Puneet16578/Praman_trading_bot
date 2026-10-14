@@ -89,7 +89,8 @@ Feed close: by <server|client|connection_lost>, code <n|none>, reason <kind> (<n
 ```
 
 RATE_LIMITED means the reply was exactly Angel's throttling phrase; the reply itself is never
-printed. No raw error, response, token, header or credential is ever printed, and nothing
+printed. An unexplained 403 is preceded by its shape only, for example
+`Reply: plain text, 46 bytes, no Angel error code (text never shown).` No raw error, response, token, header or credential is ever printed, and nothing
 is saved to a log or store.
 
 When the market is closed, the quote and historical candles still run; only the

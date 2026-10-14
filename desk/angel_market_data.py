@@ -10,6 +10,7 @@ caches too. Raw observations only; no return/outcome API exists.
 """
 from __future__ import annotations
 
+import re as _re
 import datetime as _dt
 import contextlib as _contextlib
 import getpass as _getpass_module
@@ -158,8 +159,36 @@ def error_details(exc):
         details = {'category': exc.category, 'http_status': exc.http_status}
         if isinstance(getattr(exc, 'stream_summary', None), dict):
             details['stream'] = exc.stream_summary
+        if isinstance(getattr(exc, 'reply_shape', None), dict):
+            details['reply'] = exc.reply_shape
         return details
     return {'category': 'unknown', 'http_status': None}
+
+
+_ANGEL_CODE = _re.compile(r'[A-Z]{2}[0-9]{4}')
+
+
+def _reply_shape(body, parsed):
+    """An unexplained 403's shape, never its content (user, 2026-10-14): JSON, HTML, plain text or
+    empty; its length in bytes; and an error code only if the JSON's error-code field is exactly
+    Angel's pattern (two capital letters and four digits, like AB1004). No message text."""
+    raw = bytes(body) if isinstance(body, (bytes, bytearray)) else None
+    if parsed is not None:
+        kind = 'JSON'
+    elif raw is None or not raw.strip():
+        kind = 'empty'
+    elif raw.lstrip()[:1] == b'<':
+        kind = 'HTML'
+    else:
+        kind = 'plain text'
+    code = None
+    if isinstance(parsed, dict):
+        for key in ('errorcode', 'errorCode', 'error_code'):
+            value = parsed.get(key)
+            if isinstance(value, str) and _ANGEL_CODE.fullmatch(value):
+                code = value
+                break
+    return {'kind': kind, 'bytes': None if raw is None else len(raw), 'error_code': code}
 
 
 def _response_json(response, *, api_errors=False):
@@ -178,6 +207,10 @@ def _response_json(response, *, api_errors=False):
                 category = 'rate_limited'
             else:
                 category = _broker_category(parsed) or category
+            if category == 'access_denied':
+                failure = _Failure(category, status)
+                failure.reply_shape = _reply_shape(body, parsed)
+                raise failure from None
         raise _Failure(category, status) from None
     try:
         return response.json()
