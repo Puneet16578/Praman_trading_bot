@@ -225,17 +225,24 @@ def health_lines(praman_conn, run_date, current_run_start=None, desk_conn=None):
     return lines
 
 
-def record_skipped_run(day, notice, *, out_dir=None):
+SKIP_NOTICE_MARK = 'nightly run skipped'
+
+
+def record_skipped_run(day, notice, *, out_dir=None, retry=None):
     """A nightly run skipped before any step (low battery, P8-053; the code guard, P8-059) leaves
     its WARN in that day's brief: a short brief if none exists for the day, otherwise the notice is
-    appended. An existing brief is never replaced. Default folder: logs/ (a temporary folder under tests)."""
+    appended. An existing brief is never replaced. One skip notice per evening (user decision
+    2026-10-18): when the brief already holds one and `retry` is given (a 20:00 or 22:00 retry that
+    skipped again), only that one line is added under it. Default folder: logs/ (a temporary
+    folder under tests)."""
     from shared.log_paths import logs_dir
     out_dir = out_dir or logs_dir()
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / f'brief_{day}.txt'
     if path.exists():
+        already = SKIP_NOTICE_MARK in path.read_text(encoding='utf-8')
         with path.open('a', encoding='utf-8', newline='\n') as stream:
-            stream.write(f'\n{notice}\n')
+            stream.write(f'  {retry}\n' if already and retry else f'\n{notice}\n')
     else:
         path.write_text(f'PRAMAN - DAILY DECISION DESK  {day}\n\n{notice}\n', encoding='utf-8', newline='\n')
     return path

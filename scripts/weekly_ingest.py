@@ -519,6 +519,26 @@ def head_branch(root: Path = ROOT) -> str | None:
     return name if done.returncode == 0 and name else None
 
 
+# Retries of a skipped evening (user decision 2026-10-18, option A): the task also fires at 20:00
+# and 22:00 IST. A run that STARTED this evening (at or after 18:00 IST today) counts as done,
+# whether it ended OK, WARN or ERROR or is still running; only a skipped attempt (no step ran) is
+# tried again. A run that started before 18:00 (a morning recovery after a missed evening) does not
+# count, so that day's own evening run still happens. `--run-again` overrides, for a manual re-run.
+EVENING_START_HOUR = 18
+_STARTED_LINE = re.compile(r"^=== (?P<start>\S+) weekly_ingest started ===\s*$", re.M)
+
+
+def evening_run_started(log_text: str, now: datetime) -> str | None:
+    """The start stamp of a run that began this evening, or None."""
+    from shared.market_time import parse_logged_timestamp
+    today = now.astimezone(IST).date()
+    for m in _STARTED_LINE.finditer(log_text):
+        moment = parse_logged_timestamp(m.group("start")).astimezone(IST)
+        if moment.date() == today and moment.hour >= EVENING_START_HOUR:
+            return m.group("start")
+    return None
+
+
 def _skip_low_battery(started: str, percent: int) -> int:
     return _skip(started, f"on battery at {percent}% (below {MIN_BATTERY_PERCENT}%)")
 
@@ -533,7 +553,8 @@ def _skip(started: str, reason: str) -> int:
                            f"WARN {started}: nightly run skipped, {reason}. No step ran: no ingestion, desk scan, "
                            "Strategy 0 run or backup. The next run catches up on the data. Strategy 0 decides the latest "
                            "session only if a run decides it before 09:00 IST on the next weekday; otherwise "
-                           "the next run records that session as a burn-in gap.")
+                           "the next run records that session as a burn-in gap.",
+                           retry=f"Retried {started[11:16]} IST: still skipped, {reason}.")
     except Exception as exc:  # the log line is the durable record; a brief problem must not hide it
         _append_log(f"  [power] WARN the skip could not be recorded in the brief ({type(exc).__name__})")
     return 0
@@ -558,9 +579,16 @@ def _prevent_sleep():
             raise RuntimeError("Could not restore Windows execution state")
 
 
-def main() -> int:
+def main(argv=None) -> int:
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    started = datetime.now(IST).isoformat(timespec="microseconds")
+    now = datetime.now(IST)
+    started = now.isoformat(timespec="microseconds")
+    again = "--run-again" in (sys.argv[1:] if argv is None else argv)
+    earlier = None if again or not LOG_PATH.exists() else \
+        evening_run_started(LOG_PATH.read_text(encoding="utf-8"), now)
+    if earlier is not None:
+        _append_log(f"=== {started} weekly_ingest retry not needed: this evening's run started at {earlier} ===")
+        return 0
     on_battery, percent = power_status()
     if on_battery and percent is not None and percent < MIN_BATTERY_PERCENT:
         return _skip_low_battery(started, percent)

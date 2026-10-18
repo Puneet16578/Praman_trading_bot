@@ -1,5 +1,33 @@
 # Operations
 
+## Retrying a skipped evening at 20:00 and 22:00 (2026-10-18) — operational change, not a pre-registration amendment
+
+**Why.** The 15 and 16 Oct runs were skipped on battery (13%, 18%) and nothing tried again, so both
+sessions became Strategy 0 burn-in gaps and their tick sizes stayed UNKNOWN for good.
+**Change (user decision 2026-10-18, option A of docs/desk/battery_retry_proposal_20261018.md).**
+`PramanDailyIngest` stays one task; two weekday triggers were added at 20:00 and 22:00 IST beside the
+unchanged 18:00 one. `scripts/weekly_ingest.py` first checks the log: if a run started this evening
+(at or after 18:00 IST today), whether it ended OK, WARN or ERROR or is still running, it writes
+"weekly_ingest retry not needed: this evening's run started at ..." and stops, before the battery
+check. Only a skipped evening is retried, and every retry passes the same 30% battery rule and the
+P8-059 code guard. A run that started before 18:00 (a morning recovery) does not count, so that day's
+evening run still happens. `IgnoreNew` keeps a retry from starting while a run is in progress.
+`--run-again` overrides the check for a manual re-run. The brief keeps one skip notice per evening:
+a retry that skips again adds one "Retried HH:MM IST: still skipped, ..." line under it.
+Tests: tests/test_battery_retry.py. The task's XML before the change is backed up, uncommitted, in
+logs/task_backups/PramanDailyIngest_20261018T102546.xml. Commands used:
+
+```powershell
+$task = Get-ScheduledTask -TaskName PramanDailyIngest
+$days = 'Monday','Tuesday','Wednesday','Thursday','Friday'
+$t20 = New-ScheduledTaskTrigger -Weekly -WeeksInterval 1 -DaysOfWeek $days -At ([datetime]'2026-09-28 20:00:00')
+$t22 = New-ScheduledTaskTrigger -Weekly -WeeksInterval 1 -DaysOfWeek $days -At ([datetime]'2026-09-28 22:00:00')
+Set-ScheduledTask -TaskName PramanDailyIngest -Trigger @($task.Triggers[0], $t20, $t22)
+```
+
+Verified after the change: three triggers (18:00, 20:00, 22:00, Monday to Friday); the 18:00 trigger,
+the action, the settings and the principal are identical to the backup.
+
 ## Working-tree guard for the nightly (P8-059, 2026-10-13) — operational change, not a pre-registration amendment
 
 Before any step, the nightly checks that `master` is checked out (`git rev-parse --abbrev-ref
