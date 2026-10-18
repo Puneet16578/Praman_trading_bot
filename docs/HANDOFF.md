@@ -1,3 +1,30 @@
+## 2026-10-18 (Codex): single T1 development evaluation completed and locked
+
+- Loader repair fcf9711; third rehearsal matched all saved analytical fields.
+- Runner frozen at a4aa42ddba347517f0f00b4c0870231b758b3dc5 on clean master.
+  Full suite before outcome access: 1,039 tests in 263.863 seconds, OK.
+- One invocation of `python -B scripts/t1_development.py`, exit 0; no crash/retry.
+  Commit and 59 file hashes plus bounded logical SQL-row hashes were recorded
+  before real outcome access in docs/desk/t1_development_manifest_20261018.json.
+- Results and manifest committed immediately as 1bca727. Locked report:
+  docs/desk/t1_development_results_20261018.md. No code, setting, threshold or
+  result changes after outcome access. Local machine output is
+  data/t1/development_20261018.json; persistent .started.json marker prevents rerun.
+- All three verdicts FAIL, not INCONCLUSIVE. Standardised differences / family
+  98.333333% intervals (percentage points): V1 +3.04997524 [-1.94362883,10.65590136];
+  V2 +6.43782516 [-3.53869400,25.50255506]; V3 -1.25378450 [-2.36239255,-0.53342089].
+  Positive quintiles 5/5,5/5,1/5; coverage 100%,85.73402876%,98.41256713%; usable
+  draws 2000,1999,2000. Applicable spells 9/13 and all cell minimums satisfied.
+  No primary contrast unavailable. V1/V2 fail the strictly-positive family lower
+  bound; V3 also fails magnitude and directional consistency.
+- Identity exclusions 186,581 disclosed. 2025 remains PARTIALLY EXPOSED as required;
+  no 2025 input/outcome payload read for this evaluation, and no hold-out run.
+- These are conditional historical associations with shared-price coupling, not
+  profitability, calibration or permission to activate risk rules. No policy change.
+- P8-087 resolved; P8-088 low-priority SQLite ResourceWarnings remains open/unfixed.
+  No further tests or computations after the real run; this final edit is handoff only.
+- Monday after-run Part 2 remains deferred until the user asks.
+
 ## 2026-10-18 (Codex): P8-087 repaired; third rehearsal matched; evaluation runner frozen
 
 - fcf9711 closes P8-087: all development loaders bound before SQL/payload reads;
