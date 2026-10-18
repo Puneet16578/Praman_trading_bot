@@ -2837,3 +2837,33 @@ Verification: 16 brief tests pass, including five new cases for exact formatting
 deduplication/multiple gates, subset semantics, safe fallback labels and G7/G8
 exclusion. Read-only rendering for 14 October matches the user's requested line
 exactly; no brief file was written or overwritten.
+
+## P8-087 - T1 development loaders read later dates before restricting the panel
+
+**Severity.** Medium (research isolation). **Status.** Open, found 2026-10-18
+during preflight for the user's once-only development evaluation; evaluation not started.
+At code `9dea1e8b785b4c4aeb0c044e8774478c3210ea7d`, `desk/t1/panel.py:56`
+queries the next 40 event dates after `end`, even when `end` is 2024-12-31.
+`desk/t1/inputs.py` loads all cached index histories/snapshots without a date bound,
+and `panel.snapshot_identities` reads every cached ISIN snapshot, including later
+files. Restricting the assembled panel to development dates does not prevent those
+reads. The outcome reader checks the assembled panel, not these earlier source reads.
+The second rehearsal did not compute real outcomes, but its loader was not isolated
+from later source dates. Its reported development metrics do not prove read isolation.
+
+The user's current requirement is stronger: no 2025 date read for inputs or outcomes.
+Stopped before any real evaluation. Evidence is static source inspection; did not
+execute the unrestricted loaders to reproduce the unwanted read. A repair must
+bound source access before loading, omit post-development calendar queries, and
+test the boundary before a separately authorised run. No repair or retry performed.
+
+## P8-088 - Test suite emits unclosed SQLite connection ResourceWarnings
+
+**Severity / priority.** Low. **Status.** Open, logged 2026-10-18 at the user's request.
+The full suite at `dea07c7` passed 1,029 tests in 231.224 seconds (exit 0), but Python
+3.13 emitted `ResourceWarning: unclosed database in <sqlite3.Connection ...>`.
+Warnings surfaced during garbage collection in unittest.mock, bitemporal guards,
+Desk schema/fixtures and other modules. Those locations do not establish where
+each connection was opened; exact owners remain untraced. No failing assertion
+or demonstrated durable-store damage. Investigate test-fixture connection cleanup
+in a later task. No fix, warning suppression or rerun performed for this item.

@@ -1,3 +1,20 @@
+## 2026-10-18 (Codex): once-only T1 development evaluation stopped in preflight
+
+- Clean master at 9dea1e8b785b4c4aeb0c044e8774478c3210ea7d before inspection.
+- Reconciled the 350: 183 already excluded fund units, 166 incomplete ATR windows,
+  1 unadjustable ATR window. All move to identity_unknown; only 1,803 lose eligibility.
+  Input-only read-only audit, no real outcomes. No count bug.
+- P8-087 OPEN: panel loader queries dates after the development end; index/ISIN
+  loaders read later files before trimming. Violates the user's strict no-2025-read
+  requirement. Found statically before running these loaders or any real evaluation.
+- Stopped as instructed. No evaluation attempt, results file, verdict or real-outcome
+  access; no code/settings/threshold changes, workaround or retry. Repair and a run
+  need the user's next instruction. See docs/desk/t1_development_preflight_20261018.md.
+- P8-088 OPEN, low priority: SQLite ResourceWarnings from the prior 1,029-test passing
+  suite logged, not fixed. Documentation-only changes; no test rerun after the stop.
+- Nightly task checked read-only: Ready. No durable-store or task changes.
+  2025 hold-out and Monday after-run Part 2 remain unstarted.
+
 ## 2026-10-18 (Codex, Part 1): T1 addendum 3, timing repair, second rehearsal, brief
 
 - User resolved two protocol conflicts explicitly. Final timing keeps stock EQ
