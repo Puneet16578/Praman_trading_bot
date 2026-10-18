@@ -2930,3 +2930,5 @@ the patch, and no real hold-out outcome was read. Prepared work is stashed pendi
 separate approval to repair the test isolation; P8-089 is not yet closed.
 
 After P8-090 was fixed separately, the restored runner passed the full suite: 1,049 tests in 215.789 seconds, OK. No feature, threshold or firewall change. Rehearsals remain required before real hold-out access.
+
+P8-089 integration checks at a51cff1: all development rehearsal analytical fields match the third rehearsal exactly; the guarded 2025 random-label rehearsal completes. Full tables and artifact integrity checks are in docs/desk/t1_holdout_rehearsal_2025.md. No real hold-out outcome read at this stage.

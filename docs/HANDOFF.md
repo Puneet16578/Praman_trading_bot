@@ -1,3 +1,27 @@
+## 2026-10-18 (Codex): both T1 rehearsal checks passed before once-only 2025 evaluation
+
+- Clock-test fix 9cc2558 pushed; runner a51cff1 passed 1,049 tests in 215.789 seconds.
+- Development random-label artifact data/t1/rehearsal_20261018T161737Z.json matches
+  every saved analytical field of the third rehearsal exactly. Runtime 29.0 seconds;
+  peak working set 2,098,688,000 bytes (execution metadata reported separately).
+- Hold-out random-label rehearsal completed with reader/firewall sealed and a
+  2025-12-31 read ceiling. Tables: docs/desk/t1_holdout_rehearsal_2025.md.
+  228 decision sessions through Dec 2, 20 purged sessions Dec 3-31; 395,621 eligible
+  stock-days, 21,301 identity exclusions, 386,055 complete windows (97.5820292654%).
+- All state coverage 100%. V1/V2 spells 1/2 and usable draws 1,718/1,715 necessarily
+  imply INCONCLUSIVE; these are registered statistical limits, not execution errors.
+  V3 has 2,000 usable draws. No criteria were loosened or changed.
+- Locked development boundaries and weights are read unchanged (all weights 0.2).
+  All four development artifact hashes match before/after both rehearsals.
+- Next action is the user's approved once-only `python -B scripts/t1_holdout.py evaluate`
+  on clean master. It records commit and input hashes before real outcome access,
+  refuses source/input/rehearsal mismatch or any repeated attempt, and writes the
+  full results/manifest. Commit those immediately, then push. No automatic retry.
+- At this pre-run commit no real hold-out outcome has been read. If the result file
+  docs/desk/t1_holdout_results_2025.md exists, treat it as locked and do not rerun.
+- P8-088 ResourceWarnings remain open; no other clock/log test changes. No 2026
+  input/outcome payload, real trade action, nightly task or Strategy 0 change.
+
 ## 2026-10-18 (Codex): T1 runner work resumed after P8-090
 
 - Clock-isolation fix 9cc2558 passed 1,039 tests and was pushed.
