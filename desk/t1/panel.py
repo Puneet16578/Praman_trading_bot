@@ -96,4 +96,5 @@ def load_panel(praman_conn, index_closes: dict, snapshots: list[tuple[str, dict]
     return Panel(sessions=sessions, symbols=symbols, raw_close=raw["close"], close=raw["close"] * scale,
                  high=raw["high"] * scale, low=raw["low"] * scale, known=known, breaks=breaks,
                  identity=identity_matrix(sessions, symbols, snapshots), index=index,
-                 store_missing_sessions=missing, weekend_specials=specials, forward_sessions=forward)
+                 store_missing_sessions=missing, weekend_specials=specials, forward_sessions=forward,
+                 open=raw["open"] * scale)

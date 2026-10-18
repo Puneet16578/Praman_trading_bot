@@ -13,9 +13,10 @@ A missing bar is never forward-filled; a window needs every one of its bars.
 
 Calendar of global sessions: before 2019-10-01 (no stock data), the official index's weekday
 sessions; from 2019-10-01, the store's sessions plus any weekday index session the store lacks
-(2022-08-08), on which every stock is missing. Weekend special sessions (budget Saturdays,
-Muhurat) are not in the calendar: Praman never stores weekend sessions. Both choices are stated in
-the coverage report for the user's review.
+(2022-08-08), on which every stock is missing. A weekend special session (budget Saturday,
+Muhurat, special Saturday) is in the calendar only when the store has it: four are stored, each from
+the following weekday holiday's file, and four are not (P8-070). Both choices are stated in the
+coverage report and docs/desk/t1_coverage_decisions_20261018.md for the user's review.
 """
 from __future__ import annotations
 
@@ -55,6 +56,7 @@ class Panel:
     store_missing_sessions: list = field(default_factory=list)
     weekend_specials: list = field(default_factory=list)
     forward_sessions: list = field(default_factory=list)   # 2026 session dates, for censoring only
+    open: np.ndarray | None = None   # fully back-adjusted; the outcome step checks it (desk/t1_outcome)
 
 
 def build_calendar(store_sessions: set[str], index_dates: set[str], end: str = STUDY_END):
