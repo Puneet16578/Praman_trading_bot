@@ -1,3 +1,23 @@
+## 2026-10-18 (third round): T1 addendum stopped again; rehearsal; battery retry live (Claude)
+
+- 1 T1 addendum 3: STOPPED, nothing recorded. (d) refers to "the evidence or ASSUMPTION labels the
+  build already carries", but for stock bars (knowledge kept as a date; the build uses a bar on its
+  own session, while the pre-registration says date-only evidence counts from the next session) and
+  for the ISIN snapshots (no Last-Modified kept; no label) there are none. Logged as P8-085 (open).
+  (h) also needs one word: the purged December sessions leave the bootstrap's dates, but their bars
+  must still complete the outcome windows of the last development decisions.
+- 2 bfee6cc + 3c9f385 T1 rehearsal (docs/desk/t1_rehearsal_20261018.md): real store, seeded random
+  labels, real outcome sealed and tested; 31.9 s, 2.09 GB peak, no errors; coverage V1 100%, V2 85.7%,
+  V3 98.4%; every cell >= 100 windows and 30 dates; usable draws 2000/1999/2000. Real run not started.
+- 3 8266abf P8-084 decision time confirmed and recorded in the audit note.
+- 4 6ad52de battery retry (option A): 20:00 and 22:00 weekday triggers added to PramanDailyIngest
+  (still one task; 18:00 trigger, action, settings and principal identical to the backup in
+  logs/task_backups/); a run started this evening counts as done; one skip notice per evening.
+- 5 Checks list and 14 Oct counts: in the report; nothing changed.
+- Full suite: 1019 tests in 205.301s, OK, exit 0 (10:40-10:44). Nothing stashed.
+- Part 2 (after Monday's run, when the user says): as before, plus whether the 20:00 and 22:00
+  triggers fired and did nothing (look for "weekly_ingest retry not needed" lines in the log).
+
 ## 2026-10-18 (second round, Part 1): T1 addendum stopped; P8-084 two clocks; battery retry proposal (Claude)
 
 - 1 T1 addendum: STOPPED, nothing recorded. Part (a) conflicts with the pre-registration ("A stock
