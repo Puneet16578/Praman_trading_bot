@@ -26,7 +26,7 @@ ISIN = ROOT / "data" / "raw" / "isin_snapshots"
 
 
 def main() -> int:
-    F.refuse_outside_study(F.STUDY_END)
+    F.refuse_outside_study(F.DEVELOPMENT_END)
     commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     index_closes, mismatches = inputs.load(RAW)

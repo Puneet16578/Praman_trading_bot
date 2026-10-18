@@ -224,7 +224,7 @@ def late_known_sessions(praman_conn) -> list[tuple[str, str, int]]:
     return [tuple(r) for r in praman_conn.execute(
         "SELECT event_date, MIN(knowledge_date), COUNT(*) FROM bhavcopy WHERE series='EQ' AND event_date BETWEEN ? AND ? "
         "AND julianday(knowledge_date) - julianday(event_date) > 3 GROUP BY event_date ORDER BY 1",
-        (F.STUDY_START, F.STUDY_END))]
+        (F.STUDY_START, F.DEVELOPMENT_END))]
 
 
 def file_sha256(path: Path) -> str:

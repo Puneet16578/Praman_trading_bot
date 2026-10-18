@@ -10,8 +10,10 @@ from __future__ import annotations
 import csv
 import io
 import json
+import re
 from datetime import date, datetime
 from pathlib import Path
+from desk.t1.read_guard import READ_END, T1ReadRefused, check_date, select_range
 
 SERIES = ("NIFTY 50", "NIFTY 500", "INDIA VIX")
 KNOWLEDGE_RULE = "known from the next global session (ASSUMPTION, T1 addendum 2)"
@@ -21,13 +23,23 @@ def _ledger(path: Path) -> list[dict]:
     return [json.loads(l) for l in path.read_text(encoding="utf-8").splitlines() if l.strip()] if path.exists() else []
 
 
-def history_rows(phase2_dir: Path) -> list[dict]:
+def history_rows(phase2_dir: Path, *, end: str = READ_END) -> list[dict]:
     """Rows from the historical-data responses: series, event_date, OHLC and provenance."""
+    check_date(end)
     rows = []
     for e in _ledger(phase2_dir / "requests.jsonl"):
         if not e["label"].startswith("history_") or e.get("status") != 200:
             continue
+        dates = re.findall(r"\d{4}-\d{2}-\d{2}", e["label"])
+        if len(dates) != 2:
+            raise T1ReadRefused("Historical source has no bounded date range")
+        if not select_range(*dates, end=end):
+            continue
         for r in json.loads((phase2_dir / e["file"]).read_bytes()):
+            day = datetime.strptime(r["HistoricalDate"], "%d %b %Y").date().isoformat()
+            check_date(day)
+            if not dates[0] <= day <= dates[1]:
+                raise T1ReadRefused("Historical source row outside declared file range")
             name = r["INDEX_NAME"].strip().upper()
             if name not in SERIES:
                 raise ValueError(f"Unexpected series {name!r} in {e['file']}")
@@ -38,19 +50,23 @@ def history_rows(phase2_dir: Path) -> list[dict]:
     return rows
 
 
-def snapshot_rows(*dirs: Path) -> list[dict]:
+def snapshot_rows(*dirs: Path, end: str = READ_END) -> list[dict]:
     """The three series from dated Daily Snapshot files, with each file's Last-Modified."""
+    check_date(end)
     rows = []
     for folder in dirs:
         for e in _ledger(folder / "requests.jsonl"):
             if not e["label"].startswith("snapshot_") or e.get("status") != 200:
                 continue
             requested = e["label"].split("_", 1)[1]
+            if not select_range(requested, requested, end):
+                continue
             for r in csv.DictReader(io.StringIO((folder / e["file"]).read_bytes().decode("utf-8-sig", "replace"))):
                 name = r["Index Name"].strip().upper()
                 if name not in SERIES:
                     continue
                 own = datetime.strptime(r["Index Date"].strip(), "%d-%m-%Y").date().isoformat()
+                check_date(own)
                 if own != requested:
                     raise ValueError(f"Daily Snapshot for {requested} carries the date {own}")
                 rows.append(dict(series=name, event_date=own, open=float(r["Open Index Value"]),
@@ -80,8 +96,9 @@ def combine(history: list[dict], snapshots: list[dict]) -> tuple[dict, list[dict
     return out, mismatches
 
 
-def load(raw_root: Path) -> tuple[dict, list[dict]]:
-    return combine(history_rows(raw_root / "phase2"), snapshot_rows(raw_root, raw_root / "phase2"))
+def load(raw_root: Path, *, end: str = READ_END) -> tuple[dict, list[dict]]:
+    check_date(end)
+    return combine(history_rows(raw_root / "phase2", end=end), snapshot_rows(raw_root, raw_root / "phase2", end=end))
 
 
 def is_weekday(day: str) -> bool:

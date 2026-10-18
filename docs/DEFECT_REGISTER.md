@@ -2840,7 +2840,7 @@ exactly; no brief file was written or overwritten.
 
 ## P8-087 - T1 development loaders read later dates before restricting the panel
 
-**Severity.** Medium (research isolation). **Status.** Open, found 2026-10-18
+**Severity.** Medium (research isolation). **Status.** Resolved 2026-10-18; found 2026-10-18
 during preflight for the user's once-only development evaluation; evaluation not started.
 At code `9dea1e8b785b4c4aeb0c044e8774478c3210ea7d`, `desk/t1/panel.py:56`
 queries the next 40 event dates after `end`, even when `end` is 2024-12-31.
@@ -2856,6 +2856,18 @@ Stopped before any real evaluation. Evidence is static source inspection; did no
 execute the unrestricted loaders to reproduce the unwanted read. A repair must
 bound source access before loading, omit post-development calendar queries, and
 test the boundary before a separately authorised run. No repair or retry performed.
+
+Repair authorised separately: all T1 file loaders now select date-bounded payloads
+before opening them, skip wholly later files, and refuse mixed ranges. The shared
+read guard refuses an end after 2024-12-31 before SQL or file reads. ISIN selection
+precedes even sidecar access. The post-end session query is removed; stock/action
+SQL is bounded by event and knowledge dates, and the ancillary late-session query
+ends in 2024. Source ledgers are read only as file-selection metadata, not market
+observations. Historical payloads are separate yearly files, so no mixed payload
+had to be opened. Six boundary tests include later-file traps and a SQL trap that
+fail on the original implementation; 57 focused tests pass. No outcome access.
+The separately required third rehearsal must still establish numerical equality
+before the real evaluation can proceed.
 
 ## P8-088 - Test suite emits unclosed SQLite connection ResourceWarnings
 
