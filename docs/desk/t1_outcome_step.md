@@ -1,7 +1,7 @@
 # T1 outcome step: built on fixtures, not run (18 October 2026)
 
 Built as the pre-registration (docs/desk/t1_market_context_prereg.md) and its addenda define it, in
-`desk/t1_outcome/`, and tested on synthetic fixtures only (`tests/test_t1_outcome.py`, 21 tests).
+`desk/t1_outcome/`, and tested on synthetic fixtures only (`tests/test_t1_outcome.py`, 19 tests).
 No real outcome was loaded, nothing was run on real data, and there is no entry point that opens a
 store: a test checks that the package imports no connection or network code and has no `__main__`.
 **Stopped before the development-period run.** The package sits outside `desk/t1/`, so the

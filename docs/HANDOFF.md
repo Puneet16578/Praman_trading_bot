@@ -1,3 +1,31 @@
+## 2026-10-18 (Sunday): Part C, knowledge-date audits, T1 coverage decisions, T1 outcome step (Claude)
+
+No nightly until Monday 18:00; no logged-in Angel call; no download; no NSE page read; firewall,
+seal and pre-registration unchanged.
+- 1 d62f6e1 Part C (docs/desk/after_run_checks_20261014_16.md): 14 Oct ran 19:31-20:11, all 14 steps
+  OK; 15 Oct (13%) and 16 Oct (18%) skipped on battery, no step ran, so Monday's run catches up and
+  records 15 and 16 Oct as Strategy 0 burn-in gaps. Tick sizes once (14 Oct: 2,723; 0 unknown of
+  2,689); 15-16 Oct ticks UNKNOWN for good. Announcements 14 Oct COMPLETE through 13 Oct, no
+  whole/split mismatch. The 14 Oct run fetched the 13 Oct list (NSE 19:00 on 13 Oct, known 14 Oct)
+  and the 14 Oct list; the Data health WARN never appeared. The user's after-hours run did not happen.
+- 2 6773ef7 P8-083 audit: 0 band rows known before we fetched them (24,978 stored before 3d7423e, all
+  same-evening); no decision affected; nothing to correct. September lists lost in P8-025.
+- 3 c256983 audit of source-dated data (docs/desk/knowledge_date_audit_20261018.md): bhavcopy,
+  announcements, identities, corporate actions, ASM/GSM and tick sizes are source-dated; a late file
+  is invisible to live decisions and replays but visible to later live recomputations (P8-084, open).
+- 4 1aa76c7 docs/desk/t1_coverage_decisions_20261018.md, input counts only (no outcome exists or was
+  read): V2 coverage 85.8%; recommendations: closes from the next file's previous close for the five
+  late sessions and 2022-08-08; monthly identity snapshots if a budget is approved (184,428 -> about
+  11,600 unknown development stock-days), with a labelled backfill rule for all snapshots; leave
+  weekend sessions out of the calendar. For the user's decision.
+- 5 d6293fc T1 outcome step, desk/t1_outcome/ (docs/desk/t1_outcome_step.md): adverse20 equal to the
+  existing label, through the firewall, with the forward-start and development-period guards;
+  tables, standardised differences, coverage/sample/spell checks, decision rule, block bootstrap.
+  Synthetic fixtures only (19 tests). Open choices are required arguments; listed for the user.
+  STOPPED before the development-period run.
+- P8-084 logged (open, Medium); P8-070 note appended. features.py docstring corrected (weekend sessions).
+- Full suite: 995 tests in 220.360s, OK, exit 0 (08:53-08:57). Nothing stashed.
+
 ## 2026-10-14 (from 15:33): Part B, items 1-7 first (Claude)
 
 User's live results today (recorded as observations, no cause claimed; prices left out):

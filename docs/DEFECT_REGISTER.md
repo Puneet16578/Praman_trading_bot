@@ -2579,6 +2579,11 @@ labels, the Desk's ATR and lookbacks, T1) treats the day before and the day afte
 in the T1 coverage report for review. Nothing is changed in the store. Possible fix (needs approval:
 a Praman store write and NSE requests): fetch the five dated bhavcopy files, check each file's own
 date (P2-003), ingest them append-only, and say how the frozen pipeline's pinned inputs are affected.
+*Note 2026-10-18 (append-only):* evidence and options for T1 in
+docs/desk/t1_coverage_decisions_20261018.md. 2022-08-08 was a session (index histories, 675
+announcements, and the 10 Aug file's previous close differs from 5 Aug's for 1,774 of 1,811 symbols);
+why the load missed it is still unknown. The four stored weekend sessions came from the following
+weekday holiday's file. Still open; nothing changed in the store.
 
 ## P8-071 - the Angel connection test exited with code 1 and said nothing
 
@@ -2757,3 +2762,18 @@ the same file again adds nothing, so its first knowledge date stands. Same-eveni
 unchanged. Rows already stored are untouched (append-only); a future explicit backfill of old lists
 will be known only from the day it runs. Tests: tests/test_circuit_bands.py,
 tests/test_price_band_catch_up.py. P8-082's entry describes the earlier rule.
+
+## P8-084 - a late-fetched source-dated row is visible to a later recomputation of an earlier decision
+
+**Severity.** Medium (look-ahead in recomputations, not in live decisions). **Status.** Open — found
+2026-10-18 (user's knowledge-date audit); report only, nothing fixed (user instruction).
+Bhavcopy, announcements, equity identities, corporate actions, ASM/GSM lists and tick sizes take their
+knowledge date from the source (a Last-Modified date, a filing or circular date, an archive's trading
+day, an ex-date), not from when Praman fetched the file. A file fetched late (for example the bhavcopy
+for 15 and 16 Oct, which Monday's run will fetch after two battery skips) is therefore known, to any
+reader that filters on knowledge date alone, from a date before Praman had it. Live nightly decisions
+cannot see it (it is not yet stored when they run) and audit replays filter on recorded_at, but a later
+live recomputation of an earlier-dated decision (`desk assess --as-of <past date>`, research such as the
+shadow analysis and the T1 build) can. Price bands (P8-083) and announcement receipts (P8-049) are dated
+by when Praman had them. Details: docs/desk/knowledge_date_audit_20261018.md. A rule for research
+backfills is to be decided when one is needed (user, 2026-10-18).
