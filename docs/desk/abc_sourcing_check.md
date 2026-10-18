@@ -510,14 +510,66 @@ C therefore has more than a missing category: a validated quarterly first-releas
 
 ### Documentation access ledger
 
-Three documents opened, one at a time, all on `nsearchives.nseindia.com`; five PDF pages total, below the 20-page-per-site allowance. No company attachment or data endpoint was opened. Search queries used: `site.nseindia.com integrated filing financial results January 2025 single filing system financial results announcements`; `site.nsearchives.nseindia.com 2022 financial results Quick July circular`; and `NSE/CML/2022/34 July digital financial results` restricted to the archive domain. Search-result snippets were used for discovery; unvisited result links were not used as evidence.
+For the results-filing investigation, three documents were opened on `nsearchives.nseindia.com`; five PDF pages. Across this extension, each documentation URL was opened once, sequentially. The added pages remain below the 20-page-per-site allowance: seven PDF pages on `nsearchives.nseindia.com`, plus single HTML pages on `nseindia.com`, `rbi.org.in`, `indiabudget.gov.in` and `eci.gov.in`. No company attachment or data endpoint was opened. Search queries used: `site.nseindia.com integrated filing financial results January 2025 single filing system financial results announcements`; `site.nsearchives.nseindia.com 2022 financial results Quick July circular`; and `NSE/CML/2022/34 July digital financial results` restricted to the archive domain. Search-result snippets were used for discovery; unvisited result links were not used as evidence.
 
 1. https://nsearchives.nseindia.com/web/sites/default/files/inline-files/NSE_Circular_02042025_0.pdf (2 pages).
 2. https://nsearchives.nseindia.com/web/sites/default/files/inline-files/Circular%20for%20filing%20of%20Equity%20announcements%20and%20Financial%20Results%20on%20NEAPS_0.pdf (1 page).
 3. https://nsearchives.nseindia.com/web/sites/default/files/inline-files/NSE_Circular_08072022_1.pdf (2 pages).
+4. https://nsearchives.nseindia.com/content/circulars/FAOP68589.pdf (2 pages).
+5. https://www.rbi.org.in/scripts/PublicationsView.aspx?id=23139 (HTML).
+6. https://www.indiabudget.gov.in/bspeech.php (HTML).
+7. https://www.eci.gov.in/general-elections/ (HTML).
+8. https://www.nseindia.com/static/products-services/equity-derivatives-individual-securities (HTML).
+
+## 8. Event-day market and peer moves (input description)
+
+This extension reads close-price inputs only through each event date. The equal-weight market move is the arithmetic mean of that day's available EQ close-to-close returns. Each stock return is compared with its previous EQ close and adjusted for bonus/split actions known by the current date; a return crossing a stored unadjustable structural break is omitted. Only stocks with an EQ close on the day and a prior EQ close contribute. The daily market mean is then associated with each catalogue event on that date. Counts below are **event counts**, so a market day with many catalogue events contributes each event.
+
+For each event stock, Pearson correlations use its and each other stored EQ symbol's daily returns on matching EQ dates in the 250 global EQ sessions strictly before D. Daily returns in the correlation history use closes available by each bar's own date and corporate actions known by that return date. The event stock is excluded from its peer set. Valid correlations require two paired, non-constant observations (no stronger overlap cutoff was imposed); ties rank by greater overlap, then symbol. The first 20 are selected where available. The average peer move is the equal-weight mean of selected peers with a valid event-day return. Ratio = signed peer average / event-stock event-day return. A negative ratio is counted separately as counter-direction; nonnegative ratios are bucketed as [0,25%), [25,50%), [50,75%] and >75%. This descriptive convention is not a screening rule.
+
+The EQ store contains 2,983 distinct symbols over this period, including instruments that may not be operating companies. Therefore these are EQ-series peers, not an ISIN-verified peer-company universe. Short/unequal histories are material: yearly mean paired observations among selected peers are reported below and can be small. Correlation ranks, especially early in the period, are exploratory and should not be treated as stable peer relationships. No individual symbols or moves are disclosed here.
+
+### Equal-weight EQ market move by year
+
+| Year | Catalogue events | Events on days market > +2% | Events on days market < -2% | Events on days beyond either threshold |
+|---|---:|---:|---:|---:|
+| 2020 | 9,911 | 1,496 | 2,013 | 3,509 |
+| 2021 | 8,963 | 280 | 407 | 687 |
+| 2022 | 9,304 | 584 | 1,253 | 1,837 |
+| 2023 | 11,896 | 194 | 750 | 944 |
+| 2024 | 10,591 | 608 | 1,168 | 1,776 |
+| 2025 | 10,029 | 679 | 747 | 1,426 |
+| Total | 60,694 | 3,841 | 6,338 | 10,179 |
+
+An equal-weight move is computed per event date from all valid EQ returns available that date; threshold counts above count affected catalogue events, not distinct dates. All 60,694 event dates had a market average available.
+
+### Event move shared by its 20 most correlated EQ peers
+
+| Year | Events with 20 peers | Events with fewer than 20 | Mean selected peers trading on D per event with an average | Mean paired historical sessions per selected peer | Counter-direction | Under 25% | 25% to <50% | 50% to 75% | Over 75% | Ratio unavailable |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 2020 | 9,911 | 0 | 15.2 | 92.8 | 1,803 | 4,912 | 2,033 | 817 | 346 | 0 |
+| 2021 | 8,960 | 3 | 13.4 | 91.3 | 2,195 | 5,163 | 1,215 | 294 | 92 | 4 |
+| 2022 | 9,300 | 4 | 14.3 | 83.9 | 2,451 | 4,780 | 1,319 | 519 | 229 | 6 |
+| 2023 | 11,889 | 7 | 11.0 | 79.2 | 3,476 | 6,311 | 1,466 | 432 | 195 | 16 |
+| 2024 | 10,582 | 9 | 11.2 | 40.1 | 2,718 | 5,295 | 1,578 | 643 | 336 | 21 |
+| 2025 | 10,019 | 10 | 12.2 | 59.8 | 3,046 | 5,015 | 1,404 | 370 | 177 | 17 |
+| Total | 60,661 | 33 | 12.8 | 73.9 | 15,689 | 31,476 | 9,015 | 3,075 | 1,375 | 64 |
+
+For events with peer ratios unavailable, reasons were fewer than 20 mathematically valid historical correlations, no selected peer return on D, or no valid event-stock move. A selected peer need not trade every event date; the average uses peers with a stored valid return. Across the selected peer/event pairs, the overlap varies widely; table means show the thin history directly. Correlation cutoffs based on minimum history would change the available peer count and must be fixed before using this for a strategy. This calculation neither inspects nor computes any return after D.
+
+## 9. Scheduled-event calendars in the store
+
+The Praman SQLite store has no dedicated dated calendar table for RBI policy decisions, Union Budget presentation days, election-result declarations or F&O expiries. The store tables are bhavcopy, corporate actions, corporate announcements, SEBI orders, security identities and surveillance flags. The official dated sources to consult are:
+
+- RBI Monetary Policy Committee meeting schedules and dated policy statements on the [RBI publications site](https://www.rbi.org.in/scripts/PublicationsView.aspx?id=23139). A scheduled meeting range and the actual policy statement/release date are distinct; retain both if relevant.
+- The annual [Union Budget speech archive](https://www.indiabudget.gov.in/bspeech.php), with each year's speech record as the official presentation-day source.
+- Election Commission of India [general-election schedules and result notices](https://www.eci.gov.in/general-elections/). Election dates are event-specific and declared through separate notifications/press notes, not a single recurring annual calendar.
+- NSE's [equity derivatives contract information](https://www.nseindia.com/static/products-services/equity-derivatives-individual-securities) and dated circulars/contract masters. Expiry dates have changed: for example, NSE's [June 2025 circular](https://nsearchives.nseindia.com/content/circulars/FAOP68589.pdf) records the Thursday-to-Tuesday transition for new contracts around September 2025. Use the contract's applicable dated record rather than applying today's weekday rule retrospectively.
+
+These are documentation sources only; none was downloaded or added to Praman. The calendar check does not assign event dates to any catalogue observation.
 
 ## Validation and unresolved limits
 
-Full required suite: `python -m unittest discover -s tests -p "test_*.py"` - **1,049 tests in 234.929 seconds, OK**. The sourcing census asserts unique event keys and uses metadata-only SQL projections; category totals reconcile to the prior R2 bounded inventory. Existing SQLite ResourceWarnings remain unchanged. No new tests or production changes are needed for this documentation-only task.
+Full required suite: `python -m unittest discover -s tests -p "test_*.py"` - **1,049 tests in 234.929 seconds, OK**. The event census asserts unique event keys and reconciles category totals to the prior R2 bounded inventory. Section 8 reads only EQ close prices through each event date, plus point-in-time corporate-action inputs; it does not read later bars or calculate outcomes. The full suite passed in the preceding report task (1,049 tests in 234.929 seconds); it was not rerun for this report extension. Existing SQLite ResourceWarnings remain unchanged. No code or store changes were made.
 
 The report cannot verify causal explanation, complete historic announcement capture, true first-public timestamp semantics, an initial surveillance roster plus uninterrupted history, or next-session execution availability. These are sourcing limits, not failed strategy tests. No strategy verdict, trade list or outcome statistic is produced. Only this document is changed; stores, other documentation, code, registrations, firewall, seal and Windows task remain untouched.
