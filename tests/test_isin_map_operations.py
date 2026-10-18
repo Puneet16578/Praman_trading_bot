@@ -100,23 +100,32 @@ class IsinRefreshTest(unittest.TestCase):
             read_metadata(self.path)
 
     def test_summary_health_levels_and_warn_exit_status(self):
-        log = Path(self.tmp.name) / "ingest.log"
+        fixed = datetime(2026, 10, 18, 21, 0, tzinfo=IST)
+        class FixedClock(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return fixed.astimezone(tz) if tz else fixed.replace(tzinfo=None)
         def warn():
             print("WARN snapshot skipped")
         def fail():
             raise ValueError("fixture failure")
         for steps, status, exit_code in [([], "OK", 0), ([("isin_map", warn)], "WARN", 0),
                                          ([("isin_map", warn), ("other", fail)], "ERROR", 1)]:
+            log = Path(self.tmp.name) / f"ingest_{status}.log"
             with self.subTest(status=status), patch.object(weekly_ingest, "LOG_PATH", log), \
+                    patch.object(weekly_ingest, "datetime", FixedClock), \
+                    patch("desk.ingestion_health.datetime", FixedClock), \
+                    patch("desk.ingestion_health.LOG_PATH", log), \
                     patch.object(weekly_ingest, "STEPS", steps), \
                     patch.object(weekly_ingest, "power_status", return_value=(False, None)), \
                     patch.object(weekly_ingest, "head_branch", return_value="master"), \
                     patch.object(weekly_ingest, "uncommitted_nightly_inputs", return_value=[]), \
                     contextlib.redirect_stdout(io.StringIO()):   # P8-055: never the machine's real battery
-                self.assertEqual(weekly_ingest.main(), exit_code)
-            with patch("desk.ingestion_health.LOG_PATH", log):
+                self.assertEqual(weekly_ingest.main([]), exit_code)
                 self.assertIn(f"overall={status}", ingestion_health_line())
-        self.assertIn("WARN snapshot skipped", log.read_text())
+                self.assertNotIn("retry not needed", log.read_text())
+                if status != "OK":
+                    self.assertIn("WARN snapshot skipped", log.read_text())
 
 
 class HistoricalSnapshotCacheTest(unittest.TestCase):

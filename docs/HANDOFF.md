@@ -1,3 +1,15 @@
+## 2026-10-18 (Codex): P8-090 ingestion-health clock test isolation
+
+- User authorised a separate test-only fix before restoring the T1 hold-out stash.
+- Fixed 21:00 IST clock for runner/display; one private log per OK/WARN/ERROR case.
+  No production clock, retry behaviour or task change. Ten targeted tests pass.
+- Full suite: 1,039 tests in 186.212 seconds, OK.
+- P8-090 records the defect; docs/desk/test_clock_log_audit_20261018.md lists other
+  clock/log dependencies without changing them. P8-088 warnings remain unfixed.
+- Next authorised step after this commit/push: restore the prepared T1 runner stash,
+  pass the full suite, commit it, then development and hold-out random-label rehearsals.
+  Real 2025 evaluation is approved once only after all checks pass; never auto-retry.
+
 ## 2026-10-18 (Codex): single T1 development evaluation completed and locked
 
 - Loader repair fcf9711; third rehearsal matched all saved analytical fields.

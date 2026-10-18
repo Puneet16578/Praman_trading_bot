@@ -2882,3 +2882,22 @@ Desk schema/fixtures and other modules. Those locations do not establish where
 each connection was opened; exact owners remain untraced. No failing assertion
 or demonstrated durable-store damage. Investigate test-fixture connection cleanup
 in a later task. No fix, warning suppression or rerun performed for this item.
+
+
+## P8-090 - Ingestion-health status test depends on the evening wall clock
+
+**Severity / priority.** Low. **Status.** Resolved, 2026-10-18.
+`test_summary_health_levels_and_warn_exit_status` reused one temporary log for
+OK/WARN/ERROR cases and called the real clock. After 18:00 IST the first case
+correctly registered an evening run; live retry detection then skipped later
+cases, so the test observed OK instead of WARN. The full T1 preparation suite
+failed (1,049 tests, one failure); an isolated test reproduced it.
+
+Test-only repair: fixed 2026-10-18 21:00 IST clock in both weekly_ingest and the
+health display, separate temporary log per status case, explicit empty argv,
+and an assertion that these independent cases do not skip as retries. Production
+code and live retry behaviour are unchanged. Ten targeted tests pass, including
+the existing retry tests. Other clock/log dependencies are listed without fixes
+in docs/desk/test_clock_log_audit_20261018.md.
+
+Validation: full suite 1,039 tests in 186.212 seconds, OK (exit 0). Existing P8-088 ResourceWarnings remain unfixed.
