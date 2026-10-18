@@ -95,6 +95,26 @@ def get_replay_connection(watermark: str) -> sqlite3.Connection:
     return conn
 
 
+def decision_watermark(as_of_date: str) -> str:
+    """Praman's decision clock (P8-084, user decision 2026-10-18). Research reads (T1, the shadow
+    analysis) use the source's knowledge date. A replay of Praman's own decision for a past session
+    may see only rows Praman had stored by the decision time, here the end of that session's IST
+    day: the recorded_at-shaped UTC watermark for that moment."""
+    from datetime import date, datetime, time, timezone
+    from shared.market_time import IST
+    end = datetime.combine(date.fromisoformat(as_of_date), time(23, 59, 59, 999999), tzinfo=IST)
+    return end.astimezone(timezone.utc).isoformat()
+
+
+def past_session_watermark(conn: sqlite3.Connection, as_of_date: str | None) -> str | None:
+    """None for a live decision (no date, or the store's latest session); otherwise the decision
+    watermark of that past session, for get_replay_connection and get_desk_replay_connection."""
+    if as_of_date is None:
+        return None
+    latest = conn.execute("SELECT MAX(event_date) FROM bhavcopy").fetchone()[0]
+    return None if latest is None or as_of_date >= latest else decision_watermark(as_of_date)
+
+
 def max_recorded_at(conn: sqlite3.Connection) -> str:
     """The Praman store watermark: the maximum recorded_at across every fact table, as read through
     THIS connection. Deliberately unqualified (`FROM {table}`, not `FROM main.{table}`) so that on a

@@ -97,7 +97,15 @@ def replay_decision(decision_id: int, desk_db_path: Path = DESK_DB_PATH,
     praman_conn = get_replay_connection(decision["praman_watermark"])
     desk_conn = get_desk_replay_connection(desk_db_path, decision["desk_watermark"])
 
-    thesis = get_thesis(desk_conn, decision["thesis_id"]) if decision["thesis_id"] else None
+    # The decision's own thesis is one of its recorded inputs: read it by id, not through the
+    # watermark (a past-dated assessment records its thesis after its decision watermark, P8-084).
+    thesis = None
+    if decision["thesis_id"]:
+        own = open_readonly(desk_db_path)
+        try:
+            thesis = get_thesis(own, decision["thesis_id"])
+        finally:
+            own.close()
     if thesis is not None:
         thesis["thesis_id"] = decision["thesis_id"]
 

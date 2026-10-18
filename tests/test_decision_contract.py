@@ -127,6 +127,7 @@ class DecisionContractTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp)/'desk.sqlite'
             with patch('desk.cli.get_live_connection', return_value=Mock()), \
+                    patch('desk.cli.past_session_watermark', return_value=None), \
                  patch('desk.cli.get_desk_connection', return_value=get_desk_connection(path)), \
                  patch('desk.cli.run_assessment', return_value=result), \
                  patch('desk.cli.max_recorded_at', return_value='2020-01-02T00:00:00+00:00'), \

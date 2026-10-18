@@ -2765,8 +2765,8 @@ tests/test_price_band_catch_up.py. P8-082's entry describes the earlier rule.
 
 ## P8-084 - a late-fetched source-dated row is visible to a later recomputation of an earlier decision
 
-**Severity.** Medium (look-ahead in recomputations, not in live decisions). **Status.** Open — found
-2026-10-18 (user's knowledge-date audit); report only, nothing fixed (user instruction).
+**Severity.** Medium (look-ahead in recomputations, not in live decisions). **Status.** Closed — found
+2026-10-18 (user's knowledge-date audit); replay paths fixed the same day (user decision, below).
 Bhavcopy, announcements, equity identities, corporate actions, ASM/GSM lists and tick sizes take their
 knowledge date from the source (a Last-Modified date, a filing or circular date, an archive's trading
 day, an ex-date), not from when Praman fetched the file. A file fetched late (for example the bhavcopy
@@ -2777,3 +2777,11 @@ live recomputation of an earlier-dated decision (`desk assess --as-of <past date
 shadow analysis and the T1 build) can. Price bands (P8-083) and announcement receipts (P8-049) are dated
 by when Praman had them. Details: docs/desk/knowledge_date_audit_20261018.md. A rule for research
 backfills is to be decided when one is needed (user, 2026-10-18).
+*Fix 2026-10-18 (user decision: two clocks; status now Closed for the replay paths).* No stored date
+was rewritten. Research reads keep the source's date. Replays of Praman's own decisions read only rows
+stored by the decision time: `desk assess --as-of <past session>` and `desk scan --date <past
+session>` now read through replay connections limited to the end of that session's IST day
+(`desk.lib.store.decision_watermark`); records still go to the live Desk store, and scan's fill
+observations still read live. The audit replay already used recorded watermarks; it now reads the
+decision's own thesis by id. Tests: tests/test_decision_clock.py (a bhavcopy for 15 and 16 Oct stored
+on 19 Oct is invisible to replays dated 15 and 16 Oct). The reader table is in the audit note.

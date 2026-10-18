@@ -2,7 +2,7 @@
 from pathlib import Path
 import json
 
-from desk.lib.connection import get_desk_connection
+from desk.lib.connection import DESK_DB_PATH, get_desk_connection
 from desk.lib.costs import load_active_cost_config
 from desk.lib.rulebook import load_active_rulebook
 from desk.lib.store import get_live_connection, max_recorded_at
@@ -48,10 +48,20 @@ def catalogue_events(conn, days):
     return sorted(events, key=lambda s: (s.event_date, s.symbol))
 
 
-def run_scan_range(days, *, desk_db_path=None):
-    """Foreground batch; original durable records are never changed or recomputed."""
-    conn = get_live_connection()
+def run_scan_range(days, *, desk_db_path=None, stored_by=None):
+    """Foreground batch; original durable records are never changed or recomputed.
+    `stored_by` (P8-084): screening a past session reads only rows Praman had stored by that
+    watermark (the decision clock), through replay connections; the records still go to the live
+    Desk store, and pending execution observations still read the live store (they observe fills
+    after the fact)."""
+    live = get_live_connection()
     desk = get_desk_connection() if desk_db_path is None else get_desk_connection(desk_db_path)
+    conn, desk_read = live, desk
+    if stored_by is not None:
+        from desk.lib.store import get_replay_connection
+        from desk.replay import get_desk_replay_connection
+        conn = get_replay_connection(stored_by)
+        desk_read = get_desk_replay_connection(desk_db_path or DESK_DB_PATH, stored_by)
     try:
         rb, costs = load_active_rulebook(), load_active_cost_config()
         built = verified_built_at()
@@ -64,11 +74,11 @@ def run_scan_range(days, *, desk_db_path=None):
                                  (event.symbol, event.event_date)).fetchone()
             if prior is not None:
                 continue
-            plan, assessment = screen_event(conn, desk, event.symbol, event.event_date, rb.rulebook,
+            plan, assessment = screen_event(conn, desk_read, event.symbol, event.event_date, rb.rulebook,
                                              costs.costs, isin_map_built_at=built)
             opportunity_id, created = append_opportunity(desk, symbol=event.symbol, event_date=event.event_date,
                                             plan=plan, assessment=assessment,
-                                            provenance=provenance | {'desk_watermark': desk_watermark(desk)})
+                                            provenance=provenance | {'desk_watermark': desk_watermark(desk_read)})
             inserted += int(created)
             if created:
                 # Information only: linked to the stored opportunity after screening.
@@ -82,15 +92,19 @@ def run_scan_range(days, *, desk_db_path=None):
                                '(SELECT opportunity_id FROM opportunity_executions)').fetchall()
         for row in pending:
             plan = json.loads(row['inputs'])['plan']
-            observation = execution_observation(conn, row['symbol'], row['event_date'], max(days), plan,
+            observation = execution_observation(live, row['symbol'], row['event_date'], max(days), plan,
                                                 rb.rulebook, costs.costs)
             if observation is not None:
                 append_execution(desk, row['opportunity_id'], observation)
         return inserted
     finally:
+        if desk_read is not desk:
+            desk_read.close()
+        if conn is not live:
+            conn.close()
         desk.close()
-        conn.close()
+        live.close()
 
 
-def run_scan(run_date=None):
-    return run_scan_range([run_date or market_today().isoformat()])
+def run_scan(run_date=None, *, stored_by=None):
+    return run_scan_range([run_date or market_today().isoformat()], stored_by=stored_by)

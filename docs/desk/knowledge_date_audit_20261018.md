@@ -71,3 +71,24 @@ list dated D fetched that morning is known from D+1 and invisible to that decisi
 UNKNOWN (stricter). Bhavcopy and announcements fetched that morning stay visible (source-dated).
 Backfilling old lists for research would need its own labelled rule, decided at that point (user,
 2026-10-18).
+
+## 3. Two clocks: every reader and the clock it uses (P8-084 fix, user decision 2026-10-18)
+
+Research reads use the source's date (as before). Any replay of Praman's own decisions may see only
+rows Praman had stored by the decision time, using recorded_at. For a past session the decision
+time is taken as the end of that session's IST day (`desk.lib.store.decision_watermark`).
+
+| Reader | What it does | Clock |
+| --- | --- | --- |
+| Nightly: desk_scan (latest session), auto_paper (Strategy 0), manual_monitor, brief, ingestion health | decide or report the latest session, after that night's fetches | decision clock by construction (only rows already stored) |
+| `desk assess` for the latest session | a live assessment | decision clock by construction |
+| `desk assess --as-of <past session>` | an assessment dated in the past | **was the source clock; now reads through replay connections limited to the end of that day** (records still go to the live Desk store) |
+| `desk scan --date <past session>` | screens a past session and records opportunities | **was the source clock; now screens through replay connections limited to the end of that day**; pending fill observations still read the live store (they observe fills after the fact) |
+| `desk replay <decision_id>` (desk/replay.py) | audit replay of a recorded decision | decision clock (the decision's recorded watermarks), unchanged; it now reads the decision's own thesis by id, since a past-dated assessment records its thesis after its watermark |
+| `desk auto-paper --date <past session>` | Strategy 0 for a past session | cannot decide after 09:00 IST on the next weekday (DECIDED_TOO_LATE); fills and exits for past sessions are processed with today's data, after the fact |
+| `desk monitor --date`, `desk paper open/close`, `desk evening` | manual-book processing | live, as of the run |
+| `desk brief --date`, `desk status` | reports | live, display only |
+| `desk evaluate` | counts and process audits of recorded Desk records, behind the firewall | reads decisions as recorded; recomputes no decision input. The burn-in review after 2027-06-01 is not built yet; it must replay decision inputs through desk/replay.py |
+| T1 build, shadow analysis and follow-ups, gate diagnostics, P8-007 verification, the forensic pipeline | research | source clock, by design |
+| scripts/desk_scan_proof.py | a proof harness on a copy (`run_scan_range` over past days, no `stored_by`) | source clock; not a replay of Praman's decisions, left as is |
+| Angel scripts | latest stored sessions for date checks and liquidity ranking | live |

@@ -134,6 +134,7 @@ class CircuitBandTest(unittest.TestCase):
         result = AssessmentResult("VETO", {}, None, position_size=0, stress_loss=None)
         output = io.StringIO()
         with patch("desk.cli.get_live_connection", return_value=Mock()), \
+                patch("desk.cli.past_session_watermark", return_value=None), \
                 patch("desk.cli.get_desk_connection", return_value=self.conn), \
                 patch("desk.cli.run_assessment", return_value=result), \
                 patch("desk.cli.max_recorded_at", return_value="2026-09-30T00:00:00+00:00"), \

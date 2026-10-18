@@ -15,8 +15,8 @@ from desk.journal import store as jstore
 from desk.lib.connection import get_desk_connection
 from desk.lib.costs import load_active_cost_config
 from desk.lib.rulebook import load_active_rulebook
-from desk.lib.store import get_live_connection, max_recorded_at
-from desk.replay import current_git_head, replay_decision
+from desk.lib.store import get_live_connection, get_replay_connection, max_recorded_at, past_session_watermark
+from desk.replay import current_git_head, get_desk_replay_connection, replay_decision
 from desk.volatility_context import assessment_context, record_context
 
 
@@ -34,6 +34,10 @@ def cmd_rulebook_show(args):
     print(json.dumps(loaded.rulebook.model_dump(), indent=2))
 
 
+def _desk_path(conn) -> Path:
+    return Path(conn.execute("PRAGMA database_list").fetchone()[2])
+
+
 def cmd_assess(args):
     praman_conn = get_live_connection()
     desk_conn = get_desk_connection()
@@ -46,8 +50,17 @@ def cmd_assess(args):
         thesis = yaml.safe_load(Path(args.thesis).read_text(encoding="utf-8"))
 
     as_of_date = args.as_of or _latest_bhavcopy_date(praman_conn)
+    # P8-084: an assessment for a past session sees only rows stored by the end of that day (the
+    # decision clock); its reads go through replay connections, its records to the live Desk store.
+    stored_by = past_session_watermark(praman_conn, as_of_date)
+    desk_read = desk_conn
+    if stored_by is not None:
+        praman_conn.close()
+        praman_conn = get_replay_connection(stored_by)
+        desk_read = get_desk_replay_connection(_desk_path(desk_conn), stored_by)
+        print(f"  as of {as_of_date}: reading only rows stored by {stored_by} (decision clock)")
     result = run_assessment(
-        praman_conn, desk_conn, symbol=args.symbol, as_of_date=as_of_date,
+        praman_conn, desk_read, symbol=args.symbol, as_of_date=as_of_date,
         sector=(thesis or {}).get("sector"), thesis=thesis,
         rulebook=rulebook.rulebook, costs=costs.costs,
     )
@@ -70,7 +83,7 @@ def cmd_assess(args):
         rulebook_version=rulebook.version_file, rulebook_hash=rulebook.sha256,
         cost_config_version=costs.version_file, cost_config_hash=costs.sha256,
         code_commit=current_git_head(), praman_watermark=max_recorded_at(praman_conn),
-        desk_watermark_value=jstore.desk_watermark(desk_conn),
+        desk_watermark_value=jstore.desk_watermark(desk_read),
         as_of_is_live=result.as_of_is_live, position_size=result.position_size,
         isin_map_built_at=result.isin_map_built_at,
         stress_loss_inr=result.stress_loss.stress_loss_inr if result.stress_loss else None,
@@ -91,7 +104,7 @@ def cmd_assess(args):
         print(f"  locked_circuit_loss={locked}; {loss.circuit_band_caveat}")
     else:
         from desk.circuit_bands import band_as_of
-        print(f"  circuit_band={band_as_of(desk_conn, args.symbol, as_of_date).label()}")
+        print(f"  circuit_band={band_as_of(desk_read, args.symbol, as_of_date).label()}")
         print("  planned_stop_loss=N/A stress_loss=N/A locked_circuit_loss=N/A (no sized plan)")
 
     # Blueprint candidate schema, appended after and linked to the decision; never a gate input.
@@ -115,6 +128,8 @@ def cmd_assess(args):
     print(f"  {context.display()}")
 
     praman_conn.close()
+    if desk_read is not desk_conn:
+        desk_read.close()
     desk_conn.close()
 
 
@@ -321,9 +336,10 @@ def cmd_scan(args):
     
     praman_conn = get_live_connection()
     run_date = args.date or _latest_bhavcopy_date(praman_conn)
+    stored_by = past_session_watermark(praman_conn, run_date)      # P8-084: a past scan, decision clock
     praman_conn.close()
     
-    events = run_scan(run_date)
+    events = run_scan(run_date, stored_by=stored_by)
     print(f"Scan complete for {run_date}. {events} opportunities logged/updated.")
 
 def cmd_backup_verify(args):
