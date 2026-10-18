@@ -63,3 +63,15 @@ Loading the artifact's rows and a panel that ends on 2024-12-31, assembling each
 counting purged decisions, writing the tables and the report, and recording input hashes and
 commits. That is the development-period run, which waits for your choices above and in the
 coverage note.
+
+
+## Resolution of the choices (18 October 2026, addendum 3)
+
+The historical open-choice list above is now resolved: state-known coverage;
+usable draws require all sample minimums; linear percentiles; the complete
+unpurged weekday development calendar, retaining empty sessions. All five readings
+(6)-(10) are confirmed. The outcome helpers retain explicit arguments for fixture
+comparisons; the rehearsal selects the registered settings. With 2,000 draws,
+fewer than 1,900 usable is exactly more than 5% unusable. The second rehearsal
+reports 186,581 development stock-days excluded for unknown identity (formerly
+184,428); see `t1_rehearsal2_20261018.md`. No real development run is wired or run.

@@ -49,6 +49,8 @@ def main() -> int:
                 praman_db_sha256=build.file_sha256(PRAMAN_DB), index_files=index_files,
                 isin_snapshots=[d for d, _ in snapshots], quintile_bounds=bounds,
                 store_missing_sessions=panel.store_missing_sessions, weekend_specials=panel.weekend_specials,
+                weekends="exclude", knowledge_rule_stock="ASSUMPTION: same-session EQ, subject to stored knowledge date",
+                knowledge_rule_isin="ASSUMPTION: session after snapshot date; download date unused",
                 knowledge_rule_index=inputs.KNOWLEDGE_RULE, outcomes="none loaded or computed")
     build.write_artifact(artifact, panel, out, cause, period, bounds, index_closes, meta)
     text = build.report(panel, out, cause, period, bounds, index_closes, meta, late)

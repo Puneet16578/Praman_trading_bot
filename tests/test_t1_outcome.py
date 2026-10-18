@@ -205,6 +205,10 @@ class ContrastTest(unittest.TestCase):
 
 
 class DecisionTest(unittest.TestCase):
+    def test_exactly_five_percent_unusable_is_allowed_but_more_is_inconclusive(self):
+        self.assertEqual(C.decide('V1', **self.base(usable_draws=1900))['result'], 'SUCCESS')
+        self.assertEqual(C.decide('V1', **self.base(usable_draws=1899))['result'], 'INCONCLUSIVE')
+
     def base(self, **change):
         table = C.cells(balanced(0.30, 0.10))
         kw = dict(table=table, standardized_difference=0.20, cover=0.9, usable_draws=2000,

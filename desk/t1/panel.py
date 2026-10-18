@@ -15,7 +15,7 @@ from src.signals.price_adjustment import factor_for_action
 
 def snapshot_identities(isin_dir: Path) -> list[tuple[str, dict]]:
     """(snapshot date, {symbol: ISIN}) for each cached historical CM snapshot whose SHA-256 sidecar
-    matches (P8-060 cache). Each is public from its own session."""
+    matches (P8-060 cache). ASSUMPTION: each is usable from the session after its file date (addendum 3)."""
     from src.ingestion.nse_market_data.isin_mapping import fetch_isin_snapshot
     from datetime import date
     out = []
@@ -30,13 +30,13 @@ def snapshot_identities(isin_dir: Path) -> list[tuple[str, dict]]:
 
 
 def identity_matrix(sessions: list[str], symbols: list[str], snapshots: list[tuple[str, dict]]) -> np.ndarray:
-    """UNKNOWN / EQUITY / FUND for each (session, symbol): from the latest snapshot on or before
+    """UNKNOWN / EQUITY / FUND for each (session, symbol): from the latest snapshot strictly before
     the session that lists the symbol; a resolved non-INF ISIN is equity (the Amendment 4 rule)."""
     ident = np.full((len(sessions), len(symbols)), UNKNOWN, dtype=np.int8)
     col = {s: j for j, s in enumerate(symbols)}
     session_arr = np.array(sessions)
     for day, mapping in sorted(snapshots):
-        first = int(np.searchsorted(session_arr, day, side="left"))
+        first = int(np.searchsorted(session_arr, day, side="right"))
         for symbol, isin in mapping.items():
             j = col.get(symbol)
             if j is not None:
@@ -45,7 +45,7 @@ def identity_matrix(sessions: list[str], symbols: list[str], snapshots: list[tup
 
 
 def load_panel(praman_conn, index_closes: dict, snapshots: list[tuple[str, dict]], *, end: str = STUDY_END,
-               weekends: str = "store") -> Panel:
+               weekends: str = "exclude") -> Panel:
     store_sessions = {r[0] for r in praman_conn.execute(
         "SELECT DISTINCT event_date FROM bhavcopy WHERE event_date BETWEEN ? AND ?", (STUDY_START, end))}
     index_dates = set().union(*(set(index_closes[s]) for s in SERIES))

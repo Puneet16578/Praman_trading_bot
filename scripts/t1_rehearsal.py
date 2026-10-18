@@ -4,9 +4,9 @@
     python -B scripts/t1_rehearsal.py
 
 Reads Praman's store read-only and the cached T1 inputs, builds the development panel (ending
-2024-12-31, weekend sessions left out: the user's draft addendum 3 (b), not yet recorded), computes
+2024-12-31, weekend sessions left out: approved addendum 3 (b)), computes
 the features, and runs the development pipeline on random labels (desk/t1_outcome/rehearsal.py) with
-the draft's choices (e)-(h). Writes data/t1/rehearsal_<stamp>.json (not committed) and prints a
+addendum 3's choices (e)-(h). Writes data/t1/rehearsal_<stamp>.json (not committed) and prints a
 summary. Never during the nightly. The real development run is a separate step, not built here.
 """
 from __future__ import annotations
@@ -52,6 +52,7 @@ def peak_memory_bytes() -> int | None:
     return int(counters.PeakWorkingSetSize) if ok else None
 
 
+@outcomes_sealed()
 def main() -> int:
     F.refuse_outside_study(F.DEVELOPMENT_END)
     clock = {"start": time.perf_counter()}
@@ -71,14 +72,18 @@ def main() -> int:
     period = F.periods(panel.sessions, panel.forward_sessions)
     bounds = F.quintile_bounds(out["atr_pct"], cause, period)
     clock["features"] = time.perf_counter()
-    with outcomes_sealed():
-        report = rehearse(panel, out, cause, period, bounds, seed=REHEARSAL_SEED, rate=REHEARSAL_RATE,
+    report = rehearse(panel, out, cause, period, bounds, seed=REHEARSAL_SEED, rate=REHEARSAL_RATE,
                           usable=CHOICES["usable"], method=CHOICES["method"],
                           coverage_numerator=CHOICES["coverage_numerator"])
     clock["rehearsal"] = time.perf_counter()
     report.update(
         kind="t1_rehearsal_random_labels", code_commit=commit, outcomes="none read; random labels",
+        source_sha256={str(p.relative_to(ROOT)): __import__('hashlib').sha256(p.read_bytes()).hexdigest()
+                       for p in sorted([* (ROOT / 'desk' / 't1').glob('*.py'),
+                                        * (ROOT / 'desk' / 't1_outcome').glob('*.py'), Path(__file__)])},
         seed=REHEARSAL_SEED, label_rate=REHEARSAL_RATE, choices=CHOICES, quintile_bounds=bounds,
+        timing_assumptions=dict(stock_eq="same-session when stored knowledge date permits; addendum 3",
+                                index_vix="D-1; addendum 2", isin="strictly after snapshot date; addendum 3"),
         panel=dict(sessions=len(panel.sessions), symbols=len(panel.symbols), first=panel.sessions[0],
                    last=panel.sessions[-1], store_missing_sessions=panel.store_missing_sessions,
                    weekend_specials_left_out=[d for d in panel.weekend_specials if d <= F.DEVELOPMENT_END]),

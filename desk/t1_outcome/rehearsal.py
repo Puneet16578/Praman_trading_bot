@@ -9,8 +9,7 @@ stock-day (the same draws whatever the prices) and kept only where the window is
 `outcomes_sealed()` makes the real reader and the firewall's evaluator raise for the whole
 rehearsal; tests run the rehearsal inside it.
 
-The choices passed in are those of the user's draft addendum 3 ((b), (e)-(h)); it is not yet
-recorded in the pre-registration. Nothing here opens a store: scripts/t1_rehearsal.py loads the
+The choices passed in are those of approved addendum 3 ((b), (e)-(h)). Nothing here opens a store: scripts/t1_rehearsal.py loads the
 panel and calls `rehearse`.
 """
 from __future__ import annotations
@@ -71,7 +70,7 @@ def complete_windows(panel, i: int, cols: np.ndarray) -> np.ndarray:
 
 def development_rows(panel, out, cause, period, bounds, *, seed: int, rate: float):
     """The development period's eligible stock-days as aligned arrays, with random labels.
-    Draft addendum 3 (h): the bootstrap's dates are the development calendar (after (b)) from its
+    Addendum 3 (h): the bootstrap's dates are the development calendar (after (b)) from its
     first session up to the last before the purged sessions, i.e. the sessions labelled
     "development"; a date with no usable observation stays in the list and contributes nothing."""
     dev = np.flatnonzero(period == "development")

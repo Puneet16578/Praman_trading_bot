@@ -2788,8 +2788,8 @@ on 19 Oct is invisible to replays dated 15 and 16 Oct). The reader table is in t
 
 ## P8-085 - T1 treats date-only evidence as known the same session, and its ISIN snapshots carry no publication evidence
 
-**Severity.** Medium (research inputs; no outcome has been computed). **Status.** Open — found
-2026-10-18 while checking the user's draft T1 addendum 3 (d); for the user's decision.
+**Severity.** Medium (research inputs; no outcome has been computed). **Status.** Resolved 2026-10-18
+under user-approved addendum 3; originally found while checking draft (d).
 The pre-registration says: "When only a proven publication DATE exists, make the value available at
 the next market session, not at an invented same-day time. If even the publication date cannot be
 proven, knowledge begins at first observed retrieval and earlier historical values remain UNKNOWN."
@@ -2805,3 +2805,19 @@ for these two inputs there are none, so it was not recorded. The rehearsal of 20
 build as it is. Options for the user: state labelled ASSUMPTIONS (same session, or next session) for
 the bars and the snapshots, as addendum 2 did for index closes; or apply the strict rule (bars from
 the next session; snapshots unknown until retrieved, which leaves no eligible stock-day).
+
+
+**P8-085 resolution (18 October 2026).** Addendum 3 records same-session EQ-bar
+availability as an ASSUMPTION, preserving current-close eligibility, ATR and
+breadth definitions; stored later knowledge dates still block earlier inputs.
+Index/VIX remain D-1. ISIN snapshots now start strictly after their file date,
+with an explicit ASSUMPTION and no use of October download dates. Last known
+identity continues forward. No durable data was changed. The audit lists every
+same-session stock-bar use: `docs/desk/t1_timing_audit_20261018.md`.
+Re-verification: 51 focused T1 tests pass, including snapshot-date exclusion,
+next-session activation across non-sessions, carry-forward, default weekend
+exclusion, purge/empty bootstrap dates, the 5% boundary, and the full-run seal.
+Second random-label rehearsal: `docs/desk/t1_rehearsal2_20261018.md`; 34.1 seconds,
+2,091,749,376 bytes peak; no real outcome read/computed. The stock-bar assumption
+is not claimed to be verified publication evidence. Real development run remains
+unwired; firewall and Strategy 0 seal unchanged.

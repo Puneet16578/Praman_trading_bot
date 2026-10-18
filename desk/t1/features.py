@@ -2,21 +2,20 @@
 
 No outcome is loaded or computed here (no adverse20, no forward price). Every value for decision
 session D (end of session) uses only:
-- stock bars whose knowledge_date is on or before D (the store has one vintage per bar);
+- stock bars whose knowledge_date is on or before D: same-session EQ availability is an
+  ASSUMPTION (addendum 3); later stored knowledge dates still block earlier decisions;
 - corporate actions with ex-date on or before D (every action in the store was known by its
   ex-date, so a fully back-adjusted series gives exactly the as-of ratios within a window); a
   window containing an unadjustable action (demerger, rights, ratio conflict, capital reduction)
   is UNKNOWN;
 - official index and VIX closes through D-1 (known from the next session: T1 addendum 2);
-- equity identity from the latest dated ISIN snapshot on or before D containing the symbol.
+- equity identity from the latest dated ISIN snapshot strictly before D containing the symbol (ASSUMPTION, addendum 3).
 A missing bar is never forward-filled; a window needs every one of its bars.
 
 Calendar of global sessions: before 2019-10-01 (no stock data), the official index's weekday
 sessions; from 2019-10-01, the store's sessions plus any weekday index session the store lacks
-(2022-08-08), on which every stock is missing. A weekend special session (budget Saturday,
-Muhurat, special Saturday) is in the calendar only when the store has it: four are stored, each from
-the following weekday holiday's file, and four are not (P8-070). Both choices are stated in the
-coverage report and docs/desk/t1_coverage_decisions_20261018.md for the user's review.
+(2022-08-08), on which every stock is missing. Weekend sessions are excluded from inputs and
+forward windows alike (addendum 3).
 """
 from __future__ import annotations
 
@@ -62,10 +61,9 @@ class Panel:
 WEEKEND_RULES = ("store", "exclude")
 
 
-def build_calendar(store_sessions: set[str], index_dates: set[str], end: str = STUDY_END, *, weekends: str = "store"):
-    """`weekends`: "store" (as built on 2026-10-13: a weekend session is in the calendar when the store
-    has it) or "exclude" (no weekend session at all, for inputs and outcome windows alike: the user's
-    draft addendum 3 (b), used by the rehearsal; not yet recorded in the pre-registration)."""
+def build_calendar(store_sessions: set[str], index_dates: set[str], end: str = STUDY_END, *, weekends: str = "exclude"):
+    """Default: exclude all weekend sessions (addendum 3), including forward windows.
+    "store" remains available only to reproduce the original build's calendar."""
     if weekends not in WEEKEND_RULES:
         raise ValueError(f"weekends must be one of {WEEKEND_RULES}")
     weekday_index = {d for d in index_dates if is_weekday(d) and d <= end}

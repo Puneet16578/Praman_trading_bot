@@ -54,6 +54,17 @@ CHOICES = dict(seed=H.REHEARSAL_SEED, rate=H.REHEARSAL_RATE, usable='computable_
 
 
 class SealTest(unittest.TestCase):
+    def test_script_seals_even_input_loading_and_restores_reader_on_failure(self):
+        from unittest.mock import patch
+        from scripts import t1_rehearsal as script
+        original = R.read_adverse20
+        def accidental_outcome_read(*args):
+            R.read_adverse20(None, {}, period='development')
+        with patch.object(script.inputs, 'load', side_effect=accidental_outcome_read):
+            with self.assertRaises(H.RealOutcomeSealed):
+                script.main()
+        self.assertIs(R.read_adverse20, original)
+
     def test_the_real_reader_and_the_firewall_raise_inside_the_seal_and_come_back_after(self):
         original = (R.read_adverse20, outcome_firewall.evaluate_event)
         with H.outcomes_sealed():
@@ -88,6 +99,18 @@ class SealTest(unittest.TestCase):
 
 
 class NothingComparedTest(unittest.TestCase):
+    def test_empty_calendar_dates_stay_and_purged_bars_complete_last_decision(self):
+        panel, out, cause, period, bounds = fixture()
+        cause[50, :] = 'identity_unknown'
+        dev, base, _, complete = H.development_rows(panel, out, cause, period, bounds, seed=1, rate=0.1)
+        self.assertIn(50, dev)
+        self.assertNotIn(list(dev).index(50), base['date_idx'])
+        self.assertEqual(dev[-1], len(panel.sessions) - 21)
+        self.assertTrue(complete[base['date_idx'] == len(dev) - 1].all())
+        panel.open[-1, 0] = np.nan
+        _, changed, _, complete = H.development_rows(panel, out, cause, period, bounds, seed=1, rate=0.1)
+        self.assertFalse(complete[changed['date_idx'] == len(dev) - 1][0])
+
     def test_window_completeness_needs_every_bar_and_no_break_and_ignores_price_levels(self):
         panel, *_ = fixture()
         cols = np.arange(12)
@@ -125,7 +148,7 @@ class WeekendCalendarTest(unittest.TestCase):
     def test_exclude_drops_stored_weekend_sessions_and_store_keeps_them(self):
         stored = {'2024-01-19', '2024-01-20', '2024-01-23'}
         index = {'2019-09-30', '2024-01-19', '2024-01-20', '2024-01-22', '2024-01-23'}
-        kept, _, _ = F.build_calendar(stored, index)
+        kept, _, _ = F.build_calendar(stored, index, weekends='store')
         dropped, missing, specials = F.build_calendar(stored, index, weekends='exclude')
         self.assertIn('2024-01-20', kept)
         self.assertNotIn('2024-01-20', dropped)
@@ -146,7 +169,7 @@ class WeekendCalendarTest(unittest.TestCase):
                              "('AAA',?,?,10,10,10,10,10,1000,'EQ','fixture',?)", (d, d, d))
             conn.commit()
             index = {s: {d: dict(close=100.0) for d in days} for s in I.SERIES}
-            kept = load_panel(conn, index, [], end=days[-1])
+            kept = load_panel(conn, index, [], end=days[-1], weekends='store')
             dropped = load_panel(conn, index, [], end=days[-1], weekends='exclude')
             conn.close()
         self.assertIn('2024-01-20', kept.sessions)

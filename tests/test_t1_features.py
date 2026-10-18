@@ -224,6 +224,24 @@ class FirewallTest(unittest.TestCase):
 
 
 class PanelLoaderTest(unittest.TestCase):
+    def test_snapshot_is_unknown_on_its_date_then_carried_forward(self):
+        from desk.t1.panel import identity_matrix
+        days = ['2024-01-18', '2024-01-19', '2024-01-23', '2024-01-24']
+        snapshots = [('2024-01-19', {'A': 'INE1'}), ('2024-01-23', {'B': 'INF2'})]
+        ident = identity_matrix(days, ['A', 'B', 'C'], snapshots)
+        self.assertEqual(ident[:, 0].tolist(), [F.UNKNOWN, F.UNKNOWN, F.EQUITY, F.EQUITY])
+        self.assertEqual(ident[:, 1].tolist(), [F.UNKNOWN] * 3 + [F.FUND])
+        self.assertTrue((ident[:, 2] == F.UNKNOWN).all())
+        # A file dated on a non-session becomes available on the next actual session.
+        weekend = identity_matrix(days, ['A'], [('2024-01-20', {'A': 'INE1'})])
+        np.testing.assert_array_equal(weekend[:, 0], ident[:, 0])
+
+    def test_default_calendar_excludes_weekends_but_retains_missing_weekdays(self):
+        sessions, missing, _ = F.build_calendar({'2024-01-19', '2024-01-20'},
+                                               {'2024-01-19', '2024-01-20', '2024-01-23'})
+        self.assertEqual(sessions, ['2024-01-19', '2024-01-23'])
+        self.assertEqual(missing, ['2024-01-23'])
+
     def test_store_bars_actions_knowledge_and_dated_identity_load_point_in_time(self):
         import tempfile
         from desk.t1.panel import identity_matrix, load_panel
@@ -251,7 +269,7 @@ class PanelLoaderTest(unittest.TestCase):
         self.assertEqual(p.raw_close[0, j['SPL']], 200.0)
         self.assertEqual(p.breaks[:, j['DEM']].tolist(), [0, 0, 1, 1, 1, 1])
         self.assertEqual(p.known[4, j['NEW']], 5)                          # known the next session
-        self.assertEqual(p.identity[:, j['SPL']].tolist(), [F.UNKNOWN] * 2 + [F.EQUITY] * 4)
+        self.assertEqual(p.identity[:, j['SPL']].tolist(), [F.UNKNOWN] * 3 + [F.EQUITY] * 3)
         self.assertEqual(p.identity[3, j['DEM']], F.FUND)
         self.assertEqual(p.identity[5, j['NEW']], F.UNKNOWN)                # no snapshot lists it
 
@@ -270,7 +288,7 @@ class InputsTest(unittest.TestCase):
     def test_the_calendar_keeps_store_sessions_adds_missing_weekdays_and_drops_unstored_weekends(self):
         sessions, missing, specials = F.build_calendar({'2022-08-05', '2022-08-10', '2024-01-20'},
                                                        {'2019-09-30', '2022-08-05', '2022-08-08', '2022-08-10',
-                                                        '2024-01-20', '2025-02-01'})
+                                                        '2024-01-20', '2025-02-01'}, weekends='store')
         self.assertEqual(sessions, ['2019-09-30', '2022-08-05', '2022-08-08', '2022-08-10', '2024-01-20'])
         self.assertEqual((missing, specials), (['2022-08-08'], ['2024-01-20', '2025-02-01']))
 

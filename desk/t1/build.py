@@ -93,7 +93,7 @@ def report(p, out, cause, period, bounds, index_closes, meta, late_sessions) -> 
     study = [i for i in range(len(sessions)) if period[i] != "outside"]
     years = sorted({sessions[i][:4] for i in study})
     L = []
-    L += ["# T1 inputs and features: coverage and missingness (14 October 2026)", "",
+    L += ["# T1 inputs and features: coverage and missingness (addendum 3)", "",
           "Built from the approved sources; **no outcome was loaded or computed** (no adverse20, no forward price). "
           "This report is for the user's review before any outcome analysis.", "",
           f"Build: `{meta['artifact']}`; code commit `{meta['code_commit']}`; Praman store "
@@ -104,9 +104,7 @@ def report(p, out, cause, period, bounds, index_closes, meta, late_sessions) -> 
           "store lacks.", "",
           f"- Weekday sessions in the official index but missing from Praman's store (every stock missing that day): "
           f"{', '.join(p.store_missing_sessions) or 'none'}.",
-          f"- Weekend index sessions: {', '.join(p.weekend_specials)}. Those the store has are in the calendar; "
-          f"those it lacks ({', '.join(d for d in p.weekend_specials if d not in sessions)}) are not, so a window across "
-          "them counts one session fewer. **For your review.**", ""]
+          f"- Weekend index sessions excluded from inputs and forward windows: {', '.join(p.weekend_specials)}.", ""]
     L += ["## Official index inputs", "",
           f"Knowledge rule: {KNOWLEDGE_RULE}. Source: niftyindices' historical-data endpoint (one response per series and "
           "year), with sessions it lacks taken from the dated Daily Snapshot files.", "",
@@ -125,6 +123,8 @@ def report(p, out, cause, period, bounds, index_closes, meta, late_sessions) -> 
           "open, high or low differ on 6 dates only by rounding (four decimals in the daily files, two in the history).",
           ""]
     L += ["## Stock bars (Praman store, EQ series)", "",
+          "ASSUMPTION (addendum 3): session D's EQ bar is available at the end-of-session decision D "
+          "when its stored knowledge date permits. Later-known bars remain unavailable until that date.", "",
           "| Year | Stored stock-days | Known the same day | Known 1-3 days later | Known later |", "|---|---|---|---|---|"]
     stored = ~np.isnan(p.raw_close)
     idx = np.arange(len(sessions))[:, None]
@@ -136,13 +136,16 @@ def report(p, out, cause, period, bounds, index_closes, meta, late_sessions) -> 
                  f"{int((sel & (lag > 3)).sum())} |")
     L += ["", "Sessions whose bars the store dates as known much later (archive files rewritten after the session); "
           "under the pre-registration's knowledge rule every window containing one is UNKNOWN until that date. "
-          "**For your review**:", ""]
+          "Retained missing inputs under addendum 3:", ""]
     for d, k, n in late_sessions:
         L.append(f"- {d}: {n} bars, known {k}")
     L += [""]
     L += ["## Identity and the primary population", "",
-          f"Equity identity: the latest dated ISIN snapshot on or before the session that lists the symbol "
-          f"({', '.join(meta['isin_snapshots'])}); a resolved non-INF ISIN is equity. No stitching across renames.", "",
+          f"ASSUMPTION (addendum 3): equity identity uses the latest dated ISIN snapshot strictly before the session that lists the symbol "
+          f"({', '.join(meta['isin_snapshots'])}); a resolved non-INF ISIN is equity. No stitching across renames. "
+          "October 2026 download dates are not used as historical availability.", "",
+          f"Development stock-days excluded because no earlier snapshot lists the symbol: "
+          f"{int(((period == 'development')[:, None] & (cause == 'identity_unknown')).sum()):,}.", "",
           "| Year | Stock-days | Eligible | Identity unknown | Fund unit | Bar not known by decision | ATR window incomplete | ATR window unadjustable |",
           "|---|---|---|---|---|---|---|---|"]
     for y in years:
@@ -208,12 +211,12 @@ def report(p, out, cause, period, bounds, index_closes, meta, late_sessions) -> 
             sp = F.spells(states)
             L.append(f"- {label}, {name}: {len(sp)} spell(s)"
                      + (": " + "; ".join(f"{s['first']}..{s['last']} ({s['adverse_sessions']} adverse)" for s in sp) if sp else ""))
-    L += ["", "## Decisions for your review before any outcome", "",
-          "1. The sessions known much later (above): keep the strict rule, or state an assumption for them.",
+    L += ["", "## Fixed coverage rules (addendum 3)", "",
+          "1. The sessions known much later (above): retain their stored knowledge dates; no previous-close filling.",
           "2. The weekday session missing from the store (2022-08-08): a Praman data gap; every window across it is UNKNOWN.",
-          "3. Weekend index sessions the store lacks: excluded from the calendar.",
-          "4. Identity is UNKNOWN before the first snapshot (2019-11-15) and for symbols listed between snapshots until the "
-          "next one lists them.", ""]
+          "3. Every weekend session is excluded from the calendar.",
+          "4. Identity is UNKNOWN through the first snapshot date (2019-11-15) and for symbols listed between snapshots until the "
+          "session after a snapshot first lists them.", ""]
     return "\n".join(L) + "\n"
 
 
