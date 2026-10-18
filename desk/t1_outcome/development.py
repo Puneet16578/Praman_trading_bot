@@ -21,24 +21,29 @@ def counts(base, mask):
                 rate=adverse/n if n else None)
 
 
-def evaluate(panel, out, cause, period, bounds):
+def evaluate(panel, out, cause, period, bounds, *, evaluated_period='development', locked_weights=None):
     """Call the guarded reader once, then evaluate all three preregistered contrasts."""
-    dev = np.flatnonzero(period == 'development')
-    if panel.sessions[-1] > F.DEVELOPMENT_END:
-        raise R.OutcomeReadRefused('Development panel extends beyond 2024')
+    if evaluated_period not in R.PERIODS:
+        raise R.OutcomeReadRefused('Unknown evaluation period')
+    if evaluated_period == 'holdout_2025' and locked_weights is None:
+        raise ValueError('Hold-out requires locked development weights')
+    dev = np.flatnonzero(period == evaluated_period)
+    if panel.sessions[-1] > R.PERIODS[evaluated_period][1]:
+        raise R.OutcomeReadRefused('Panel extends beyond evaluation period')
     eligible = cause[dev] == ''
     date_idx, cols = np.nonzero(eligible)
     decisions = {panel.sessions[i]: [panel.symbols[j] for j in np.flatnonzero(cause[i] == '')] for i in dev}
-    labels = R.read_adverse20(panel, decisions, period='development')
+    labels = R.read_adverse20(panel, decisions, period=evaluated_period)
     base = dict(date_idx=date_idx, quintile=F.quintile(out['atr_pct'][dev][eligible], bounds),
                 outcome=np.concatenate([labels[panel.sessions[i]] for i in dev]))
     states = {'V1': out['v1_adverse'][dev][date_idx], 'V2': out['v2_adverse'][dev][date_idx],
               'V3': out['v3_negative'][dev][eligible]}
-    weights = C.baseline_weights(base['quintile'])
+    weights = C.baseline_weights(base['quintile']) if locked_weights is None else dict(locked_weights)
     draws = U.period_draws(len(dev))
-    report = dict(period='development', first=panel.sessions[dev[0]], last=panel.sessions[dev[-1]],
+    purged = 'development_purged' if evaluated_period == 'development' else 'holdout_censored'
+    report = dict(period=evaluated_period, first=panel.sessions[dev[0]], last=panel.sessions[dev[-1]],
                   decision_sessions=len(dev), purged_sessions=[panel.sessions[i] for i in
-                  np.flatnonzero(period == 'development_purged')], eligible=len(date_idx),
+                  np.flatnonzero(period == purged)], eligible=len(date_idx),
                   identity_excluded=int((cause[dev] == 'identity_unknown').sum()), bounds=bounds,
                   weights=weights, baseline={q: counts(base, base['quintile'] == q) for q in C.QUINTILES},
                   variants={}, descriptive={}, exclusions={})
@@ -93,12 +98,17 @@ def evaluate(panel, out, cause, period, bounds):
             ratios={q: table[('ratio',q)] for q in C.QUINTILES},
             availability={name: counts(base, mask) for name, mask in
                           [('adverse', state == 1), ('other', state == 0), ('unknown', ~np.isfinite(state))]})
+    if evaluated_period == 'holdout_2025':
+        for result in report['variants'].values():
+            result['verdict'] = {'PASS': 'replication success', 'FAIL': 'not met',
+                                 'INCONCLUSIVE': 'INCONCLUSIVE'}[result['verdict']]
     return report
 
 
 def render(report, manifest):
     """Render all preregistered tables before the caller locks the result file."""
     import json
+    holdout = report['period'] == 'holdout_2025'
     def value(x, scale=1):
         return 'unavailable' if x is None else f'{x*scale:.8f}'
     def band(x):
@@ -107,10 +117,15 @@ def render(report, manifest):
         return f"| {label} | {c['candidates']} | {c['valid']} | {c['missing']} | {c['dates']} | {c['adverse']} | {value(c['rate'],100)} |"
     header = ['| Group | Candidates | Valid | Missing | Distinct dates with valid outcome | Adverse20 count | Rate % |',
               '|---|---:|---:|---:|---:|---:|---:|']
-    lines = ['# T1 locked development results (18 October 2026)', '',
+    scope = ('Hold-out only: decisions and outcome windows inside 2025; pre-2025 warm-up reads allowed. '
+             '**2025: PARTIALLY EXPOSED**; prior shadow studies viewed aggregate adverse-move rates, '
+             'but no trading model was fitted or selected on it. No input or outcome payload after '
+             '2025-12-31 was opened for this run.' if holdout else
         'Development only: 2019-10-01 through 2024-12-31. **2025: PARTIALLY EXPOSED**; '
         'prior shadow studies viewed aggregate adverse-move rates, but no trading model was fitted or selected on it. '
-        'No 2025 input or outcome payload was opened for this run and no hold-out evaluation was performed.', '',
+        'No 2025 input or outcome payload was opened for this run and no hold-out evaluation was performed.')
+    lines = ['# T1 locked 2025 hold-out results' if holdout else '# T1 locked development results (18 October 2026)', '',
+        scope, '',
         f"Code commit before the run: `{manifest['code_commit']}`. Input hashes were recorded before real outcome access;",
         'the complete manifest is reproduced below. Results are locked; no threshold or setting was changed after outcome access.', '',
         'Timing ASSUMPTIONS: same-session EQ bars subject to their stored knowledge dates; index/VIX through D-1; '
@@ -162,7 +177,7 @@ def render(report, manifest):
             lines += ['', '| Spell | First | Last | Adverse sessions |', '|---:|---|---|---:|']
             for n, spell in enumerate(r['spells'],1):
                 lines.append(f"| {n} | {spell['first']} | {spell['last']} | {spell['adverse_sessions']} |")
-    lines += ['', '## Input exclusions by development year', '', '| Year | Cause | Stock-days |', '|---|---|---:|']
+    lines += ['', '## Input exclusions by hold-out year' if holdout else '## Input exclusions by development year', '', '| Year | Cause | Stock-days |', '|---|---|---:|']
     for year, causes in report['exclusions'].items():
         for cause, count in sorted(causes.items()):
             lines.append(f"| {year} | {cause or 'eligible'} | {count} |")
@@ -172,6 +187,9 @@ def render(report, manifest):
         lines.append(f"| {name} | {d['known']} | {d['total']} | {d['distribution']} |")
     lines += ['', f"Descriptive NIFTY 50 trend (D-1): {report['nifty50_trend']}.", '',
               '## Input manifest recorded before outcome access', '', '```json', json.dumps(manifest, indent=2), '```', '',
-              'No 2025 replication claim is made. Even a development PASS cannot activate a trading policy '
-              'or satisfy T4. Any subsequent hold-out evaluation needs separate approval.', '']
+              ('Each variant is reported independently under the registered replication rule. '
+               'PARTIALLY EXPOSED: even replication success is not independent proof of new trading edge '
+               'and cannot activate risk limits or satisfy T4/readiness.' if holdout else
+               'No 2025 replication claim is made. Even a development PASS cannot activate a trading policy '
+               'or satisfy T4. Any subsequent hold-out evaluation needs separate approval.'), '']
     return '\n'.join(lines)

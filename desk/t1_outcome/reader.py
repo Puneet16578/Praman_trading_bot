@@ -29,9 +29,9 @@ from desk.outcome_firewall import FORWARD_START, evaluate_event
 from desk.t1.features import DEVELOPMENT_END, FORWARD_SESSIONS, STUDY_START
 
 ADVERSE_FRACTION = 0.8
-# "Development: 2019-10-01 through 2024-12-31." Only the development period exists here: there is
-# no reader for the 2025 hold-out (it stays untouched until the development results are locked).
-PERIODS = {"development": (STUDY_START, DEVELOPMENT_END)}
+# Each authorised period checks its own decision and forward-window bounds.
+PERIODS = {"development": (STUDY_START, DEVELOPMENT_END),
+           "holdout_2025": ("2025-01-01", "2025-12-31")}
 
 
 class OutcomeReadRefused(ValueError):

@@ -1,3 +1,12 @@
+## 2026-10-18 (Codex): T1 runner work resumed after P8-090
+
+- Clock-isolation fix 9cc2558 passed 1,039 tests and was pushed.
+- Restored the prepared T1 stash; merged both handoff/defect notes without changing
+  runner code. Earlier stop notes below describe the previous attempt, now resumed.
+- Runner full suite: 1,049 tests in 215.789 seconds, OK. P8-089 resolved.
+- Full suite and runner commit precede both random-label rehearsals. All checks must
+  pass before the single approved 2025 evaluation. No real hold-out run yet.
+
 ## 2026-10-18 (Codex): P8-090 ingestion-health clock test isolation
 
 - User authorised a separate test-only fix before restoring the T1 hold-out stash.
@@ -9,6 +18,33 @@
 - Next authorised step after this commit/push: restore the prepared T1 runner stash,
   pass the full suite, commit it, then development and hold-out random-label rehearsals.
   Real 2025 evaluation is approved once only after all checks pass; never auto-retry.
+
+## 2026-10-18 (Codex): T1 hold-out preparation stopped at unrelated suite failure
+
+- Prepared runner patch preserved in stash `t1-holdout-prepared-blocked-by-ingestion-clock-test`.
+- 30 focused tests pass. Full suite 1,049 tests in 231.837 seconds: one failure,
+  test_isin_map_operations.IsinRefreshTest.test_summary_health_levels_and_warn_exit_status.
+- Isolated test reproduces the failure after 18:00 IST: real clock + shared temp log
+  makes WARN/ERROR cases skip as retries of the first OK case. No unrelated fix made.
+- No development regression rehearsal, hold-out rehearsal or real hold-out run occurred.
+- All four locked development artifacts still match their recorded SHA-256 hashes.
+- Nightly task state rechecked: Ready. Master is left clean; no code commit or push
+  because AGENTS.md requires a passing full suite. P8-089 repair remains pending.
+- Next step needs the user's decision on the unrelated test's clock isolation.
+
+## 2026-10-18 (Codex): approved T1 hold-out runner preparation
+
+- User approved the runner changes required by P8-089 and one 2025 evaluation only
+  after development regression and a sealed random-label hold-out rehearsal pass.
+- Pre-registration 99-101 freezes development quintiles for 2025; 144-145 freezes
+  development candidate shares. Both are read from hash-verified locked artifacts.
+- Explicit hold-out input scope ends at 2025-12-31; development defaults stay at
+  2024-12-31. The real firewall, feature formulas and registered settings are unchanged.
+- New entry point scripts/t1_holdout.py has separate rehearsal/evaluation modes,
+  immutable attempt protection and pre-outcome code/input provenance. Never retry
+  a failed real attempt automatically. Development artifacts must remain unchanged.
+- Initial suite: 1,039 tests in 330.918 seconds, OK; P8-088 warnings remain unfixed.
+- No real hold-out outcome has been read at this preparation stage.
 
 ## 2026-10-18 (Codex): single T1 development evaluation completed and locked
 

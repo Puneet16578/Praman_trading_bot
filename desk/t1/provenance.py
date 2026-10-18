@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 
 from desk.t1.inputs import _ledger
-from desk.t1.read_guard import READ_END, T1ReadRefused, select_range
+from desk.t1.read_guard import READ_END, T1ReadRefused, check_date, select_range
 
 
 STORE_QUERIES = {
@@ -20,7 +20,8 @@ STORE_QUERIES = {
 }
 
 
-def input_hashes(conn, raw: Path, isin: Path):
+def input_hashes(conn, raw: Path, isin: Path, *, end=READ_END):
+    check_date(end)
     paths = set()
     expected = {}
     for folder in (raw, raw/'phase2'):
@@ -34,7 +35,7 @@ def input_hashes(conn, raw: Path, isin: Path):
             dates = re.findall(r'\d{4}-\d{2}-\d{2}', label)
             if len(dates) not in (1, 2):
                 raise T1ReadRefused('Cannot bound source-file dates for hashing')
-            if select_range(dates[0], dates[-1]):
+            if select_range(dates[0], dates[-1], end):
                 path = folder/entry['file']
                 file_dates = re.findall(r'\d{4}-\d{2}-\d{2}', path.name)
                 if file_dates != dates:
@@ -43,13 +44,14 @@ def input_hashes(conn, raw: Path, isin: Path):
                 expected[str(path.as_posix())] = entry['sha256']
     for path in isin.glob('cm_*.csv'):
         day = path.stem[3:]
-        if select_range(day, day):
+        if select_range(day, day, end):
             paths.update((path, path.with_name(path.name+'.sha256.json')))
     files = {str(p.as_posix()): hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(paths)}
     if any(files[p] != digest for p, digest in expected.items()):
         raise T1ReadRefused('Selected index payload differs from its recorded source hash')
     store = {}
     for name, (sql, args) in STORE_QUERIES.items():
+        args = tuple(end if arg == READ_END else arg for arg in args)
         digest, count = hashlib.sha256(), 0
         for row in conn.execute(sql, args):
             digest.update((json.dumps(list(row), separators=(',', ':'), allow_nan=False)+'\n').encode())

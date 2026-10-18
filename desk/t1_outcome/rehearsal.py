@@ -68,12 +68,13 @@ def complete_windows(panel, i: int, cols: np.ndarray) -> np.ndarray:
     return present & unbroken & np.isfinite(decision) & (np.nan_to_num(decision) > 0)
 
 
-def development_rows(panel, out, cause, period, bounds, *, seed: int, rate: float):
+def development_rows(panel, out, cause, period, bounds, *, seed: int, rate: float,
+                     evaluated_period='development'):
     """The development period's eligible stock-days as aligned arrays, with random labels.
     Addendum 3 (h): the bootstrap's dates are the development calendar (after (b)) from its
     first session up to the last before the purged sessions, i.e. the sessions labelled
     "development"; a date with no usable observation stays in the list and contributes nothing."""
-    dev = np.flatnonzero(period == "development")
+    dev = np.flatnonzero(period == evaluated_period)
     rng = np.random.default_rng(seed)
     date_idx, quint, v3, outcome, complete_all = [], [], [], [], []
     for k, i in enumerate(dev):
@@ -100,17 +101,20 @@ def _state_list(values):
 
 
 def rehearse(panel, out, cause, period, bounds, *, seed: int, rate: float, usable: str, method: str,
-             coverage_numerator: str) -> dict:
+             coverage_numerator: str, evaluated_period='development', locked_weights=None) -> dict:
     """Everything the development run would compute, on random labels. Reports only what does not
     depend on the labels: coverage, outcome-window availability, sample sizes, spells, usable draws,
     and which input-only requirements fail."""
-    dev, base, states, complete = development_rows(panel, out, cause, period, bounds, seed=seed, rate=rate)
-    weights = C.baseline_weights(base["quintile"])
+    if evaluated_period == 'holdout_2025' and locked_weights is None:
+        raise ValueError('Hold-out rehearsal requires locked development weights')
+    dev, base, states, complete = development_rows(panel, out, cause, period, bounds, seed=seed, rate=rate,
+                                                  evaluated_period=evaluated_period)
+    weights = C.baseline_weights(base["quintile"]) if locked_weights is None else dict(locked_weights)
     draws = U.period_draws(len(dev))
     report = dict(development_sessions=int(len(dev)), first_session=panel.sessions[dev[0]],
                   last_session=panel.sessions[dev[-1]], eligible_stock_days=int(len(base["date_idx"])),
                   complete_windows=int(complete.sum()), weights=weights,
-                  identity_excluded=int(((period == "development")[:, None] & (cause == "identity_unknown")).sum()),
+                  identity_excluded=int(((period == evaluated_period)[:, None] & (cause == "identity_unknown")).sum()),
                   variants={})
     for v in VARIANTS:
         rows = dict(base, state=states[v])

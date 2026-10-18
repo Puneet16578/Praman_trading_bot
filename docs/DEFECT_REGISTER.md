@@ -2901,3 +2901,32 @@ the existing retry tests. Other clock/log dependencies are listed without fixes
 in docs/desk/test_clock_log_audit_20261018.md.
 
 Validation: full suite 1,039 tests in 186.212 seconds, OK (exit 0). Existing P8-088 ResourceWarnings remain unfixed.
+
+## P8-089 - Frozen T1 development runner cannot apply the registered hold-out protocol
+
+**Severity / priority.** Medium. **Status.** Resolved, 2026-10-18.
+Static inspection at a4aa42d found development-only period selection, reader bounds,
+output/attempt paths, rehearsal reference and report wording. More importantly,
+the evaluator derives baseline weights from its current candidates: switching only
+the dates would use 2025 weights, contrary to pre-registration lines 144-145.
+No hold-out outcome was accessed to discover or repair this.
+
+The approved extension preserves all development defaults, adds an explicit 2025
+read scope and period selection, and requires the hash-verified locked development
+weights and boundaries. It never estimates hold-out weights. Separate once-only
+paths preserve development artifacts. Both rehearsals gate the real run; source,
+input and locked-artifact hashes are verified before outcome access. The firewall,
+features, thresholds, bootstrap settings and pre-registration are unchanged.
+Focused fixture checks cover bounds before reads, future-file traps, fixed weights,
+period windows, rehearsal sealing, report terms and duplicate-attempt refusal.
+
+Validation stop: 30 focused tests pass. Full suite: 1,049 tests, one failure in
+existing `test_isin_map_operations.IsinRefreshTest.test_summary_health_levels_and_warn_exit_status`.
+Isolated rerun reproduces it. Its three cases share a temporary ingestion log and
+use the real wall clock; after 18:00 IST the first case counts as an evening run,
+so subsequent cases skip via retry-not-needed and leave overall=OK. No unrelated
+fix or clock override made. Neither development nor hold-out rehearsal has run on
+the patch, and no real hold-out outcome was read. Prepared work is stashed pending
+separate approval to repair the test isolation; P8-089 is not yet closed.
+
+After P8-090 was fixed separately, the restored runner passed the full suite: 1,049 tests in 215.789 seconds, OK. No feature, threshold or firewall change. Rehearsals remain required before real hold-out access.
