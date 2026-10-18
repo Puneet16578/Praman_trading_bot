@@ -6,11 +6,11 @@ The working descriptions of A, B and C remain unchanged and unregistered. This r
 
 ## Scope and reproducibility
 
-The stored final catalogue supplies only symbol, event date and the sign of its existing event-day `return_1d`. No catalogue was rebuilt. The CSV contains contemporaneous/trailing features, not forward outcomes. SQLite was opened with `shared.sqlite_readonly.open_readonly` (`mode=ro`); only announcement metadata/text, surveillance transitions and bhavcopy symbol/date/knowledge-date/series membership were queried. No OHLC, subsequent returns, outcome labels, execution records or sealed paper results were selected for the census. Prior exposure was inventoried from analysis definitions, source code and artifact names, without opening outcome datasets or reproducing their performance tables.
+The stored final catalogue supplies symbol, event date and its existing event-day `return_1d`; no catalogue was rebuilt. Sections 1–7 read no prices. Section 8 read EQ close prices only through each event date and point-in-time corporate actions; it read no bar after D and calculated no forward outcome. SQLite was opened read-only (`mode=ro`). No outcome labels, execution records or sealed paper results were read. Prior exposure was inventoried from analysis definitions, source code and artifact names, without opening outcome datasets or reproducing their performance tables.
 
 Event/announcement counts cover 2019-10-01 through 2025-12-31 inclusive. Announcement lookup allows metadata back to 2019-07-03 for the 90-calendar-day lookback. Main counts use one read transaction; supplemental date/category checks use separate read-only connections. All comparisons use exact stored symbols, not a current alias map. Historical announcement ISIN/raw-response provenance is absent, as documented in `r2_sourcing_check.md`; renamed securities can therefore appear uncovered.
 
-The firewall and Strategy 0 seal are unchanged. No API/data download, attachment retrieval, strategy evaluation or new post-event move calculation was performed. Only the three official documentation URLs listed in section 7 were opened, sequentially, using the documentation allowance; no data endpoint was called.
+The firewall and Strategy 0 seal are unchanged. No API/data download, attachment retrieval, strategy evaluation or forward-window move calculation was performed. Eight documentation URLs were opened, sequentially, and are listed in sections 7 and 9; no data endpoint was called. Sections 8–9 were computed and documented against repository commit `7fab8ecb6974e631ab78e8fad45c73a3ee0ed3f2`.
 
 Catalogue SHA-256: `ab6dbe701b223076824f4430db5139dba8ed2ecdf9a5cdef5db29ed8e2e81908`.
 
@@ -357,6 +357,8 @@ For Monday/holiday gaps, a fifth column retains the rest of the interval from th
 | 2025 | 8,984 | 3,277 |
 | Total | 54,834 | 15,846 |
 
+The 15,846 “Unclear category present” count is the number of catalogue events with at least one same-symbol Unclear filing in the counted event window, out of all 60,694 catalogue events dated 2020–2025. It is an event count, not a filing count or a percentage of only the events that had any filing.
+
 Unparseable material timestamps and timestamp/date mismatches in these event windows: 0. No material-category association does **not** mean unexplained: unclear categories, identity gaps, incomplete capture and earlier news remain unresolved. Material timing counts must not be used as an A/B split until reviewed.
 
 ## 4. Ninety-day announcement coverage
@@ -545,15 +547,17 @@ An equal-weight move is computed per event date from all valid EQ returns availa
 
 ### Event move shared by its 20 most correlated EQ peers
 
+The first publication of this table had no committed calculation script. The read-only rerun added for this report produced the market table exactly but did not reproduce several peer buckets and the overlap mean. This table is corrected to the output of `scripts/abc_event_day_context.py`; the previous peer figures are superseded. The source of the original one-off differences cannot be recovered from the repository.
+
 | Year | Events with 20 peers | Events with fewer than 20 | Mean selected peers trading on D per event with an average | Mean paired historical sessions per selected peer | Counter-direction | Under 25% | 25% to <50% | 50% to 75% | Over 75% | Ratio unavailable |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 2020 | 9,911 | 0 | 15.2 | 92.8 | 1,803 | 4,912 | 2,033 | 817 | 346 | 0 |
-| 2021 | 8,960 | 3 | 13.4 | 91.3 | 2,195 | 5,163 | 1,215 | 294 | 92 | 4 |
-| 2022 | 9,300 | 4 | 14.3 | 83.9 | 2,451 | 4,780 | 1,319 | 519 | 229 | 6 |
-| 2023 | 11,889 | 7 | 11.0 | 79.2 | 3,476 | 6,311 | 1,466 | 432 | 195 | 16 |
-| 2024 | 10,582 | 9 | 11.2 | 40.1 | 2,718 | 5,295 | 1,578 | 643 | 336 | 21 |
-| 2025 | 10,019 | 10 | 12.2 | 59.8 | 3,046 | 5,015 | 1,404 | 370 | 177 | 17 |
-| Total | 60,661 | 33 | 12.8 | 73.9 | 15,689 | 31,476 | 9,015 | 3,075 | 1,375 | 64 |
+| 2020 | 9,911 | 0 | 15.2 | 93.2 | 1,796 | 4,917 | 2,032 | 817 | 349 | 0 |
+| 2021 | 8,960 | 3 | 13.3 | 91.7 | 2,171 | 5,198 | 1,209 | 294 | 87 | 4 |
+| 2022 | 9,300 | 4 | 14.3 | 83.7 | 2,438 | 4,792 | 1,329 | 503 | 236 | 6 |
+| 2023 | 11,889 | 7 | 11.0 | 79.6 | 3,487 | 6,303 | 1,460 | 437 | 193 | 16 |
+| 2024 | 10,582 | 9 | 11.2 | 40.5 | 2,742 | 5,278 | 1,582 | 651 | 321 | 17 |
+| 2025 | 10,019 | 10 | 12.2 | 59.8 | 3,043 | 5,017 | 1,405 | 370 | 177 | 17 |
+| Total | 60,661 | 33 | 12.8 | 74.2 | 15,677 | 31,505 | 9,017 | 3,072 | 1,363 | 60 |
 
 For events with peer ratios unavailable, reasons were fewer than 20 mathematically valid historical correlations, no selected peer return on D, or no valid event-stock move. A selected peer need not trade every event date; the average uses peers with a stored valid return. Across the selected peer/event pairs, the overlap varies widely; table means show the thin history directly. Correlation cutoffs based on minimum history would change the available peer count and must be fixed before using this for a strategy. This calculation neither inspects nor computes any return after D.
 
@@ -570,6 +574,6 @@ These are documentation sources only; none was downloaded or added to Praman. Th
 
 ## Validation and unresolved limits
 
-Full required suite: `python -m unittest discover -s tests -p "test_*.py"` - **1,049 tests in 234.929 seconds, OK**. The event census asserts unique event keys and reconciles category totals to the prior R2 bounded inventory. Section 8 reads only EQ close prices through each event date, plus point-in-time corporate-action inputs; it does not read later bars or calculate outcomes. The full suite passed in the preceding report task (1,049 tests in 234.929 seconds); it was not rerun for this report extension. Existing SQLite ResourceWarnings remain unchanged. No code or store changes were made.
+The announcement backfill resume limitation is already logged as open defect P8-021; no ingestion fix is part of this report. `scripts/abc_event_day_context.py` reproduces the corrected section 8 tables from read-only store queries. Two full-store invocations were byte-identical (SHA-256 `9df3f7f87dcb2212620e9a4bcbaa34e0effdd8c89a623cc6d2743dcac728e8fb`; 2,029 output bytes). Item 1 full suite: 1,051 tests in 243.446 seconds, OK. Existing SQLite ResourceWarnings remain unchanged.
 
-The report cannot verify causal explanation, complete historic announcement capture, true first-public timestamp semantics, an initial surveillance roster plus uninterrupted history, or next-session execution availability. These are sourcing limits, not failed strategy tests. No strategy verdict, trade list or outcome statistic is produced. Only this document is changed; stores, other documentation, code, registrations, firewall, seal and Windows task remain untouched.
+The report cannot verify causal explanation, complete historic announcement capture, true first-public timestamp semantics, an initial surveillance roster plus uninterrupted history, or next-session execution availability. These are sourcing limits, not failed strategy tests. No strategy verdict, trade list or outcome statistic is produced. Stores, strategy rules, registrations, firewall, seal and Windows task remain unchanged.

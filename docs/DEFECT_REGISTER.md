@@ -2932,3 +2932,16 @@ separate approval to repair the test isolation; P8-089 is not yet closed.
 After P8-090 was fixed separately, the restored runner passed the full suite: 1,049 tests in 215.789 seconds, OK. No feature, threshold or firewall change. Rehearsals remain required before real hold-out access.
 
 P8-089 integration checks at a51cff1: all development rehearsal analytical fields match the third rehearsal exactly; the guarded 2025 random-label rehearsal completes. Full tables and artifact integrity checks are in docs/desk/t1_holdout_rehearsal_2025.md. No real hold-out outcome read at this stage.
+
+## P8-091 - A/B/C section 8 peer table was not reproducible
+
+**Severity / priority.** Low (research reproducibility). **Status.** Resolved 2026-10-19.
+The event-day market table could be independently recomputed from the store, but the
+peer table in `docs/desk/abc_sourcing_check.md` had no committed computation. A new
+read-only script reproduced the market counts but differed from several peer buckets
+and the mean overlap in the original one-off figures. The original calculation code
+could not be recovered from the repository, so its precise arithmetic difference is
+unknown. The report now discloses this and carries the reproducible script's peer
+counts. The script uses only EQ bars through each event date and point-in-time action
+rows; the store is opened `mode=ro` and is never written. Two full-store invocations
+produce identical output, and the report's two tables match it. No outcomes were read.
