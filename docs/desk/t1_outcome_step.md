@@ -75,3 +75,16 @@ comparisons; the rehearsal selects the registered settings. With 2,000 draws,
 fewer than 1,900 usable is exactly more than 5% unusable. The second rehearsal
 reports 186,581 development stock-days excluded for unknown identity (formerly
 184,428); see `t1_rehearsal2_20261018.md`. No real development run is wired or run.
+
+
+## Approved runner prepared (18 October 2026)
+
+After P8-087's bounded-loader repair and an exactly matching third rehearsal,
+`development.py` assembles the existing reader/contrast/bootstrap components;
+`scripts/t1_development.py` is the separately approved one-shot entry point. It
+requires clean master, records commit/input hashes before outcome access, retains
+all guards, writes full tables and refuses a second attempt. Four fixture tests
+cover assembly/rendering, date refusal, future-tail invariance and retry prevention.
+The full suite passed 1,039 tests before any real outcome access. This preparation
+record does not itself claim a real result; see the separately committed locked
+results file after the approved evaluation.

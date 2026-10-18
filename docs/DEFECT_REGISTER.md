@@ -2866,8 +2866,11 @@ ends in 2024. Source ledgers are read only as file-selection metadata, not marke
 observations. Historical payloads are separate yearly files, so no mixed payload
 had to be opened. Six boundary tests include later-file traps and a SQL trap that
 fail on the original implementation; 57 focused tests pass. No outcome access.
-The separately required third rehearsal must still establish numerical equality
-before the real evaluation can proceed.
+Third rehearsal at fcf9711 established exact equality of every saved analytical
+field with the second rehearsal (docs/desk/t1_rehearsal3_20261018.md). Additional
+fixture testing proves a changed future tail cannot change any prior feature or
+threshold. Final pre-evaluation validation: 61 focused tests; full suite 1,039
+tests in 263.863 seconds, OK. P8-088 warnings recur and remain unfixed.
 
 ## P8-088 - Test suite emits unclosed SQLite connection ResourceWarnings
 

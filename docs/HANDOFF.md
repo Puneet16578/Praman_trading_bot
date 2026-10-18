@@ -1,3 +1,24 @@
+## 2026-10-18 (Codex): P8-087 repaired; third rehearsal matched; evaluation runner frozen
+
+- fcf9711 closes P8-087: all development loaders bound before SQL/payload reads;
+  later source files skipped, mixed-range files refused, no post-end session query.
+- Third random-label rehearsal at fcf9711: `data/t1/rehearsal_20261018T105905Z.json`.
+  Every saved analytical field exactly matches the second rehearsal; execution
+  timing/memory differ normally. Report: docs/desk/t1_rehearsal3_20261018.md.
+- The user authorised the real development evaluation once after that match.
+  `scripts/t1_development.py` now prepares its immutable attempt marker and records
+  the clean-master commit plus bounded file/logical-row hashes before outcome access.
+  The existing reader/firewall evaluates development only. Full tables render to
+  docs/desk/t1_development_results_20261018.md; the script refuses a second attempt.
+- Validation before real outcome access: 61 focused T1 tests pass; full suite
+  1,039 tests in 263.863 seconds, OK, exit 0. P8-088 ResourceWarnings recur, unfixed.
+  Input provenance preflight verifies 59 files, 1,300 stored calendar dates,
+  2,199,596 EQ rows and 699 action rows within bounded SQL; no outcome computed.
+- No real evaluation has run at this preparation commit. Next action is the single
+  approved evaluation, followed immediately by committing its result and manifest.
+  No code/settings/threshold changes after seeing results; crash/bug means STOP.
+- 2025 hold-out and Monday after-run Part 2 remain unstarted.
+
 ## 2026-10-18 (Codex): once-only T1 development evaluation stopped in preflight
 
 - Clean master at 9dea1e8b785b4c4aeb0c044e8774478c3210ea7d before inspection.
