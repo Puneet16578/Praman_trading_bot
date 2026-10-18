@@ -275,3 +275,67 @@ never be tested.
 
 Before any outcome is computed, coverage and missingness by input and year must still be published
 from the full daily history (phase 2, not yet approved), as the knowledge section requires.
+
+## Addendum 3 (2026-10-18): coverage, research timing and bootstrap readings
+
+Approved by the user on 18 October 2026, including the final replacement of (d).
+Recorded before any real T1 outcome computation. The first rehearsal used seeded
+random labels only; no real development run or hold-out evaluation is authorised.
+
+**(a) Missing inputs.** The five late-known sessions listed in
+`t1_coverage_decisions_20261018.md`, and 2022-08-08, stay missing inputs under the
+pre-registration's knowledge rules. Nothing is filled from the next file's
+previous-close column.
+
+**(b) Calendar.** Weekend sessions are left out of the T1 calendar, for inputs
+and outcome windows alike.
+
+**(c) Identity coverage.** The last known snapshot keeps being carried forward.
+No new snapshots now. Every T1 report states how many eligible stock-days are
+excluded because no earlier snapshot lists the symbol (184,428 in the original
+development build; report the measured count after the timing repair).
+
+**(d) Timing (research clock).**
+- A decision on session D is taken at the end of session D, as the original protocol says.
+- Stock bars: the protocol's own definitions use session D's EQ bar at decision D.
+  Eligibility needs a valid current EQ close and a 21-session ATR window; decision
+  volatility is ATR20 / decision close x 100; moving-average breadth includes the
+  decision close. Addendum 3 keeps these definitions unchanged and labels their
+  timing as an **ASSUMPTION**: the EQ bar for session D is available at the
+  end-of-session decision on D, because NSE publishes the bhavcopy the same evening
+  and the store holds only its date. This is the one exception to the next-session
+  rule for date-only values, and it covers only the stock's own EQ bars.
+- Index closes and India VIX stay on D-1, as addendum 2 says.
+- ISIN snapshots: **ASSUMPTION**. A snapshot dated S is usable for decisions from
+  session S+1 onward, because no symbol's equity or fund status changed in any of
+  the 9 snapshot pairs. Its download date (October 2026) is not used.
+- This research clock is separate from Praman's own decision clock (when we stored
+  a row), which replays of Praman's own decisions use (P8-084).
+
+**(e) Coverage.** The 80% rule counts eligible stock-days with a known state.
+Outcome availability is reported separately, by state, with no rule attached.
+
+**(f) Usable bootstrap draws.** A draw is usable only if every compared group has
+at least the minimum the sample-size check requires (100 valid outcomes and 30
+distinct dates in each state-quintile cell). Unusable draws are dropped and
+counted; more than 5% unusable makes the verdict INCONCLUSIVE.
+
+**(g) Percentiles.** Use linear interpolation between draws (NumPy's default,
+Hyndman-Fan type 7).
+
+**(h) Bootstrap calendar and purge.** Resample blocks of consecutive sessions
+from the development calendar after (b), from its first session up to the last
+session before the 20 purged sessions (3 to 31 December 2024). Purged sessions
+are neither decision dates nor bootstrap dates, but their bars still complete
+the outcome windows of the last development decisions. Sessions inside the
+calendar with no usable observation stay in place and contribute nothing.
+Block lengths and seed remain those of addendum 1.
+
+**(i) Confirmed readings from `t1_outcome_step.md`.**
+- A quintile whose risk difference is exactly zero does not count towards the
+  predicted positive sign.
+- Candidate shares include stock-days with missing outcomes.
+- Matched available rows for V0 need both the variant state and outcome known.
+- Outcome bars are read as stored now, so a bar unknown as an input can sit
+  inside an outcome window.
+- A contrast whose standardised difference is unavailable is INCONCLUSIVE.
