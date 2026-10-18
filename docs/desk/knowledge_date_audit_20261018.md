@@ -92,3 +92,8 @@ time is taken as the end of that session's IST day (`desk.lib.store.decision_wat
 | T1 build, shadow analysis and follow-ups, gate diagnostics, P8-007 verification, the forensic pipeline | research | source clock, by design |
 | scripts/desk_scan_proof.py | a proof harness on a copy (`run_scan_range` over past days, no `stored_by`) | source clock; not a replay of Praman's decisions, left as is |
 | Angel scripts | latest stored sessions for date checks and liquidity ranking | live |
+
+**Confirmed by the user, 2026-10-18 (third round):** for a what-if replay of a past session
+(`desk assess --as-of`, `desk scan --date`), the decision time is the end of that IST day. Audit
+replays (`desk replay <decision_id>`) keep using the decision's own recorded time (its recorded
+watermarks).
