@@ -1,3 +1,31 @@
+## 2026-10-18 (Codex, Part 1): T1 addendum 3, timing repair, second rehearsal, brief
+
+- User resolved two protocol conflicts explicitly. Final timing keeps stock EQ
+  bars on D as a labelled ASSUMPTION, preserves eligibility/ATR/breadth definitions,
+  leaves index/VIX on D-1, and makes ISIN snapshots available from S+1 (ASSUMPTION).
+- 040cdef: item 1 timing audit, 19 focused feature tests passed.
+- 70ebf4b: item 2, addendum 3 recorded separately; 38 focused T1 tests passed.
+- 127f0d4: item 3, P8-085 resolved; ISIN strictly after snapshot date, weekend
+  exclusion default, updated report assumptions/counts; 51 focused T1 tests passed.
+  No other timing calculation changed. Real development outcome run remains unwired.
+- Second rehearsal: `docs/desk/t1_rehearsal2_20261018.md`, artifact
+  `data/t1/rehearsal_20261018T055421Z.json`. Real reader/firewall sealed throughout;
+  seeded random labels only. 34.1 seconds, 2,091,749,376 bytes peak; 1,620,100 eligible
+  stock-days, 186,581 identity exclusions (was 184,428). V2 coverage 85.7340%, V3
+  98.4126%; V1/V2 spells 9/13; usable draws 2000/1999/2000. All cells clear minimums.
+- dea07c7: item 4, brief labels all G1-G6 and adds fixed-category rejection counts
+  from stored gates; P8-086 resolved; 16 brief tests passed. The read-only 14 Oct
+  line exactly matches the requested text (`docs/desk/screening_brief_20261018.md`).
+  No real brief file was written or overwritten; no decision logic changed.
+- No authenticated Angel calls, downloads, NSE page reads, credentials, real T1
+  outcomes, durable-store changes or Windows-task changes. Task state checked
+  read-only: Ready. Firewall and Strategy 0 seal unchanged.
+- Full suite run once at end: 1,029 tests in 231.224 seconds, OK, exit 0.
+  Unclosed SQLite connection ResourceWarnings appeared in existing tests; no failures.
+  No further code changes after this full-suite run.
+- Part 2 remains deferred until the user asks after Monday's nightly finishes.
+  No Monday run, catch-up or retry claim has been made in this session.
+
 ## 2026-10-18 (third round): T1 addendum stopped again; rehearsal; battery retry live (Claude)
 
 - 1 T1 addendum 3: STOPPED, nothing recorded. (d) refers to "the evidence or ASSUMPTION labels the
