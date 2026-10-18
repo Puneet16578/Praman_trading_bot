@@ -1,3 +1,21 @@
+## 2026-10-18 (second round, Part 1): T1 addendum stopped; P8-084 two clocks; battery retry proposal (Claude)
+
+- 1 T1 addendum: STOPPED, nothing recorded. Part (a) conflicts with the pre-registration ("A stock
+  without a price on a global session has missing input; never forward-fill it into breadth or the
+  study"): a next file's previous close is an older close for a symbol that did not trade on the
+  missing day (late sessions: 7, 1, 0 and 3 such symbols; for 2022-08-08 there is no file to tell
+  which of 1,815 traded). For the user. (h) also needs a word on the 20 purged December sessions.
+- 2 The five readings are quoted in the report for the user's confirmation; no development run.
+- 3 790075a P8-084 fixed for replay paths: desk assess --as-of and desk scan --date for a past
+  session read only rows stored by the end of that IST day; audit replay reads the decision's own
+  thesis by id. Reader table in docs/desk/knowledge_date_audit_20261018.md. 7 tests.
+- 4 9aadc4e docs/desk/battery_retry_proposal_20261018.md: options A (20:00 and 22:00 triggers), B
+  (power-source event 105, logged on this laptop), C (restart on failure); nothing changed.
+- 5 Confirmed: a fill on day D uses NSE's list dated the session before D, read as of the run date;
+  circuit_bands (with its catch-up) runs before auto_paper.
+- Full suite: 1002 tests in 213.606s, OK, exit 0 (09:58-10:02). Nothing stashed.
+- Part 2 waits for the user after Monday's run.
+
 ## 2026-10-18 (Sunday): Part C, knowledge-date audits, T1 coverage decisions, T1 outcome step (Claude)
 
 No nightly until Monday 18:00; no logged-in Angel call; no download; no NSE page read; firewall,
