@@ -2785,3 +2785,23 @@ session>` now read through replay connections limited to the end of that session
 observations still read live. The audit replay already used recorded watermarks; it now reads the
 decision's own thesis by id. Tests: tests/test_decision_clock.py (a bhavcopy for 15 and 16 Oct stored
 on 19 Oct is invisible to replays dated 15 and 16 Oct). The reader table is in the audit note.
+
+## P8-085 - T1 treats date-only evidence as known the same session, and its ISIN snapshots carry no publication evidence
+
+**Severity.** Medium (research inputs; no outcome has been computed). **Status.** Open — found
+2026-10-18 while checking the user's draft T1 addendum 3 (d); for the user's decision.
+The pre-registration says: "When only a proven publication DATE exists, make the value available at
+the next market session, not at an invented same-day time. If even the publication date cannot be
+proven, knowledge begins at first observed retrieval and earlier historical values remain UNKNOWN."
+The T1 build (desk/t1/panel.py, written by Claude on 2026-10-13) does otherwise in two places:
+- **Stock bars.** The store keeps each bar's knowledge as a date (the IST date of the archive file's
+  Last-Modified); the time of day was seen at download but not kept. The build makes a bar usable at
+  the decision on its own session ("known the same day" in the coverage report), not at the next.
+- **ISIN snapshots.** The sidecars record the requested date, the file name and the download time
+  (October 2026), no Last-Modified. The build uses each snapshot from its own session, with neither
+  publication evidence nor an ASSUMPTION label.
+The draft addendum's (d) refers to "the evidence or ASSUMPTION labels the build already carries";
+for these two inputs there are none, so it was not recorded. The rehearsal of 2026-10-18 ran the
+build as it is. Options for the user: state labelled ASSUMPTIONS (same session, or next session) for
+the bars and the snapshots, as addendum 2 did for index closes; or apply the strict rule (bars from
+the next session; snapshots unknown until retrieved, which leaves no eligible stock-day).

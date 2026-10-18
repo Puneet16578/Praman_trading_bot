@@ -44,11 +44,12 @@ def identity_matrix(sessions: list[str], symbols: list[str], snapshots: list[tup
     return ident
 
 
-def load_panel(praman_conn, index_closes: dict, snapshots: list[tuple[str, dict]], *, end: str = STUDY_END) -> Panel:
+def load_panel(praman_conn, index_closes: dict, snapshots: list[tuple[str, dict]], *, end: str = STUDY_END,
+               weekends: str = "store") -> Panel:
     store_sessions = {r[0] for r in praman_conn.execute(
         "SELECT DISTINCT event_date FROM bhavcopy WHERE event_date BETWEEN ? AND ?", (STUDY_START, end))}
     index_dates = set().union(*(set(index_closes[s]) for s in SERIES))
-    sessions, missing, specials = build_calendar(store_sessions, index_dates, end)
+    sessions, missing, specials = build_calendar(store_sessions, index_dates, end, weekends=weekends)
     pos = {d: i for i, d in enumerate(sessions)}
     session_arr = np.array(sessions)
     forward = [r[0] for r in praman_conn.execute(
@@ -62,6 +63,8 @@ def load_panel(praman_conn, index_closes: dict, snapshots: list[tuple[str, dict]
     raw = {k: np.full(shape, np.nan) for k in ("open", "high", "low", "close")}
     known = np.full(shape, np.inf)
     for symbol, day, kd, o, h, l, c in bars:
+        if weekends == "exclude" and day not in pos:     # a weekend session left out of the calendar
+            continue
         i, j = pos[day], col[symbol]
         if np.isfinite(known[i, j]):
             raise ValueError(f"More than one EQ vintage for {symbol} {day}; the loader assumes one")

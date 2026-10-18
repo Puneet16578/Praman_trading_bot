@@ -59,10 +59,18 @@ class Panel:
     open: np.ndarray | None = None   # fully back-adjusted; the outcome step checks it (desk/t1_outcome)
 
 
-def build_calendar(store_sessions: set[str], index_dates: set[str], end: str = STUDY_END):
+WEEKEND_RULES = ("store", "exclude")
+
+
+def build_calendar(store_sessions: set[str], index_dates: set[str], end: str = STUDY_END, *, weekends: str = "store"):
+    """`weekends`: "store" (as built on 2026-10-13: a weekend session is in the calendar when the store
+    has it) or "exclude" (no weekend session at all, for inputs and outcome windows alike: the user's
+    draft addendum 3 (b), used by the rehearsal; not yet recorded in the pre-registration)."""
+    if weekends not in WEEKEND_RULES:
+        raise ValueError(f"weekends must be one of {WEEKEND_RULES}")
     weekday_index = {d for d in index_dates if is_weekday(d) and d <= end}
     before = sorted(d for d in weekday_index if d < STUDY_START)
-    stored = {d for d in store_sessions if STUDY_START <= d <= end}
+    stored = {d for d in store_sessions if STUDY_START <= d <= end and (weekends == "store" or is_weekday(d))}
     missing = sorted(d for d in weekday_index if d >= STUDY_START and d not in stored)
     sessions = before + sorted(stored | set(missing))
     specials = sorted(d for d in index_dates if not is_weekday(d) and d <= end)
