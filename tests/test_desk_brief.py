@@ -1,13 +1,15 @@
 """Daily decision desk brief (session item B5)."""
 import contextlib
 import io
+import json
+import sqlite3
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from desk.brief import build_brief, write_brief
+from desk.brief import build_brief, write_brief, screening_rejection_line
 from tests.test_strategy0_engine import DAYS, EngineFixture, ROOT, expected_order, opportunity, plan, rulebook
 
 
@@ -24,7 +26,8 @@ class BriefTest(EngineFixture):
         text = self.brief(DAYS[0])
         seed, (first, second, last) = expected_order(('AAA', 'BBB', 'CCC'), DAYS[0])
         for expected in ('PRAMAN - DAILY DECISION DESK', 'Universe scanned: 4', 'Candidates: 4',
-                         'Passed evidence/data checks: 3', 'High-confidence model candidates: UNKNOWN',
+                         'Passed screening (G1–G6: data, evidence, structure, surveillance, liquidity, per-trade risk): 3',
+                         'High-confidence model candidates: UNKNOWN',
                          'Passed risk/portfolio/execution checks: 2', 'Rejected by reason: OPEN_RISK_BUDGET 1',
                          f'Strategy 0 version 3; candidate order SEEDED_RANDOM, seed {seed[:16]}',
                          f'Candidate {first}', f'Candidate {second}', 'Calibrated P(profitable): UNKNOWN (T4)',
@@ -198,6 +201,66 @@ class BriefNightlyTest(unittest.TestCase):
                 self.assertEqual(weekly_ingest.main(), 0)
             started = log.read_text(encoding='utf-8').splitlines()[0].split(' ')[1]
         called.assert_called_once_with(current_run_start=started)
+
+
+class ScreeningLineTest(unittest.TestCase):
+    def setUp(self):
+        self.conn = sqlite3.connect(':memory:')
+        self.conn.execute('CREATE TABLE opportunity_log (event_date TEXT, gate_results TEXT)')
+        self.addCleanup(self.conn.close)
+
+    def add(self, failures=None, day='2026-10-14'):
+        gates = {f'G{i}': dict(result='PASS', reasons=[]) for i in range(1, 9)}
+        for g, reasons in (failures or {}).items():
+            gates[g] = dict(result='FAIL', reasons=reasons)
+        self.conn.execute('INSERT INTO opportunity_log VALUES (?,?)', (day, json.dumps(gates)))
+
+    def test_requested_breakdown_and_stressed_subset(self):
+        for i in range(8):
+            reasons = ['Order is 77.77% of average daily turnover, Rs 123456.78']
+            if i < 4:
+                reasons += ['Exiting under stressed volume takes 9.99 sessions']
+            self.add({'G5': reasons})
+        for _ in range(2):
+            self.add({'G4': ['Symbol under ASM stage 4']})
+        self.add()
+        self.add({'G1': ['no bhavcopy row']}, day='2026-10-13')
+        self.assertEqual(screening_rejection_line(self.conn, '2026-10-14'),
+                         'Rejected at screening: 10 (G5 liquidity 8: over 1% of average turnover 8, '
+                         'of which stressed exit over 3 sessions 4; G4 surveillance 2: ASM 2; '
+                         'G1 data 0, G2 evidence 0, G3 structure 0, G6 per-trade risk 0)')
+
+    def test_multiple_gates_and_duplicate_reasons_count_one_candidate(self):
+        self.add({'G4': ['under ASM', 'under ASM'], 'G5': ['Order is 9%', 'Order is 12%'],
+                  'G7': ['private text']})
+        text = screening_rejection_line(self.conn, '2026-10-14')
+        self.assertIn('Rejected at screening: 1', text)
+        self.assertIn('G4 surveillance 1: ASM 1', text)
+        self.assertIn('G5 liquidity 1: over 1% of average turnover 1', text)
+        self.assertNotIn('G7', text)
+
+    def test_stressed_exit_without_turnover_failure_is_not_a_subset(self):
+        self.add({'G5': ['Exiting under stressed volume takes 12.7 sessions']})
+        text = screening_rejection_line(self.conn, '2026-10-14')
+        self.assertIn('stressed exit over 3 sessions 1', text)
+        self.assertNotIn('of which', text)
+        self.assertNotIn('12.7', text)
+
+    def test_unknown_and_required_dimension_text_never_escape(self):
+        self.add({'G1': ['SECRET 88.8% Rs 999999'],
+                  'G2': ["Required dimension 'SECRET 11.5% Rs 123' unavailable", 'Required dimension'],
+                  'G6': []})
+        text = screening_rejection_line(self.conn, '2026-10-14')
+        self.assertIn('required evidence missing 1', text)
+        self.assertIn('other or unavailable check 1', text)
+        for raw in ('SECRET', '88.8', '999999', '11.5', 'Rs', '123'):
+            self.assertNotIn(raw, text)
+
+    def test_no_rejections_and_g7_g8_do_not_affect_screening(self):
+        self.add({'G7': ['behavioural'], 'G8': ['thesis']})
+        self.assertEqual(screening_rejection_line(self.conn, '2026-10-14'),
+                         'Rejected at screening: 0 (G1 data 0, G2 evidence 0, G3 structure 0, '
+                         'G4 surveillance 0, G5 liquidity 0, G6 per-trade risk 0)')
 
 
 if __name__ == '__main__':

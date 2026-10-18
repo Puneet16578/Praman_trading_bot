@@ -2821,3 +2821,19 @@ Second random-label rehearsal: `docs/desk/t1_rehearsal2_20261018.md`; 34.1 secon
 2,091,749,376 bytes peak; no real outcome read/computed. The stock-bar assumption
 is not claimed to be verified publication evidence. Real development run remains
 unwired; firewall and Strategy 0 seal unchanged.
+
+## P8-086 - Nightly brief understates screening scope and omits screening rejection counts
+
+**Severity.** Low (display only). **Status.** Resolved 2026-10-18.
+The old "Passed evidence/data checks" label described only part of screening:
+`desk/gates/engine.py` requires G1-G6 to pass. The brief now names all six gates
+and adds rejection counts from each candidate's stored gate results. Fixed
+category labels use `shadow_analysis.reason_key`; raw reason texts, percentages
+and rupee amounts are never interpolated. Counts are deduplicated per candidate
+and category; gate counts can overlap. The stressed-exit "of which" count is
+the intersection with the turnover-cap group, not an assumed subset.
+No decision, gate, Strategy 0 or persistence logic changed.
+Verification: 16 brief tests pass, including five new cases for exact formatting,
+deduplication/multiple gates, subset semantics, safe fallback labels and G7/G8
+exclusion. Read-only rendering for 14 October matches the user's requested line
+exactly; no brief file was written or overwritten.

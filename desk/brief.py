@@ -5,12 +5,79 @@ that will supply them, never as numbers. NO TRADE is a normal outcome. Strategy 
 operational metrics only (seal); the user's manual paper book is shown in full.
 """
 import json
+from collections import Counter
 from pathlib import Path
 
 from desk.automation import kill_switches, strategy0
 from desk.outcome_firewall import OUTCOMES_OPEN
 
 ROOT = Path(__file__).resolve().parents[1]
+
+SCREENING_GATES = {'G1': 'data', 'G2': 'evidence', 'G3': 'structure',
+                   'G4': 'surveillance', 'G5': 'liquidity', 'G6': 'per-trade risk'}
+SCREENING_CATEGORIES = {
+    'market_missing': 'market data missing', 'security_missing': 'security data missing',
+    'map_metadata': 'identity metadata', 'required_dimension': 'required evidence missing',
+    'structural_break': 'structural break', 'trade_for_trade': 'trade-for-trade',
+    'ASM': 'ASM', 'GSM': 'GSM', 'order_ADV_cap': 'over 1% of average turnover',
+    'stressed_exit_cap': 'stressed exit over 3 sessions', 'no_plan': 'plan unavailable',
+    'ADV_unknown': 'average turnover unknown', 'open_risk_cap': 'open-risk cap',
+    'stock_cap': 'per-stock cap', 'sector_cap': 'per-sector cap',
+    'unknown_coverage': 'other or unavailable check',
+}
+
+
+def screening_rejection_line(desk_conn, run_date):
+    """Count stored G1-G6 results, once per candidate/category; never render raw reasons.
+
+    A candidate may fail multiple gates, so gate counts can overlap. The stressed
+    exit subset is labelled 'of which' only for candidates also over the turnover cap.
+    """
+    from desk.shadow_analysis import reason_key
+
+    counts, categories = Counter(), {g: Counter() for g in SCREENING_GATES}
+    rejected, stressed_subset = 0, 0
+    rows = desk_conn.execute('SELECT gate_results FROM opportunity_log WHERE event_date=?', (run_date,))
+    for row in rows:
+        gates = json.loads(row[0])
+        failed = False
+        for gate in SCREENING_GATES:
+            item = gates.get(gate, {})
+            if item.get('result') == 'PASS':
+                continue
+            failed = True
+            counts[gate] += 1
+            keys = set()
+            for reason in item.get('reasons', []):
+                try:
+                    key = reason_key(gate, reason).split(':', 1)[1]
+                except IndexError:  # an incomplete required-dimension reason has no quoted name
+                    key = 'unknown_coverage'
+                if key.startswith('required_dimension_'):
+                    key = 'required_dimension'
+                keys.add(key if key in SCREENING_CATEGORIES else 'unknown_coverage')
+            categories[gate].update(keys or {'unknown_coverage'})
+            if gate == 'G5' and {'order_ADV_cap', 'stressed_exit_cap'} <= keys:
+                stressed_subset += 1
+        rejected += failed
+    parts = []
+    for gate in sorted(SCREENING_GATES, key=lambda g: (-counts[g], g)):
+        if not counts[gate]:
+            continue
+        detail = []
+        for key, label in SCREENING_CATEGORIES.items():
+            count = categories[gate][key]
+            if gate == 'G5' and key == 'stressed_exit_cap':
+                count -= stressed_subset
+            if count:
+                detail.append(f'{label} {count}')
+            if gate == 'G5' and key == 'order_ADV_cap' and stressed_subset:
+                detail.append(f'of which stressed exit over 3 sessions {stressed_subset}')
+        parts.append(f'{gate} {SCREENING_GATES[gate]} {counts[gate]}: ' + ', '.join(detail))
+    zeros = ', '.join(f'{g} {name} 0' for g, name in SCREENING_GATES.items() if not counts[g])
+    if zeros:
+        parts.append(zeros)
+    return f'Rejected at screening: {rejected} (' + '; '.join(parts) + ')'
 
 
 def _accepted(desk_conn, run_date):
@@ -31,7 +98,9 @@ def build_brief(praman_conn, desk_conn, run_date, *, rulebook, health_lines=()):
              '',
              f'Universe scanned: {universe:,} (EQ symbols with a stored session)',
              f"Candidates: {sum(screened.values())} (catalogue events screened by desk scan)",
-             f"Passed evidence/data checks: {screened.get('SCREEN_PASS', 0)}",
+             f"Passed screening (G1–G6: data, evidence, structure, surveillance, liquidity, per-trade risk): "
+             f"{screened.get('SCREEN_PASS', 0)}",
+             screening_rejection_line(desk_conn, run_date),
              'High-confidence model candidates: UNKNOWN (no calibrated model until T4)']
     if ops is None:
         lines += ['Passed risk/portfolio/execution checks: UNKNOWN (Strategy 0 has not run for this date)']
