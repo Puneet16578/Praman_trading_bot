@@ -233,6 +233,49 @@ with 60 observations on D, Q1 lowest. No event left has an unknown band.
 | 09:00 next session | 10 | 2024 | 109 | 81 | 102 | 12 | 23 | 26 | 21 | 27 |
 | 09:00 next session | 10 | 2025 | 160 | 84 | 148 | 10 | 44 | 39 | 38 | 29 |
 
+#### Clustering: the largest number left on one date (added 19 October 2026)
+
+For each year and cut-off (5-session filing window), the largest number of events left at the end on any
+single date. "Dates with that number" counts ties, and the date shown is the earliest of them. The share is
+that number divided by the year's events left. The events left are those in the table above.
+
+| Year | Cut-off | Events left | Dates | Largest on one date | Earliest date with it | Dates with that number | Share of events left |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 2020 | 09:00 next session | 30 | 25 | 2 | 2020-09-01 | 5 | 6.7% |
+| 2020 | 18:00 on D | 31 | 26 | 2 | 2020-09-01 | 5 | 6.5% |
+| 2020 | 23:59 on D | 31 | 26 | 2 | 2020-09-01 | 5 | 6.5% |
+| 2021 | 09:00 next session | 172 | 96 | 8 | 2021-10-25 | 1 | 4.7% |
+| 2021 | 18:00 on D | 183 | 98 | 8 | 2021-10-25 | 1 | 4.4% |
+| 2021 | 23:59 on D | 174 | 97 | 8 | 2021-10-25 | 1 | 4.6% |
+| 2022 | 09:00 next session | 77 | 47 | 6 | 2022-06-17 | 1 | 7.8% |
+| 2022 | 18:00 on D | 86 | 49 | 6 | 2022-06-17 | 1 | 7.0% |
+| 2022 | 23:59 on D | 78 | 47 | 6 | 2022-06-17 | 1 | 7.7% |
+| 2023 | 09:00 next session | 297 | 137 | 15 | 2023-03-28 | 1 | 5.1% |
+| 2023 | 18:00 on D | 313 | 140 | 15 | 2023-03-28 | 1 | 4.8% |
+| 2023 | 23:59 on D | 304 | 139 | 15 | 2023-03-28 | 1 | 4.9% |
+| 2024 | 09:00 next session | 178 | 106 | 5 | 2024-02-05 | 3 | 2.8% |
+| 2024 | 18:00 on D | 186 | 109 | 5 | 2024-02-05 | 3 | 2.7% |
+| 2024 | 23:59 on D | 181 | 107 | 5 | 2024-02-05 | 3 | 2.8% |
+| 2025 | 09:00 next session | 268 | 121 | 16 | 2025-11-24 | 1 | 6.0% |
+| 2025 | 18:00 on D | 291 | 128 | 17 | 2025-11-24 | 1 | 5.8% |
+| 2025 | 23:59 on D | 274 | 123 | 16 | 2025-11-24 | 1 | 5.8% |
+
+Most years have one date that stands out:
+
+- 2023: 15 events on 28 March.
+- 2025: 16 or 17 events on 24 November (17 at the 18:00 cut-off).
+- 2021: 8 events on 25 October.
+- 2022: 6 events on 17 June.
+
+Elsewhere the peak is small: 2 events in 2020 (five dates tie) and 5 in 2024 (three dates tie). The cut-off
+changes the peak only in 2025. Why these dates cluster was not examined. Every one of them passed step 1, so
+the equal-weight market did not fall more than 2% on it.
+
+Reproduction: the `largest_date` part of `python -B scripts/abc_followup_counts.py funnel`. It was run twice,
+split differently by year (2020-2023 and 2024-2025, then 2020-2022, 2023, 2024 and 2025), and both runs gave
+identical rows. Every other part of the output matched the regenerated run above year by year. Test: ties, the
+earliest date and the empty case; a one-year run gives the same rows as a longer run.
+
 ### 3f. Unknown and unstable inputs, and the notes that remove nothing (all down events, main setting)
 
 | Year | Down events | Market unknown | Peers unknown | Unstable peer ratio | G3 fail | G3 unknown | G5 fail | G5 unknown | ASM active | GSM unknown |

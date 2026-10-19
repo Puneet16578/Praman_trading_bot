@@ -287,6 +287,17 @@ def summarize(records, years=YEARS):
     return result
 
 
+def largest_date(left):
+    """Clustering of the events left (Claude, 2026-10-19): the largest number left on any single
+    date, the earliest date with that number, and how many dates share it ([0, None, 0] if none)."""
+    counts = Counter(r['day'] for r in left)
+    if not counts:
+        return [0, None, 0]
+    top = max(counts.values())
+    tied = sorted(day for day, n in counts.items() if n == top)
+    return [top, tied[0], len(tied)]
+
+
 def funnel(conn, years=YEARS):
     """The B funnel for the given event years. History (returns, peers, turnover) still streams from
     START, so a single-year run gives the same rows as the all-years run (Claude, 2026-10-19: lets a
@@ -346,12 +357,13 @@ def funnel(conn, years=YEARS):
         if day != last_day and day.endswith(('-01', '-02', '-03')):
             print('Funnel inputs through ' + day, file=sys.stderr, flush=True)
         last_day = day
-    totals = []
+    totals, largest = [], []
     for (clock, lb), records in variants.items():
         for year in years:
             left = [r for r in records if r['day'].startswith(str(year)) and not any(r['flags'])]
             totals.append([clock, lb, year, len(left), len({r['day'] for r in left}), len({r['symbol'] for r in left}),
                            [sum(r['band'] == q for r in left) for q in (1, 2, 3, 4, 5, 'UNKNOWN')]])
+            largest.append([clock, lb, year] + largest_date(left))
     return {'years': list(years),
             'step_columns': ['year', 'step', 'removed', 'left', 'dates_left', 'symbols_left', 'standalone_removed'],
             'steps': summarize(variants[('09:00', 5)], years),
@@ -359,6 +371,8 @@ def funnel(conn, years=YEARS):
             'steps_lookback_10': summarize(variants[('09:00', 10)], years),
             'final_columns': ['cutoff', 'lookback', 'year', 'events', 'dates', 'symbols', 'turnover_Q1_Q5_unknown'],
             'final': totals, 'diagnostics': {str(k): dict(v) for k, v in diagnostics.items()},
+            'largest_date_columns': ['cutoff', 'lookback', 'year', 'largest_on_one_date', 'earliest_such_date', 'dates_with_it'],
+            'largest_date': largest,
             'dividends': {str(year): dict(Counter(v[0] for v in rows.values())) | {'matched_filings': sum(v[1] for v in rows.values()), 'amount_at_least_2pct': sum(v[2] for v in rows.values()), 'amount_parsed': sum(v[3] for v in rows.values()), 'matched_yield_computable': sum(v[4] for v in rows.values())} for year, rows in div_seen.items()},
             'rulebook_sha256': rb.sha256, 'cost_sha256': costs.sha256}
 

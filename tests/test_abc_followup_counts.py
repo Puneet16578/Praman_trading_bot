@@ -208,6 +208,10 @@ class FunnelEndToEndTest(unittest.TestCase):
         self.assertEqual([r for r in both['steps'] if r[0] == 2024], one['steps'])
         self.assertEqual(both['diagnostics']['2024'], one['diagnostics']['2024'])
         self.assertEqual([r for r in both['final'] if r[2] == 2024], one['final'])
+        self.assertEqual([r for r in both['largest_date'] if r[2] == 2024], one['largest_date'])
+        for row, final in zip(one['largest_date'], one['final']):
+            self.assertEqual(row[:3], final[:3])
+            self.assertEqual(row[3], min(final[3], 1))          # one event per date in this fixture
 
     def test_a_sebi_order_known_on_d_cannot_remove_the_event(self):
         sessions = ['2024-01-01', '2024-01-02', '2024-01-03']
@@ -376,3 +380,14 @@ class ResultsCoverageCovidWindowTest(unittest.TestCase):
         self.assertEqual(result['125']['quarters'][1]['window_last'], last_window_day)
         # LATE, EDGE and NEWCO only after 30 June 2020; B21 only after 30 June 2021 (A21 on 29 June).
         self.assertEqual([q['covered_only_after_next_quarter_end'] for q in result['125']['quarters']], [3, 1])
+
+
+class LargestDateTest(unittest.TestCase):
+    """Item 4: the largest number of events left on one date, its earliest date and the ties."""
+
+    def test_counts_ties_and_empty(self):
+        from scripts.abc_followup_counts import largest_date
+        left = [{'day': d} for d in ('2024-03-05', '2024-01-02', '2024-01-02', '2024-03-05', '2024-02-01')]
+        self.assertEqual(largest_date(left), [2, '2024-01-02', 2])
+        self.assertEqual(largest_date(left + [{'day': '2024-02-01'}] * 2), [3, '2024-02-01', 1])
+        self.assertEqual(largest_date([]), [0, None, 0])
