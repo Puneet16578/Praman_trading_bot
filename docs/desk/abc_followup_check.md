@@ -371,3 +371,166 @@ was not reconciled against a separate results archive. Reproduction: `python -B 
 results_coverage` (under a minute); two runs gave byte-identical output (sha256 b9bc0b9b...). Test: cumulative
 steps, exact categories and phrase, day 75 counted and day 76 and the quarter-end day not, fund units excluded,
 and a store that raises if any bar after the last window is read.
+
+## 6. Sourcing check for new data (documentation only)
+
+Nothing was downloaded, no data file or API endpoint was opened, and no store was changed. Documentation pages
+were opened one at a time with the page reader; every URL is in the ledger at the end of this section, at most 3
+pages per site. Codex's pages from earlier today were not recorded, so this ledger starts fresh. **NSE's sites
+(nseindia.com, nsearchives.nseindia.com and niftyindices.com) did not answer the reader: all four attempts timed
+out after 60 seconds.** They are listed as unreadable and were not worked around, so every NSE-specific timing
+claim below is unverified. Two other official sites (indiabudget.gov.in, pib.gov.in) returned HTTP 403 to the
+reader. Facts below are marked **read** (from a page in the ledger), **search** (seen only in a search result
+snippet of an official document, page not opened) or **unverified** (general knowledge or a secondary report).
+
+**Codex's two findings, re-checked.**
+1. "Deal disclosures are meant for same-day release after market hours": **confirmed (read)** in SEBI's circular
+   MRD/DoP/SE/Cir-19/05 of 2 September 2005. Block deals: exchanges "shall disseminate the information on block
+   deals ... to the general public on the same day, after the market hours"; bulk-deal disclosure under
+   SEBI/MRD/SE/Cir-7/2004 (14 January 2004) "shall be continued to be made ... on the same day after the market
+   hours". This is the rule, not evidence of when each historical file actually appeared.
+2. "F&O ban files apply to the next trade date": **reported by Codex; URL not recorded.** I could not re-check it:
+   NSE's surveillance circular NSE/SURV/64402 (4 October 2024), which a search showed names a file of the form
+   `fo_secban_DDMMYYYY.csv`, timed out. Which date that file name carries was not established.
+
+### a. Event calendar
+
+- **RBI policy decision days.** The RBI monetary policy page (read) shows the current year's statements, MPC
+  resolutions and minutes, archives by financial year back to 2019-20, and a yearly published MPC meeting
+  schedule (the 2026-27 schedule was posted on 23 March 2026). It states no announcement time. Format: HTML pages
+  with PDF documents. Archive back to October 2019: the year links exist (2019-20 onward); their contents were not
+  opened. About 7 archive pages plus one schedule release per year: roughly 15 requests. Store: event_date = the
+  decision date; knowledge_date = the statement's release date (time of day not stated; an ASSUMPTION is needed
+  for whether it is known during that session); recorded_at = retrieval time.
+- **Union Budget days.** indiabudget.gov.in refused the reader (403), so dates are not verified from the official
+  page. A PIB snippet (search) dates the 2019-20 budget speech 5 July 2019; the Finance Ministry archive (search)
+  lists 2019-20(I), 2019-20, 2020-21, 2021-22, 2022-23, 2023-24, 2024-25(I), 2024-25 and 2025-26. The other dates,
+  including the interim budget of 1 February 2024, the full budget of 23 July 2024, and the Saturday sessions of
+  1 February 2020 and 1 February 2025, are **unverified** here. About 9 speech pages. Store: event_date =
+  presentation day; knowledge_date = the same day (the speech is public as delivered; time not verified).
+- **2024 general election results day.** ECI press note ECI/PN/113/2024 of 1 June 2024, reproduced by PIB (search;
+  the PIB page itself returned 403): counting on "4th June, 2024 (Tuesday) starting 8AM", Sikkim and Arunachal
+  Pradesh from 6 AM on 2 June. One document. Store: event_date = 2024-06-04; knowledge_date = the press note's date
+  for the schedule, with results arriving during that session.
+- **NSE holidays and special sessions.** NSE's holiday page timed out (unreadable). Not verified: format,
+  publication time, archive. The store's own sessions give the trading days actually held, but it lacks four
+  weekend special sessions (P8-070), so it is not a complete special-session record. Expect one holiday circular a
+  year plus one circular per special session (Muhurat, Budget Saturdays, disaster-recovery test sessions):
+  roughly 20 documents.
+- **F&O expiry dates.** SEBI circular SEBI/HO/MRD/TPD-1/P/CIR/2025/76 of 26 May 2025, "Final Settlement Day (Expiry
+  Day) for Equity Derivatives Contracts" (read: title, number and date only; the body is an embedded PDF the reader
+  could not show). News reports (unverified) and the NSE June 2025 circular FAOP68589 listed in section 9 of the
+  sourcing check (not re-opened today) describe NSE moving from Thursday to Tuesday for contracts expiring on or
+  after 1 September 2025. Dated records of each expiry live in NSE's contract files and circulars, not checked
+  today. Store: event_date = the contract's expiry date as listed at the time; knowledge_date = the date of the
+  record that listed it (expiries are known in advance; holiday shifts need their own circulars).
+- **US Fed decision days.** The FOMC calendar (read) gives 2021-2025 meeting dates with statements; the historical
+  pages (read) give 2019 and 2020, including the unscheduled meetings of 2 March 2020 (statement released 3 March)
+  and 15 March 2020. No page states a release time (the usual 14:00 Eastern release, after India's close, is
+  **unverified** here). About 7 year pages. Terms: US government site (not checked). Store: event_date = the
+  statement's release date (US); knowledge_date for India = the next Indian session (ASSUMPTION until a release
+  time is evidenced).
+
+### b. Bulk and block deals
+
+Published by the exchanges under SEBI's 2004 and 2005 circulars (read): same day, after market hours; block-deal
+fields named include scrip, client name, quantity bought/sold and traded price. A search result describes an
+October 2025 revision of the block-deal framework (minimum Rs 25 crore, two windows): **unverified**. NSE's report
+pages, file format, daily publication time and archive depth were not verified (NSE unreadable). Rough count, from
+the daily cadence: 2 lists x about 1,560 sessions = about 3,100 daily requests, or far fewer if NSE's report allows
+date ranges (not verified). Store: event_date = deal date; knowledge_date = deal date by the SEBI rule (an
+ASSUMPTION per file unless the file's Last-Modified is kept as evidence); recorded_at = retrieval. Use: a large
+holder selling as a label for a B drop; a large buyer as news for A.
+
+### c. F&O ban list, open interest and F&O membership
+
+Search results (unverified, mostly broker pages) describe the ban as open interest above 95% of the market-wide
+position limit, lifted below 80%, published each evening; NSE's own documents timed out. Daily files would be about
+1,560 per series (ban list, open interest), plus F&O membership by date from the contract files: about 3,000-4,700
+requests in all. Store: event_date = the trade date each file applies to (not established; see Codex finding 2);
+knowledge_date = file publication, evidenced by Last-Modified; recorded_at = retrieval.
+
+### d. Index changes
+
+- **NSE indices.** Search results show NSE Indices press releases per review as PDFs named by date (for example
+  `ind_prs23082024.pdf`, `ind_prs10082026.pdf`); a search summary says the August 2026 release made changes
+  effective after the close of 29 September 2026. The PDF timed out (unreadable), so announcement times and
+  archive depth are unverified. About 2 semi-annual reviews a year plus ad hoc replacements: roughly 30-60
+  documents for 2019-2025. Store as two rows: the announcement (event_date = release date) and the change
+  (event_date = effective date), both with knowledge_date = the release date.
+- **MSCI.** The index-review page (read) only links to regional review pages. MSCI's terms of use (read) grant a
+  limited, revocable licence and prohibit derived works (2(d)(ii)), redistribution (2(d)(iv)) and the use of
+  "unauthorized bots, scrapers, crawlers, AI agents" (2(d)(viii)). No further msci.com page was opened. MSCI
+  changes should come only from public press releases entered by hand, and even then the terms limit reuse.
+- **FTSE Russell.** The ground rules' legal notice (search) says use and distribution of LSEG data requires a
+  licence; the ground-rules PDF could not be read. Review schedule and announcement timing are unverified.
+
+### e. Dividend ex-dates from NSE corporate actions
+
+Would replace step 7's text parsing (section 3g: only 6 of 5,604 record-date filings had a parsed amount). NSE's
+corporate-actions pages were not reachable, so format, fields (ex-date, record date, purpose, amount), publication
+timing and archive depth are unverified. If a date-range report exists, about 75 monthly requests; per symbol,
+about 2,700. Store: event_date = ex-date; knowledge_date = the action's announcement or broadcast date, if the
+source carries one (evidence to be checked); recorded_at = retrieval.
+
+### f. FII/DII daily flows (lowest priority)
+
+Search results (unverified): NSE posts provisional FII/DII cash-market figures after the close each trading day;
+NSDL's FPI report gives depository-confirmed daily figures (SEBI's statistics page, per a snippet, dates the daily
+series to 1 June 2014); NSDL has begun daily DII reporting (date not found). These are data pages and were not
+opened. About 75 monthly or 1,560 daily requests. Store: event_date = trade date; knowledge_date = publication
+(provisional same evening; confirmed later), each vintage kept; recorded_at = retrieval.
+
+### Summary
+
+| Dataset | Use for A | Use for B | Use for C | Label or signal | Known before B's entry? | History back to Oct 2019? |
+| --- | --- | --- | --- | --- | --- | --- |
+| a. RBI policy days | tag macro-day moves so they are not credited to company news | tag macro-day drops so they are not called unexplained | tag results days that coincide | label | yes, if announced during or before D's session (time not stated on the page) | archive years from 2019-20 exist (contents not opened) |
+| a. Union Budget days (incl. 2024 interim and full, Saturday sessions) | as above | as above | as above | label | yes (speech on D) | 2019-20 onward listed (search); dates unverified, site refused the reader |
+| a. 2024 election results day | as above | as above | as above | label | yes (counting from 08:00 on D, per the ECI note seen in search) | single event |
+| a. NSE holidays and special sessions | session calendar | session calendar; closure bridges | session calendar | label | yes (published in advance; unverified) | not verified (NSE unreadable); store sessions incomplete (P8-070) |
+| a. F&O expiry dates | tag expiry-day moves | tag expiry-day drops | tag | label | yes (known when contracts list) | not verified; rule change dated by SEBI 2025/76 (read) |
+| a. US Fed decision days | context | tag the next Indian session | context | label | yes for D+1 09:00, if released after India's close (time unverified) | yes, 2019 and 2020 pages read |
+| b. Bulk and block deals | a large buyer as news | a large holder selling explains a drop | context | signal (A), label (B) | yes by rule (same day after market hours, read); per-file time unverified | not verified (NSE unreadable) |
+| c. F&O ban list | forced-unwinding context | short build-up or unwinding explains a move | context | label | not established (Codex's "next trade date" not re-checked) | not verified |
+| c. Open interest, F&O membership by date | context | context | context | label | end of day (unverified) | not verified |
+| d. NSE index changes | announcement is news | deletion-day selling explains a drop | tag | signal (A), label (B) | yes (announcement precedes effective date; times unverified) | press releases exist by date (search); depth unverified |
+| d. MSCI / FTSE changes | announcement is news | deletion selling | tag | label | yes by announcement | MSCI terms forbid automated collection; FTSE data needs a licence |
+| e. Dividend ex-dates | context | replaces step 7 parsing | results often carry dividends | label | yes (announced before ex-date; unverified) | not verified (NSE unreadable) |
+| f. FII/DII flows | market context | market context | context | label | provisional same evening (unverified) | NSDL daily FPI from 2014 per a SEBI snippet (unverified) |
+
+What verifying the rest would take: reading the NSE and NSE Indices documentation pages from a client they answer
+(they time out for this reader), the Union Budget archive (403 here), and the embedded SEBI 2025 circular PDF; then a
+download budget for any dataset chosen. None of that was done.
+
+### URL ledger (19 October 2026, in order)
+
+| Time (IST) | Site | URL | Result |
+| --- | --- | --- | --- |
+| 11:26:29 | nseindia.com | https://www.nseindia.com/resources/exchange-communication-holidays | UNREADABLE (timeout after 60 s) |
+| 11:26:41 | indiabudget.gov.in | https://www.indiabudget.gov.in/bspeech.php | UNREADABLE (HTTP 403 to this reader) |
+| 11:27:00 | federalreserve.gov | https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm | READ: 2021-2025 meeting dates with statements; no release time stated; 2019-2020 not on page |
+| 11:27:17 | federalreserve.gov | https://www.federalreserve.gov/monetarypolicy/fomc_historical_year.htm | READ: per-year links incl. 2019 and 2020; no timing statement |
+| 11:27:37 | rbi.org.in | https://www.rbi.org.in/Scripts/Annualpolicy.aspx | READ: Mar-Oct 2026 entries only; archives by fiscal year 2019-20 onward as links; annual MPC meeting schedule published (2026-27 posted 23 Mar 2026); no announcement time stated |
+| 11:28:22 | (web search) | query: SEBI bulk/block deal disclosure same day | search results only, not a page read |
+| 11:28:22 | (web search) | query: SEBI 2025 expiry day Tuesday/Thursday | search results only, not a page read |
+| 11:28:22 | (web search) | query: NSE F&O ban MWPL next trading day | search results only, not a page read |
+| 11:28:22 | (web search) | query: niftyindices semi-annual review press release | search results only, not a page read |
+| 11:28:22 | (web search) | query: MSCI quarterly index review India | search results only, not a page read |
+| 11:28:22 | (web search) | query: NSDL FPI daily / NSE FII-DII | search results only, not a page read |
+| 11:28:41 | sebi.gov.in | https://www.sebi.gov.in/legal/circulars/sep-2005/guidelines-for-execution-of-block-deals-on-the-stock-exchanges_8382.html | READ: MRD/DoP/SE/Cir-19/05, 2 Sep 2005: block deals disseminated 'on the same day, after the market hours'; bulk deals continued same day after market hours (SEBI/MRD/SE/Cir-7/2004, 14 Jan 2004) |
+| 11:30:09 | nseindia.com (nsearchives) | https://nsearchives.nseindia.com/content/circulars/SURV64402.pdf | UNREADABLE (timeout after 60 s) |
+| 11:31:19 | nseindia.com | https://www.nseindia.com/static/resources/faqs | UNREADABLE (timeout after 60 s); no further NSE pages attempted |
+| 11:32:32 | niftyindices.com | https://niftyindices.com/Press_Release/ind_prs23082024.pdf | UNREADABLE (timeout after 60 s) |
+| 11:32:58 | (web search) | query: SEBI May 26 2025 expiry day circular (sebi.gov.in only) | search results only |
+| 11:32:58 | sebi.gov.in | https://www.sebi.gov.in/legal/circulars/may-2025/final-settlement-day-expiry-day-for-equity-derivatives-contracts_94189.html | PARTLY READ: title, SEBI/HO/MRD/TPD-1/P/CIR/2025/76, 26 May 2025; body (embedded PDF) not visible to the reader |
+| 11:33:12 | msci.com | https://www.msci.com/index-review | READ: only links to region-specific review pages; no timing or archive statement; footer links Terms of use (/legal/terms-of-use); '(c) 2026 MSCI Inc. All rights reserved.' |
+| 11:33:38 | msci.com | https://www.msci.com/legal/terms-of-use | READ: limited revocable licence; no derived works (2(d)(ii)); no redistribution (2(d)(iv)); no 'unauthorized bots, scrapers, crawlers, AI agents' (2(d)(viii)). No further msci.com pages opened. |
+| 11:33:58 | (web search) | query: LSEG FTSE Russell terms / India reviews (lseg.com only) | search results only; ground-rules legal notice: use and distribution of LSEG data requires a licence |
+| 11:34:27 | lseg.com | https://www.lseg.com/content/dam/ftse-russell/en_us/documents/ground-rules/ftse-global-equity-index-series-ground-rules.pdf | UNREADABLE (PDF text not extracted by the reader; no PDF tool installed; not worked around) |
+| 11:34:49 | federalreserve.gov | https://www.federalreserve.gov/monetarypolicy/fomchistorical2020.htm | READ: 2020 incl. unscheduled 2 Mar (statement released 3 Mar) and 15 Mar; notation votes; no release times |
+| 11:35:07 | (web search) | query: ECI 2024 counting date (eci.gov.in, pib.gov.in) | search results only |
+| 11:35:07 | (web search) | query: Union Budget dates 2019-2025 (pib.gov.in, indiabudget.gov.in, finmin.gov.in) | search results only; PIB snippet: budget 2019-20 presented 5 July 2019; others not confirmed |
+| 11:35:30 | pib.gov.in | https://www.pib.gov.in/PressReleasePage.aspx?PRID=2022466 | UNREADABLE (HTTP 403) |
+
+Pages opened per site: federalreserve.gov 3, indiabudget.gov.in 1, lseg.com 1, msci.com 2, niftyindices.com 1, nseindia.com 3, pib.gov.in 1, rbi.org.in 1, sebi.gov.in 2. Searches are listed for transparency; they are not page reads.
