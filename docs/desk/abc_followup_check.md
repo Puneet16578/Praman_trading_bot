@@ -313,3 +313,61 @@ times were not reconstructed (15:30 is used for every session). Reproduction: `p
 clean_pool` (3 min); two runs gave byte-identical output (sha256 f9c4cbb7...). Tests: the bin edges (15:29:59 and
 09:15:00 excluded), a whole run on a store that raises if any bar after D is read, a filing at 09:15:00 that adds
 nothing while one at 09:14:59 does, and the same-direction market rule.
+
+## 5. Results coverage from stored announcements (no downloads)
+
+For each quarter ending September 2019 to September 2025: of the EQ symbols with at least one EQ bar in the 75
+days after the quarter ends (day 1 is the day after quarter end; fund units excluded by the current ISIN map, as
+in item 2), the share with at least one results-bearing filing published in those 75 days. Sources are added
+step by step, so each column includes the ones before it: (a) the two legacy tags, Financial Result Updates and
+Financial Results Updates; (b) plus Outcome of Board Meeting whose description contains the case-insensitive
+phrase "financial result" (the sourcing check's convention); (c) plus Integrated Filing- Financial; (d) plus Copy
+of Newspaper Publication and Newspaper Advertisements whose description contains that phrase. The window uses the
+stored publication time (every row is timestamped); a filing after day 75 does not count. The denominator uses
+the window, not the quarter, because the bar data start on 1 October 2019.
+
+| Quarter end | EQ symbols trading in window | Fund units excluded | Symbols | (a) Legacy tags | (b) + Board outcome | (c) + Integrated Financial | (d) + Newspaper |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 2019-09-30 | 1,578 | 75 | 1,503 | 1,342 (89.3%) | 1,343 (89.4%) | 1,343 (89.4%) | 1,343 (89.4%) |
+| 2019-12-31 | 1,623 | 79 | 1,544 | 1,388 (89.9%) | 1,388 (89.9%) | 1,388 (89.9%) | 1,388 (89.9%) |
+| 2020-03-31 | 1,611 | 79 | 1,532 | 438 (28.6%) | 438 (28.6%) | 438 (28.6%) | 438 (28.6%) |
+| 2020-06-30 | 1,610 | 86 | 1,524 | 1,316 (86.4%) | 1,316 (86.4%) | 1,316 (86.4%) | 1,317 (86.4%) |
+| 2020-09-30 | 1,683 | 91 | 1,592 | 1,427 (89.6%) | 1,427 (89.6%) | 1,427 (89.6%) | 1,427 (89.6%) |
+| 2020-12-31 | 1,668 | 93 | 1,575 | 1,417 (90.0%) | 1,417 (90.0%) | 1,417 (90.0%) | 1,419 (90.1%) |
+| 2021-03-31 | 1,707 | 100 | 1,607 | 911 (56.7%) | 911 (56.7%) | 911 (56.7%) | 914 (56.9%) |
+| 2021-06-30 | 1,680 | 104 | 1,576 | 1,425 (90.4%) | 1,425 (90.4%) | 1,425 (90.4%) | 1,425 (90.4%) |
+| 2021-09-30 | 1,785 | 110 | 1,675 | 1,512 (90.3%) | 1,512 (90.3%) | 1,512 (90.3%) | 1,512 (90.3%) |
+| 2021-12-31 | 1,801 | 123 | 1,678 | 1,530 (91.2%) | 1,530 (91.2%) | 1,530 (91.2%) | 1,531 (91.2%) |
+| 2022-03-31 | 1,884 | 139 | 1,745 | 1,581 (90.6%) | 1,584 (90.8%) | 1,584 (90.8%) | 1,586 (90.9%) |
+| 2022-06-30 | 1,890 | 141 | 1,749 | 18 (1.0%) | 295 (16.9%) | 295 (16.9%) | 636 (36.4%) |
+| 2022-09-30 | 1,933 | 151 | 1,782 | 0 (0.0%) | 281 (15.8%) | 281 (15.8%) | 662 (37.1%) |
+| 2022-12-31 | 1,962 | 160 | 1,802 | 1,651 (91.6%) | 1,652 (91.7%) | 1,652 (91.7%) | 1,655 (91.8%) |
+| 2023-03-31 | 1,981 | 166 | 1,815 | 1,688 (93.0%) | 1,688 (93.0%) | 1,688 (93.0%) | 1,688 (93.0%) |
+| 2023-06-30 | 1,872 | 181 | 1,691 | 1,578 (93.3%) | 1,579 (93.4%) | 1,579 (93.4%) | 1,579 (93.4%) |
+| 2023-09-30 | 1,951 | 176 | 1,775 | 1,678 (94.5%) | 1,679 (94.6%) | 1,679 (94.6%) | 1,679 (94.6%) |
+| 2023-12-31 | 1,994 | 200 | 1,794 | 1,714 (95.5%) | 1,714 (95.5%) | 1,714 (95.5%) | 1,714 (95.5%) |
+| 2024-03-31 | 2,037 | 203 | 1,834 | 1,756 (95.7%) | 1,756 (95.7%) | 1,756 (95.7%) | 1,756 (95.7%) |
+| 2024-06-30 | 2,070 | 216 | 1,854 | 1,774 (95.7%) | 1,774 (95.7%) | 1,774 (95.7%) | 1,774 (95.7%) |
+| 2024-09-30 | 2,099 | 225 | 1,874 | 1,808 (96.5%) | 1,808 (96.5%) | 1,808 (96.5%) | 1,808 (96.5%) |
+| 2024-12-31 | 2,125 | 235 | 1,890 | 1,838 (97.2%) | 1,838 (97.2%) | 1,839 (97.3%) | 1,839 (97.3%) |
+| 2025-03-31 | 2,215 | 257 | 1,958 | 0 (0.0%) | 1,159 (59.2%) | 1,207 (61.6%) | 1,321 (67.5%) |
+| 2025-06-30 | 2,295 | 275 | 2,020 | 0 (0.0%) | 1,897 (93.9%) | 1,906 (94.4%) | 1,929 (95.5%) |
+| 2025-09-30 | 2,448 | 298 | 2,150 | 0 (0.0%) | 2,022 (94.0%) | 2,027 (94.3%) | 2,055 (95.6%) |
+
+What stands out:
+- The legacy tags alone cover 86.4-97.2% in the other quarters up to December 2024. They nearly vanish for the June and September 2022
+  quarters (18 and 0 symbols), the results-route gap of the sourcing check; board outcomes and newspaper notices
+  recover only about 36-37% of symbols there.
+- From the March 2025 quarter the legacy tags are gone (the April 2025 route change). Board outcomes carry most
+  results afterwards; with all four sources the share is 67.5% for March 2025, 95.5% for June and 95.6% for
+  September 2025.
+- March 2020 (28.6%) and March 2021 (56.9%) are low in every step. More results may have been published after
+  day 75 in those quarters; that was not investigated here, and nothing in this count says why.
+- Integrated Filing- Financial adds almost nothing before 2025 (its stored rows begin in January 2025).
+
+Limits: a category or phrase match is evidence that a results-related filing exists, not that it was the first
+release of that quarter's results; symbols are matched as strings (renames can split one company); the cache
+was not reconciled against a separate results archive. Reproduction: `python -B scripts/abc_followup_counts.py
+results_coverage` (under a minute); two runs gave byte-identical output (sha256 b9bc0b9b...). Test: cumulative
+steps, exact categories and phrase, day 75 counted and day 76 and the quarter-end day not, fund units excluded,
+and a store that raises if any bar after the last window is read.

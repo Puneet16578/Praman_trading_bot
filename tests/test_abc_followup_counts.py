@@ -286,3 +286,46 @@ class CleanPoolTest(unittest.TestCase):
         self.assertEqual(out[(0.03, 1)].get('pool', 0), 0)          # up event on a +3% market day: left out
         self.assertEqual(out[(0.03, -1)]['pool'], 1)                # down event on a +3% day: kept
         self.assertEqual(out[(-0.03, -1)].get('pool', 0), 0)        # down event on a -3% day: left out
+
+
+class ResultsCoverageTest(unittest.TestCase):
+    """Item 5: cumulative steps, exact categories and phrase, the 75-day window, funds excluded; no
+    bar after a window's last day is read, and a filing after day 75 adds nothing."""
+
+    def test_steps_window_and_universe(self):
+        from scripts import abc_followup_counts as script
+        conn = sqlite3.connect(':memory:')
+        conn.row_factory = sqlite3.Row
+        last_window_day = '2025-12-14'                               # the September 2025 quarter's day 75
+        def forbidden():
+            raise AssertionError('A bar after the last window was read')
+        conn.create_function('forbidden', 0, forbidden)
+        conn.executescript(f"""
+            CREATE TABLE base(symbol, series, event_date, knowledge_date);
+            CREATE VIEW bhavcopy AS SELECT CASE WHEN event_date > '{last_window_day}' THEN forbidden() ELSE symbol END symbol,
+                series, event_date, knowledge_date FROM base;
+            CREATE TABLE corporate_announcements(symbol, category, description, sort_timestamp, knowledge_date);""")
+        bars = [('AAA', 'EQ', '2019-10-05'), ('BBB', 'EQ', '2019-10-05'), ('CCC', 'EQ', '2019-10-05'),
+                ('DDD', 'EQ', '2019-10-05'), ('EEE', 'EQ', '2019-10-05'), ('FUND', 'EQ', '2019-10-05'),
+                ('LATE', 'EQ', '2026-01-05')]
+        conn.executemany('INSERT INTO base VALUES (?,?,?,?)', [(s, se, d, d) for s, se, d in bars])
+        filings = [('AAA', 'Financial Result Updates', 'x', '2019-10-20 10:00:00'),
+                   ('BBB', 'Outcome of Board Meeting', 'Approved the Financial Results for the quarter', '2019-11-10 18:00:00'),
+                   ('CCC', 'Outcome of Board Meeting', 'Approved a dividend', '2019-11-10 18:00:00'),
+                   ('CCC', 'Integrated Filing- Financial', 'x', '2019-12-14 12:00:00'),            # day 75: counts
+                   ('DDD', 'Copy of Newspaper Publication', 'Extract of unaudited financial results', '2019-11-12 09:00:00'),
+                   ('EEE', 'Financial Result Updates', 'x', '2019-12-15 09:00:00'),                # day 76: does not
+                   ('EEE', 'Financial Result Updates', 'x', '2019-09-30 20:00:00'),                # quarter end: does not
+                   ('FUND', 'Financial Result Updates', 'x', '2019-10-20 10:00:00')]
+        conn.executemany('INSERT INTO corporate_announcements VALUES (?,?,?,?,?)',
+                         [(s, c, d, t, t[:10]) for s, c, d, t in filings])
+        try:
+            result = script.results_coverage(conn, isin_map={'FUND': 'INF000000001', 'AAA': 'INE000000001'})
+        finally:
+            conn.close()
+        first = result['quarters'][0]
+        self.assertEqual(first['quarter_end'], '2019-09-30')
+        self.assertEqual((first['eq_symbols'], first['fund_units_excluded'], first['symbols']), (6, 1, 5))
+        self.assertEqual([first[k] for k in result['steps']], [1, 2, 3, 4])   # AAA; +BBB; +CCC; +DDD; never EEE
+        self.assertEqual(len(result['quarters']), 25)
+        self.assertEqual(result['quarters'][-1]['window_last'], last_window_day)

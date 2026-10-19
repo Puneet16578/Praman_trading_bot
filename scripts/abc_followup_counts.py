@@ -475,9 +475,58 @@ def clean_pool(conn, years=YEARS):
     return {'years': list(years), 'rows': result}
 
 
+# Item 5 (Claude, 2026-10-19): results coverage from stored announcements only. The legacy tags and
+# the case-insensitive literal "financial result" follow docs/desk/abc_sourcing_check.md (line 470)
+# and docs/desk/r2_sourcing_check.md.
+RESULT_STEPS = (
+    ('a_legacy_tags', "category IN ('Financial Result Updates','Financial Results Updates')"),
+    ('b_plus_board_outcome', "category='Outcome of Board Meeting' AND lower(description) LIKE '%financial result%'"),
+    ('c_plus_integrated_financial', "category='Integrated Filing- Financial'"),
+    ('d_plus_newspaper', "category IN ('Copy of Newspaper Publication','Newspaper Advertisements') "
+                         "AND lower(description) LIKE '%financial result%'"),
+)
+RESULT_WINDOW_DAYS = 75
+
+
+def quarter_ends(first='2019-09-30', last='2025-09-30'):
+    ends, year, month = [], int(first[:4]), int(first[5:7])
+    while f'{year}-{month:02d}' <= last[:7]:
+        day = {3: 31, 6: 30, 9: 30, 12: 31}[month]
+        ends.append(f'{year}-{month:02d}-{day:02d}')
+        month += 3
+        if month > 12:
+            month, year = 3, year + 1
+    return ends
+
+
+def results_coverage(conn, isin_map=None):
+    """Per quarter: of the EQ symbols with an EQ bar in the 75 days after quarter end (fund units
+    excluded by the current ISIN map, as in item 2), how many have a results-bearing filing published
+    in that window, adding sources step by step. Bars are read only for symbol presence inside each
+    window; nothing after a window's last day is read for that quarter."""
+    identities = isin_map if isin_map is not None else load_isin_map(ROOT / 'data/raw/nse_symbol_isin_current.json')
+    funds = {s for s, isin in identities.items() if isin and isin.startswith('INF')}
+    rows = []
+    for end in quarter_ends():
+        first = (date.fromisoformat(end) + timedelta(days=1)).isoformat()
+        last = (date.fromisoformat(end) + timedelta(days=RESULT_WINDOW_DAYS)).isoformat()
+        trading = {r[0] for r in conn.execute("SELECT DISTINCT symbol FROM bhavcopy WHERE series='EQ' AND event_date>=? "
+                                             "AND event_date<=? AND knowledge_date<=?", (first, last, last))}
+        universe = trading - funds
+        covered, row = set(), dict(quarter_end=end, window_last=last, eq_symbols=len(trading),
+                                  fund_units_excluded=len(trading & funds), symbols=len(universe))
+        for name, condition in RESULT_STEPS:
+            covered |= {r[0] for r in conn.execute(
+                f"SELECT DISTINCT symbol FROM corporate_announcements WHERE {condition} AND substr(sort_timestamp,1,10)>=? "
+                f"AND substr(sort_timestamp,1,10)<=? AND knowledge_date<=?", (first, last, last))} & universe
+            row[name] = len(covered)
+        rows.append(row)
+    return {'window_days': RESULT_WINDOW_DAYS, 'steps': [n for n, _ in RESULT_STEPS], 'quarters': rows}
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('section', choices=['funnel', 'notes', 'clean_pool'])
+    parser.add_argument('section', choices=['funnel', 'notes', 'clean_pool', 'results_coverage'])
     parser.add_argument('--years', help='Comma-separated event years for funnel (default 2020-2025).')
     args = parser.parse_args()
     years = tuple(int(y) for y in args.years.split(',')) if args.years else YEARS
@@ -486,7 +535,7 @@ def main():
     conn = open_readonly(DB)
     try:
         result = (funnel(conn, years) if args.section == 'funnel' else notes(conn) if args.section == 'notes'
-                  else clean_pool(conn, years))
+                  else clean_pool(conn, years) if args.section == 'clean_pool' else results_coverage(conn))
         print(json.dumps(result, sort_keys=True, indent=2))
     finally:
         conn.close()
