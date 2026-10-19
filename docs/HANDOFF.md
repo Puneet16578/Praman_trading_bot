@@ -1,3 +1,23 @@
+## 2026-10-19 (Claude, from 10:10): A/B/C follow-up items 3-6 finished after Codex stopped
+
+- Start: no Python process running; tree had 4 changed files, not the 5 described
+  (docs/desk/abc_sourcing_check.md was unchanged). Session-start suite: 1,061 tests OK.
+- Item 3 6e57d73 (Codex's funnel, reviewed): market/peer definitions match item 2; price and filing
+  cut-offs hold. Review changes: --years and notes parts; per-year runs request the full run's
+  dates (P8-093, item 2's calendar depends on requested dates; item 2 left unchanged, fix proposed);
+  1/10-session step tables; extra diagnostic clarification sub-counts; end-to-end tests (no bar after
+  D read; late filing or SEBI order removes nothing; one-year run streams the same sessions).
+  Two runs (full 9 min 12 s; per-year pieces) give identical per-year digests. Final 09:00 counts
+  2020-2025: 28, 172, 74, 295, 178, 268. Dividend amounts: 6 of 5,604 record-date filings parse.
+- Item 4 12f2f36: A's clean pool 3,402 events; 1,446 more with board outcome / press release.
+- Item 5 cc408c1: results coverage by quarter, steps (a)-(d); 2022 gap quarters ~36-37%, 2025
+  recovered by board outcomes (95.6% for Sep 2025); Mar 2020 and Mar 2021 low (not investigated).
+- Item 6 2a7705e: sourcing check, documentation only; NSE and NSE Indices pages timed out for the
+  reader (unreadable, not worked around); SEBI 2005 circular confirms same-day after-hours deal
+  disclosure; Codex's F&O-ban "next trade date" not re-checked; MSCI terms forbid bots/AI agents.
+- No store, rule, firewall, seal, Windows task or pre-registration change; no downloads.
+- End-of-session suite: 1,069 tests in 210.198 s, OK (11:41-11:45). Nothing stashed.
+
 ## 2026-10-18 (Codex): both T1 rehearsal checks passed before once-only 2025 evaluation
 
 - Clock-test fix 9cc2558 pushed; runner a51cff1 passed 1,049 tests in 215.789 seconds.
