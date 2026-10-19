@@ -220,3 +220,69 @@ class FunnelEndToEndTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class CleanPoolTest(unittest.TestCase):
+    """Item 4: a filing at or after D's open never adds an event; the market rule is same-direction."""
+
+    def test_bins_run_from_the_previous_close_to_just_before_the_open(self):
+        from scripts.abc_followup_counts import overnight
+        sessions = ['2024-01-04', '2024-01-05', '2024-01-08']
+        def row(stamp):
+            return dict(seq_id=stamp, category='x', description='', knowledge_date=stamp[:10], sort_timestamp=stamp)
+        rows = [row('2024-01-05 15:29:59'), row('2024-01-05 15:30:00'), row('2024-01-06 10:00:00'),
+                row('2024-01-08 09:14:59'), row('2024-01-08 09:15:00'), row('2024-01-08 11:00:00')]
+        bins, at_open = overnight(rows, '2024-01-05', '2024-01-08', sessions)
+        self.assertEqual({k: [r['seq_id'] for r in v] for k, v in bins.items()},
+                         {'previous_evening': ['2024-01-05 15:30:00'], 'closure_bridge': ['2024-01-06 10:00:00'],
+                          'before_open': ['2024-01-08 09:14:59']})
+        self.assertEqual(at_open, [])
+        date_only = dict(seq_id='d', category='x', description='', knowledge_date='2024-01-05', sort_timestamp='2024-01-05')
+        bins, at_open = overnight([date_only], '2024-01-05', '2024-01-08', sessions)
+        self.assertFalse(any(bins.values()))
+        self.assertEqual(len(at_open), 1)                 # known only at the open: reported, never joined
+
+    def test_clean_pool_end_to_end_reads_no_bar_after_d_and_ignores_a_filing_at_the_open(self):
+        from scripts import abc_followup_counts as script
+        from scripts.abc_followup_counts import draft_map
+        material = next(k for k, v in draft_map().items() if v == 'Material news')
+        results = {}
+        for stamp in ('09:14:59', '09:15:00'):
+            conn, days, event_day = funnel_store(260, 'placeholder')
+            conn.execute('DELETE FROM corporate_announcements')
+            conn.execute('INSERT INTO corporate_announcements (symbol,event_date,knowledge_date,seq_id,category,description,'
+                         'sort_timestamp,source_file,recorded_at) VALUES (?,?,?,?,?,?,?,?,?)',
+                         ('S0', event_day, event_day, 'n', material, 'fixture', f'{event_day} {stamp}', 'fixture', event_day))
+            try:
+                with patch.object(script, '_events', return_value={event_day: [{'symbol': 'S0', 'return_1d': -0.05}]}), \
+                        patch.object(script, 'load_isin_map', return_value={f'S{j}': f'INE00000000{j}' for j in range(6)}):
+                    results[stamp] = script.clean_pool(conn, (2024,))['rows'][0]
+            finally:
+                conn.close()
+        self.assertEqual((results['09:14:59']['pool'], results['09:14:59']['pool_before_open']), (1, 1))
+        self.assertEqual(results['09:15:00'].get('pool', 0), 0)
+        self.assertEqual(results['09:15:00']['events'], 1)
+
+    def test_only_a_same_direction_market_day_is_left_out(self):
+        from scripts import abc_followup_counts as script
+        from scripts.abc_followup_counts import draft_map
+        material = next(k for k, v in draft_map().items() if v == 'Material news')
+        conn, days, event_day = funnel_store(260, 'placeholder')
+        conn.execute('DELETE FROM corporate_announcements')
+        conn.execute('INSERT INTO corporate_announcements (symbol,event_date,knowledge_date,seq_id,category,description,'
+                     'sort_timestamp,source_file,recorded_at) VALUES (?,?,?,?,?,?,?,?,?)',
+                     ('S0', event_day, event_day, 'n', material, 'fixture', f'{event_day} 08:00:00', 'fixture', event_day))
+        try:
+            out = {}
+            for market, sign in ((0.03, 1), (0.03, -1), (-0.03, -1)):
+                fake = lambda conn, events, **kw: iter([(event_day, {'symbol': 'S0', 'return_1d': sign * 0.05},
+                                                        {'market': market, 'peer_status': 'UNKNOWN', 'peer_share': None,
+                                                         'previous_close': 100, 'turnover_band': 1})])
+                with patch.object(script, 'event_inputs', side_effect=fake), \
+                        patch.object(script, '_events', return_value={event_day: [{'symbol': 'S0', 'return_1d': sign * 0.05}]}):
+                    out[(market, sign)] = script.clean_pool(conn, (2024,))['rows'][0]
+        finally:
+            conn.close()
+        self.assertEqual(out[(0.03, 1)].get('pool', 0), 0)          # up event on a +3% market day: left out
+        self.assertEqual(out[(0.03, -1)]['pool'], 1)                # down event on a +3% day: kept
+        self.assertEqual(out[(-0.03, -1)].get('pool', 0), 0)        # down event on a -3% day: left out

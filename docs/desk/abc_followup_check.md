@@ -271,3 +271,45 @@ The material/unclear map is the 279-category draft from the sourcing check, used
 Reproduction: `python -B scripts/abc_followup_counts.py funnel [--years 2024]` and `python -B scripts/abc_followup_counts.py notes` print aggregate JSON only. The script imports the existing return/correlation, screening-plan, sizing and G5 functions. Its query wrapper limits bars to D before existing helpers see them. Tests cover an adversarial future-price row, exact filing cut-offs, next-session date-only timing, dividend date labels, ASM mechanism names and closure-bridge timing; and, added on review, the whole funnel (market, peers, turnover, G3/G5) on a store that raises if any bar after D is read, a filing one second after the cut-off that removes nothing while one at the cut-off does, a SEBI order known on D that cannot remove the event, and a one-year run that streams the same sessions as a longer run. No rule, cost setting or pre-registration is changed.
 
 Changed on review (Claude, 19 October): the per-year `--years` option and the separate `notes` part (so a run can be split into foreground pieces), with the stream fix of P8-093; step tables for the 1- and 10-session lookbacks; two extra diagnostic Unclear sub-counts (generic and financial-results clarifications) and the `Outcome of Board Meeting-XBRL` spelling in the board group; the four tests above. None of Codex's nine removal conditions or its listed decisions was changed.
+
+## 4. A: events with company news between the previous close and the open
+
+Counting convention only, not a strategy rule. All catalogue events 2020-2025 (`return_1d` above zero is up, below
+zero is down). An event is in the pool if the same symbol has a Material news filing (the 279-category draft map)
+published from the previous EQ session's close (15:30, inclusive) up to D's open (09:15, exclusive), and the
+equal-weight market (item 2's definition) did not move more than 2% the same way on D. A filing at 09:15 or later
+never adds an event. Bins: previous evening (15:30 to midnight on the previous session's date), closure bridge (the
+calendar days between the two sessions: weekends and holidays) and before the open (00:00 to 09:15 on D); one
+event can have filings in several bins. Every stored announcement in the period carries a time on its knowledge
+date, so no date-only filing had to be placed (none became known exactly at an open). Events with an unknown
+market move cannot be tested against the 2% rule; they stay in the pool and are counted. The market move uses
+D's close; nothing after D's close is read.
+
+| Year | Direction | Events | Material filing overnight | Left out: market moved over 2% the same way | Pool | Previous evening | Closure bridge | Before open | Pool dates | Pool symbols | Pool with market unknown | Would join with Board Outcome or Press Release |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2020 | down | 2,767 | 171 | 36 | 135 | 125 | 11 | 2 | 58 | 128 | 0 | 12 |
+| 2020 | up | 7,144 | 244 | 19 | 225 | 198 | 24 | 5 | 103 | 204 | 1 | 61 |
+| 2021 | down | 1,272 | 246 | 7 | 239 | 192 | 49 | 3 | 85 | 202 | 4 | 23 |
+| 2021 | up | 7,691 | 267 | 11 | 256 | 210 | 43 | 4 | 119 | 218 | 1 | 74 |
+| 2022 | down | 2,249 | 199 | 56 | 143 | 115 | 26 | 7 | 65 | 132 | 2 | 156 |
+| 2022 | up | 7,055 | 243 | 11 | 232 | 187 | 40 | 9 | 112 | 209 | 2 | 212 |
+| 2023 | down | 2,616 | 442 | 25 | 417 | 345 | 69 | 3 | 94 | 353 | 3 | 44 |
+| 2023 | up | 9,280 | 439 | 2 | 437 | 376 | 59 | 3 | 126 | 372 | 3 | 116 |
+| 2024 | down | 2,456 | 432 | 81 | 351 | 303 | 48 | 0 | 90 | 297 | 15 | 35 |
+| 2024 | up | 8,135 | 405 | 8 | 397 | 341 | 51 | 7 | 139 | 347 | 10 | 102 |
+| 2025 | down | 2,635 | 298 | 78 | 220 | 197 | 24 | 3 | 85 | 205 | 0 | 270 |
+| 2025 | up | 7,394 | 377 | 27 | 350 | 304 | 37 | 13 | 147 | 306 | 0 | 341 |
+
+Totals 2020-2025: 3,402 events in the pool; 1,446 more would join if Outcome of Board Meeting and
+Press Release filings counted (both stored spellings of each: "Outcome of Board Meeting" and "...-XBRL", "Press
+Release" and "Press Release (Revised)"), under the same window and market rule. The joiners' bins:
+2020 down 9/1/2, 2020 up 50/5/6, 2021 down 17/4/2, 2021 up 56/12/8, 2022 down 103/52/6, 2022 up 134/70/11, 2023 down 36/2/6, 2023 up 85/20/13, 2024 down 29/5/1, 2024 up 73/18/12, 2025 down 217/54/6, 2025 up 286/45/17 (previous evening / closure bridge / before open).
+
+Unknown market moves among all events: 2020 down 1, 2020 up 78, 2021 down 18, 2021 up 159, 2022 down 26, 2022 up 130, 2023 down 14, 2023 up 20, 2024 down 133, 2024 up 59, 2025 down 0, 2025 up 0. Most of the down-side ones are the P8-093 sessions (section 3i).
+
+Limits: a Material category is a label from the draft map, not a finding that the filing moved the price; stored
+times are taken as IST publication times, which were not verified as first publication; special-session closing
+times were not reconstructed (15:30 is used for every session). Reproduction: `python -B scripts/abc_followup_counts.py
+clean_pool` (3 min); two runs gave byte-identical output (sha256 f9c4cbb7...). Tests: the bin edges (15:29:59 and
+09:15:00 excluded), a whole run on a store that raises if any bar after D is read, a filing at 09:15:00 that adds
+nothing while one at 09:14:59 does, and the same-direction market rule.

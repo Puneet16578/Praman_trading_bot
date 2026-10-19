@@ -382,9 +382,102 @@ def notes(conn):
             'rulebook_sha256': rb.sha256, 'cost_sha256': costs.sha256}
 
 
+# Item 4 (Claude, 2026-10-19): A's clean pool. Both stored spellings of each extra category count.
+EXTRA_A = {'Outcome of Board Meeting', 'Outcome of Board Meeting-XBRL', 'Press Release', 'Press Release (Revised)'}
+OVERNIGHT_BINS = ('previous_evening', 'closure_bridge', 'before_open')
+
+
+def overnight(rows, previous_session, day, sessions):
+    """Filings between the previous EQ session's close (15:30, inclusive) and D's open (09:15,
+    exclusive), by bin; date-only evidence (known only from the next open) is never placed in a bin
+    and is counted separately when it becomes known exactly at D's open."""
+    close = datetime.fromisoformat(previous_session + 'T15:30:00')
+    after_close_day = datetime.fromisoformat(previous_session) + timedelta(days=1)
+    start_of_day = datetime.fromisoformat(day)
+    opening = datetime.fromisoformat(day + 'T09:15:00')
+    bins = {name: [] for name in OVERNIGHT_BINS}
+    date_only_at_open = []
+    for r in rows:
+        moment = available_at(r, sessions)
+        stamp = (r.get('sort_timestamp') or '')
+        timestamped = len(stamp) == 19 and stamp[:10] == r['knowledge_date']
+        if not timestamped:
+            if moment == opening:
+                date_only_at_open.append(r)
+            continue
+        if close <= moment < after_close_day:
+            bins['previous_evening'].append(r)
+        elif after_close_day <= moment < start_of_day:
+            bins['closure_bridge'].append(r)
+        elif start_of_day <= moment < opening:
+            bins['before_open'].append(r)
+    return bins, date_only_at_open
+
+
+def clean_pool(conn, years=YEARS):
+    """Item 4: up and down catalogue events with a same-symbol filing between the previous EQ close
+    and D's open, leaving out days whose equal-weight market moved more than 2% the same way.
+    Prices through D's close only (the market move on D); filings after D's open never count."""
+    years = tuple(sorted(years))
+    mapping = draft_map()
+    stream = {d: rows for d, rows in _events(CATALOGUE).items() if int(d[:4]) <= max(years) and rows}
+    sessions = [r[0] for r in conn.execute("SELECT DISTINCT event_date FROM bhavcopy WHERE series='EQ' "
+                "AND event_date>=? AND event_date<=? AND knowledge_date<=? ORDER BY event_date", (START, END, END))]
+    table = defaultdict(Counter)
+    left = defaultdict(lambda: defaultdict(set))
+    for day, event, inputs in event_inputs(conn, stream, peers=False, report_years=set(years)):
+        if event['return_1d'] == 0:
+            continue
+        direction = 'up' if event['return_1d'] > 0 else 'down'
+        key = (int(day[:4]), direction)
+        counts = table[key]
+        counts['events'] += 1
+        i = bisect_left(sessions, day)
+        if i == 0:
+            counts['no_previous_session'] += 1
+            continue
+        previous_session = sessions[i - 1]
+        rows = [dict(r) for r in conn.execute(
+            "SELECT seq_id,category,description,sort_timestamp,knowledge_date FROM corporate_announcements "
+            "WHERE symbol=? AND event_date>=? AND event_date<=? AND knowledge_date<=?",
+            (event['symbol'], previous_session, day, day))]
+        material = [r for r in rows if mapping.get(r['category'], 'Unclear') == 'Material news']
+        extra = [r for r in rows if r['category'] in EXTRA_A]
+        bins, at_open = overnight(material, previous_session, day, sessions)
+        extra_bins, _ = overnight(extra, previous_session, day, sessions)
+        has_material = any(bins.values())
+        has_extra = any(extra_bins.values())
+        market = inputs['market']
+        same_way = market is not None and ((direction == 'up' and market > .02) or (direction == 'down' and market < -.02))
+        counts['market_unknown'] += market is None
+        counts['same_direction_market_day'] += same_way
+        counts['material_overnight'] += has_material
+        counts['date_only_known_at_open'] += bool(at_open)
+        if same_way:
+            counts['material_overnight_left_out_by_market'] += has_material
+            continue
+        if has_material:
+            counts['pool'] += 1
+            counts['pool_market_unknown'] += market is None
+            for name in OVERNIGHT_BINS:
+                counts[f'pool_{name}'] += bool(bins[name])
+            left[key]['dates'].add(day)
+            left[key]['symbols'].add(event['symbol'])
+        elif has_extra:
+            counts['would_join_with_board_outcome_or_press_release'] += 1
+            for name in OVERNIGHT_BINS:
+                counts[f'join_{name}'] += bool(extra_bins[name])
+    result = []
+    for (year, direction), counts in sorted(table.items()):
+        result.append(dict(year=year, direction=direction, **counts,
+                           pool_dates=len(left[(year, direction)]['dates']),
+                           pool_symbols=len(left[(year, direction)]['symbols'])))
+    return {'years': list(years), 'rows': result}
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('section', choices=['funnel', 'notes'])
+    parser.add_argument('section', choices=['funnel', 'notes', 'clean_pool'])
     parser.add_argument('--years', help='Comma-separated event years for funnel (default 2020-2025).')
     args = parser.parse_args()
     years = tuple(int(y) for y in args.years.split(',')) if args.years else YEARS
@@ -392,7 +485,8 @@ def main():
         parser.error('years must be within 2020-2025')
     conn = open_readonly(DB)
     try:
-        result = funnel(conn, years) if args.section == 'funnel' else notes(conn)
+        result = (funnel(conn, years) if args.section == 'funnel' else notes(conn) if args.section == 'notes'
+                  else clean_pool(conn, years))
         print(json.dumps(result, sort_keys=True, indent=2))
     finally:
         conn.close()
