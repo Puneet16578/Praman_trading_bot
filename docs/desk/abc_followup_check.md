@@ -389,6 +389,7 @@ What stands out:
   September 2025.
 - March 2020 (28.6%) and March 2021 (56.9%) are low in every step. More results may have been published after
   day 75 in those quarters; that was not investigated here, and nothing in this count says why.
+  (Added 19 October 2026: with a 125-day window these two quarters reach 88.2% and 89.5%; see 5a.)
 - Integrated Filing- Financial adds almost nothing before 2025 (its stored rows begin in January 2025).
 
 Limits: a category or phrase match is evidence that a results-related filing exists, not that it was the first
@@ -397,6 +398,44 @@ was not reconciled against a separate results archive. Reproduction: `python -B 
 results_coverage` (under a minute); two runs gave byte-identical output (sha256 b9bc0b9b...). Test: cumulative
 steps, exact categories and phrase, day 75 counted and day 76 and the quarter-end day not, fund units excluded,
 and a store that raises if any bar after the last window is read.
+
+### 5a. March 2020 and March 2021 recounted with a 125-day window (added 19 October 2026)
+
+SEBI extended the results deadlines during COVID, so these two quarters are counted again with a 125-day window,
+reported beside the 75-day count above. Day 1 is still the day after quarter end, and day 125 is the last counted
+day. The denominator uses the same window, so it also grows: symbols that first traded between day 76 and day
+125 join it. Every other quarter keeps the 75-day window, and the table above is unchanged.
+
+| Quarter end | Window | Window ends | EQ symbols trading in window | Fund units excluded | Symbols | (a) Legacy tags | (b) + Board outcome | (c) + Integrated Financial | (d) + Newspaper |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2020-03-31 | 75 days | 2020-06-14 | 1,611 | 79 | 1,532 | 438 (28.6%) | 438 (28.6%) | 438 (28.6%) | 438 (28.6%) |
+| 2020-03-31 | 125 days | 2020-08-03 | 1,623 | 82 | 1,541 | 1,356 (88.0%) | 1,357 (88.1%) | 1,357 (88.1%) | 1,359 (88.2%) |
+| 2021-03-31 | 75 days | 2021-06-14 | 1,707 | 100 | 1,607 | 911 (56.7%) | 911 (56.7%) | 911 (56.7%) | 914 (56.9%) |
+| 2021-03-31 | 125 days | 2021-08-03 | 1,748 | 106 | 1,642 | 1,467 (89.3%) | 1,468 (89.4%) | 1,468 (89.4%) | 1,470 (89.5%) |
+
+With all four sources, coverage rises from 28.6% to 88.2% for March 2020, and from 56.9% to 89.5% for March 2021. Almost all of the gain comes from the legacy tags.
+
+**Caveat: the longer window overlaps the next quarter.** The 125-day window runs past 30 June, the end of the next
+quarter. A filing in July could therefore be the June quarter's results rather than late March-quarter results,
+and the category and phrase cannot tell them apart. Some symbols are covered at step (d) only by filings after
+30 June:
+
+| Quarter end | Symbols covered only by filings after 30 June | Coverage without them |
+| --- | --- | --- |
+| March 2020 | 272 | 1,087 of 1,541 (70.5%) |
+| March 2021 | 31 | 1,439 of 1,642 (87.6%) |
+
+Under this count's own conventions, the March-quarter coverage within 125 days lies between those two figures for each quarter.
+
+**Not verified.** The actual extended deadlines were not checked: no SEBI page was opened for this recount.
+Whether a given July filing is March-quarter or June-quarter results was not checked either.
+
+**Reproduction.** `python -B scripts/abc_followup_counts.py results_coverage_covid` runs in under a minute. Two runs
+gave byte-identical output (sha256 5d7e8b52...). The default `results_coverage` output is still byte-identical to
+the one behind the table above (sha256 b9bc0b9b...).
+
+**Test.** Day 125 counts and day 126 does not; a symbol first trading after day 75 joins only the 125-day
+denominator; the after-30-June count is checked; and no bar after the last 125-day window is read.
 
 ## 6. Sourcing check for new data (documentation only)
 

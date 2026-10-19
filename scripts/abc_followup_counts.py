@@ -486,6 +486,10 @@ RESULT_STEPS = (
                          "AND lower(description) LIKE '%financial result%'"),
 )
 RESULT_WINDOW_DAYS = 75
+# Recheck (Claude, 2026-10-19): SEBI extended results deadlines during COVID, so these two quarters
+# are also counted with a 125-day window, reported beside the 75-day count. Other quarters keep 75.
+COVID_QUARTERS = ('2020-03-31', '2021-03-31')
+COVID_WINDOW_DAYS = 125
 
 
 def quarter_ends(first='2019-09-30', last='2025-09-30'):
@@ -499,17 +503,18 @@ def quarter_ends(first='2019-09-30', last='2025-09-30'):
     return ends
 
 
-def results_coverage(conn, isin_map=None):
-    """Per quarter: of the EQ symbols with an EQ bar in the 75 days after quarter end (fund units
-    excluded by the current ISIN map, as in item 2), how many have a results-bearing filing published
-    in that window, adding sources step by step. Bars are read only for symbol presence inside each
-    window; nothing after a window's last day is read for that quarter."""
+def results_coverage(conn, isin_map=None, ends=None, window_days=RESULT_WINDOW_DAYS):
+    """Per quarter: of the EQ symbols with an EQ bar in the `window_days` (default 75) days after
+    quarter end (fund units excluded by the current ISIN map, as in item 2), how many have a
+    results-bearing filing published in that window, adding sources step by step. Bars are read only
+    for symbol presence inside each window; nothing after a window's last day is read for that quarter.
+    `ends` defaults to every quarter end from September 2019 to September 2025."""
     identities = isin_map if isin_map is not None else load_isin_map(ROOT / 'data/raw/nse_symbol_isin_current.json')
     funds = {s for s, isin in identities.items() if isin and isin.startswith('INF')}
     rows = []
-    for end in quarter_ends():
+    for end in (ends if ends is not None else quarter_ends()):
         first = (date.fromisoformat(end) + timedelta(days=1)).isoformat()
-        last = (date.fromisoformat(end) + timedelta(days=RESULT_WINDOW_DAYS)).isoformat()
+        last = (date.fromisoformat(end) + timedelta(days=window_days)).isoformat()
         trading = {r[0] for r in conn.execute("SELECT DISTINCT symbol FROM bhavcopy WHERE series='EQ' AND event_date>=? "
                                              "AND event_date<=? AND knowledge_date<=?", (first, last, last))}
         universe = trading - funds
@@ -521,12 +526,38 @@ def results_coverage(conn, isin_map=None):
                 f"AND substr(sort_timestamp,1,10)<=? AND knowledge_date<=?", (first, last, last))} & universe
             row[name] = len(covered)
         rows.append(row)
-    return {'window_days': RESULT_WINDOW_DAYS, 'steps': [n for n, _ in RESULT_STEPS], 'quarters': rows}
+    return {'window_days': window_days, 'steps': [n for n, _ in RESULT_STEPS], 'quarters': rows}
+
+
+def results_coverage_covid(conn, isin_map=None):
+    """The March 2020 and March 2021 quarters, counted with the 75-day and the 125-day window. The
+    125-day window runs past the next quarter's end (30 June), so a filing after that date may be the
+    June quarter's results; `covered_only_after_next_quarter_end` counts the symbols covered at the
+    last step only by such filings."""
+    result = {str(days): results_coverage(conn, isin_map, COVID_QUARTERS, days)
+              for days in (RESULT_WINDOW_DAYS, COVID_WINDOW_DAYS)}
+    identities = isin_map if isin_map is not None else load_isin_map(ROOT / 'data/raw/nse_symbol_isin_current.json')
+    funds = {s for s, isin in identities.items() if isin and isin.startswith('INF')}
+    conditions = ' OR '.join(f'({condition})' for _, condition in RESULT_STEPS)
+    for row in result[str(COVID_WINDOW_DAYS)]['quarters']:
+        first = (date.fromisoformat(row['quarter_end']) + timedelta(days=1)).isoformat()
+        next_end = row['quarter_end'][:5] + '06-30'
+        last = row['window_last']
+        universe = {r[0] for r in conn.execute("SELECT DISTINCT symbol FROM bhavcopy WHERE series='EQ' AND event_date>=? "
+                                              "AND event_date<=? AND knowledge_date<=?", (first, last, last))} - funds
+        covered = lambda upto: {r[0] for r in conn.execute(
+            f"SELECT DISTINCT symbol FROM corporate_announcements WHERE ({conditions}) AND substr(sort_timestamp,1,10)>=? "
+            f"AND substr(sort_timestamp,1,10)<=? AND knowledge_date<=?", (first, upto, upto))} & universe
+        everything = covered(last)
+        assert len(everything) == row['d_plus_newspaper']
+        row['next_quarter_end'] = next_end
+        row['covered_only_after_next_quarter_end'] = len(everything - covered(next_end))
+    return result
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('section', choices=['funnel', 'notes', 'clean_pool', 'results_coverage'])
+    parser.add_argument('section', choices=['funnel', 'notes', 'clean_pool', 'results_coverage', 'results_coverage_covid'])
     parser.add_argument('--years', help='Comma-separated event years for funnel (default 2020-2025).')
     args = parser.parse_args()
     years = tuple(int(y) for y in args.years.split(',')) if args.years else YEARS
@@ -535,7 +566,8 @@ def main():
     conn = open_readonly(DB)
     try:
         result = (funnel(conn, years) if args.section == 'funnel' else notes(conn) if args.section == 'notes'
-                  else clean_pool(conn, years) if args.section == 'clean_pool' else results_coverage(conn))
+                  else clean_pool(conn, years) if args.section == 'clean_pool'
+                  else results_coverage_covid(conn) if args.section == 'results_coverage_covid' else results_coverage(conn))
         print(json.dumps(result, sort_keys=True, indent=2))
     finally:
         conn.close()

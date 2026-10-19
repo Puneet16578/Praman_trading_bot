@@ -330,3 +330,49 @@ class ResultsCoverageTest(unittest.TestCase):
         self.assertEqual([first[k] for k in result['steps']], [1, 2, 3, 4])   # AAA; +BBB; +CCC; +DDD; never EEE
         self.assertEqual(len(result['quarters']), 25)
         self.assertEqual(result['quarters'][-1]['window_last'], last_window_day)
+
+
+class ResultsCoverageCovidWindowTest(unittest.TestCase):
+    """Item 3 recheck: the March 2020 and March 2021 quarters with a 125-day window beside the 75-day
+    one. Day 125 counts and day 126 does not; the denominator uses the same window; no bar after the
+    last 125-day window is read; other quarters are not counted."""
+
+    def test_two_quarters_two_windows(self):
+        from scripts import abc_followup_counts as script
+        conn = sqlite3.connect(':memory:')
+        conn.row_factory = sqlite3.Row
+        last_window_day = '2021-08-03'                               # 2021-03-31 + 125 days
+        def forbidden():
+            raise AssertionError('A bar after the last 125-day window was read')
+        conn.create_function('forbidden', 0, forbidden)
+        conn.executescript(f"""
+            CREATE TABLE base(symbol, series, event_date, knowledge_date);
+            CREATE VIEW bhavcopy AS SELECT CASE WHEN event_date > '{last_window_day}' THEN forbidden() ELSE symbol END symbol,
+                series, event_date, knowledge_date FROM base;
+            CREATE TABLE corporate_announcements(symbol, category, description, sort_timestamp, knowledge_date);""")
+        bars = [('EARLY', '2020-04-10'), ('LATE', '2020-04-10'), ('EDGE', '2020-04-10'), ('MISS', '2020-04-10'),
+                ('NEWCO', '2020-07-20'),                              # trades only after day 75 (2020-06-14)
+                ('A21', '2021-04-05'), ('B21', '2021-04-05')]
+        conn.executemany('INSERT INTO base VALUES (?,?,?,?)', [(s, 'EQ', d, d) for s, d in bars])
+        filings = [('EARLY', '2020-05-20 10:00:00'),                  # day 50
+                   ('LATE', '2020-07-15 18:00:00'),                   # day 106
+                   ('EDGE', '2020-08-03 23:00:00'),                   # day 125: counts
+                   ('MISS', '2020-08-04 09:00:00'),                   # day 126: does not
+                   ('NEWCO', '2020-07-25 12:00:00'),
+                   ('A21', '2021-06-29 17:00:00'),                    # day 90
+                   ('B21', '2021-08-03 12:00:00')]                    # day 125
+        conn.executemany('INSERT INTO corporate_announcements VALUES (?,?,?,?,?)',
+                         [(s, 'Financial Result Updates', 'x', t, t[:10]) for s, t in filings])
+        try:
+            result = script.results_coverage_covid(conn, isin_map={})
+        finally:
+            conn.close()
+        self.assertEqual(sorted(result), ['125', '75'])
+        for days, expected in (('75', [(4, 1), (2, 0)]), ('125', [(5, 4), (2, 2)])):
+            block = result[days]
+            self.assertEqual(block['window_days'], int(days))
+            self.assertEqual([q['quarter_end'] for q in block['quarters']], ['2020-03-31', '2021-03-31'])
+            self.assertEqual([(q['symbols'], q['d_plus_newspaper']) for q in block['quarters']], expected)
+        self.assertEqual(result['125']['quarters'][1]['window_last'], last_window_day)
+        # LATE, EDGE and NEWCO only after 30 June 2020; B21 only after 30 June 2021 (A21 on 29 June).
+        self.assertEqual([q['covered_only_after_next_quarter_end'] for q in result['125']['quarters']], [3, 1])
