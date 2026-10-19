@@ -2945,3 +2945,45 @@ unknown. The report now discloses this and carries the reproducible script's pee
 counts. The script uses only EQ bars through each event date and point-in-time action
 rows; the store is opened `mode=ro` and is never written. Two full-store invocations
 produce identical output, and the report's two tables match it. No outcomes were read.
+
+## P8-092 - Draft A/B/C funnel note used the wrong ASM key and mixed closure timing
+
+**Severity / priority.** Low (uncommitted research-count diagnostics). **Status.** Resolved 2026-10-19.
+During implementation, the draft ASM note looked for `ASM`, while the store uses
+`ASM_LT` and `ASM_ST`. Also, the next-morning filing bin included intervening
+weekend/holiday time. Both were caught before any report or funnel commit. The
+note now checks both stored ASM mechanisms; closure-bridge filings have their own
+bin. Neither diagnostic changes the nine funnel removal conditions. Regression
+tests cover the stored mechanisms and a Saturday filing before a Monday cut-off.
+Review also kept SEBI's window fixed at five sessions when varying only filing
+lookbacks, and included the stored case variant of News Verification and the full
+Regulation 30(11) Rumour Verification category in diagnostic subcounts.
+The report is generated only from a rerun of the corrected script. No store, live
+screening rule, firewall, seal, or outcome code was changed.
+
+## P8-093 - Item 2's A/B/C session calendar depends on which dates are requested
+
+**Severity / priority.** Low (research-count diagnostics). **Status.** Open for item 2's tables; the
+funnel's per-year runs fixed 2026-10-19 (Claude, while finishing item 3).
+`scripts/abc_event_day_context.py` `_calendar(after, through)` lists sessions with any EQ bar known by
+`through`, the next requested event date, while `_bars_for_day` keeps only bars known by their own day.
+So a session whose bars were known late is in the history or not depending on where the requests
+fall. With the catalogue's event dates, 13 sessions known one to three days late (2019-10-27,
+2020-11-14, 2021-02-24, 2021-10-11, 2021-11-04, 2022-01-11, 2022-01-24, 2022-02-28, 2022-11-15,
+2023-10-27, 2024-01-20, 2024-02-27, 2024-05-18) enter as sessions with no bars, and the five known months
+later (2020-04-13, 2020-09-28, 2022-03-07, 2023-07-31, 2023-08-01) are skipped. Item 2's committed run and
+the funnel's full run admit the same 13, so they agree with each other. Found because a 2024-only
+funnel run (whose first request reached back to October 2019) also admitted 2023-08-01 and gave 7 more
+standalone step-8 removals and one more unknown peer than the full run; fixed by making every per-year
+run request the full run's dates (`event_inputs(..., report_years=...)`); per-year digests now match the
+full run for all six years. Test: tests/test_abc_followup_counts.py (a one-year run streams the same
+sessions as a longer run despite a late session; it fails on the unfixed code).
+Effect that remains in item 2's tables and the funnel alike: the session after each admitted empty
+session has no consecutive return, so its market move is unknown (2020 1, 2021 18, 2022 26, 2023 14,
+2024 133 down events; 109 of them on 2024-01-23) and its events are removed at step 8 as unknown peers.
+Proposed fix, not made (item 2 was not to be redone): build the calendar from sessions with at least
+one EQ bar known on their own day, independent of the requests, and regenerate item 2's tables.
+Also on review of the funnel (no removal condition changed): `--years` and a separate `notes` part, step
+tables for the 1- and 10-session lookbacks, two diagnostic clarification sub-counts and the
+`Outcome of Board Meeting-XBRL` spelling, and end-to-end tests that no bar after D is read and that a
+late filing or SEBI order cannot remove an event.
