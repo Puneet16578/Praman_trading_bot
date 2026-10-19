@@ -1,3 +1,24 @@
+## 2026-10-19 (Codex): S1 and trading research registry registered; documents only
+
+- Approved by the user in their message of 19 October 2026; registered 19 October 2026
+  at d176f414eb6371ddb6eccddff778ca19f41f9218. The user explicitly instructed proceeding
+  after the earlier 17:40 cutoff. Implementation and evaluation remain separate tasks.
+- Added docs/desk/s1_unexplained_drop_prereg.md and docs/desk/trading_research_registry.md.
+  Applied only the five final decisions, weekend-hold limitation and registration/status
+  edits. Section 11 removed; rules placed in execution, metrics and limitations sections.
+  S1 v1 is REGISTERED, not implemented or evaluated; h=5/h=10 remain NOT ATTEMPTED.
+- Original approved drafts remain unchanged in
+  C:/Users/VICTUS/AppData/Local/Temp/praman_s1_draft_20261019_2d83e28/.
+  The final diff is provided there as s1_registration_final.diff; no new research counts,
+  outcomes, code, configuration, store, firewall, seal or task changes.
+- Started on clean master at 4ae4f729eaf64d7179796536b439e051efca2b9c. Ingestion Ready;
+  no active Python process; existing Claude session's last entries were end_turn.
+- Start suite: Ran 1073 tests in 200.899s, OK. Pre-registration-commit suite:
+  Ran 1073 tests in 200.569s, OK. Both Python exits 0. Existing P8-088 SQLite
+  ResourceWarnings remain. End-suite evidence is in this handoff's commit message.
+- Follow-up documentation records the actual registration hash in both documents and
+  this handoff; it changes no research rule. This note authorises no implementation.
+
 ## 2026-10-19 (Codex): S1 draft revisions; documents only
 
 - User's latest decisions replace the earlier S1 proposals; final text still awaits separate approval.

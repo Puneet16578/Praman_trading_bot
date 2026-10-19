@@ -4,7 +4,7 @@ Registered 19 October 2026. DOCUMENTS ONLY.
 
 Approved by the user in their message of 19 October 2026.
 
-Registration commit: the commit introducing this registry and the S1 protocol; the hash is recorded after creation.
+Registration commit: `d176f414eb6371ddb6eccddff778ca19f41f9218` (19 October 2026), introducing this registry and the S1 protocol. This hash was recorded after the registration commit was created.
 
 Original draft from checkout 2d83e28c5d1d094fd1ee0be65b77a36f2355cb2e; revised against 0cd41bc4cf3ef5d3f26e841b5c6288b8ca854bfd using the user's 19 October decisions. Entries describe existing records; they do not authorise any action.
 

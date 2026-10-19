@@ -4,7 +4,7 @@ Registered 19 October 2026. DOCUMENTS ONLY.
 
 Approved by the user in their message of 19 October 2026.
 
-Registration commit: the commit introducing this file; its hash is recorded in the trading research registry and session handoff after creation.
+Registration commit: `d176f414eb6371ddb6eccddff778ca19f41f9218` (19 October 2026). This hash was recorded after the registration commit was created.
 
 No implementation, new research counts, outcome computation or trading is authorised.
 
