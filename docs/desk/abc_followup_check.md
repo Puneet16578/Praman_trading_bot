@@ -2,9 +2,37 @@
 
 19 October 2026. Personal research only. These are counting conventions, not strategy rules. No outcome, post-event price, or forward-window price was read. The store was opened read-only. No download, backfill, rule/configuration change, firewall change, or Strategy 0 change was made.
 
-The completed repaired market and peer tables are in [the sourcing check, section 8](abc_sourcing_check.md#8-event-day-market-and-peer-moves-inputs-only), committed in `b041714`. This report uses that fund-exclusion map, consecutive-session return convention, market-adjusted correlations, 250-session history and 200-pair minimum. It does not revise item 2.
+The completed repaired market and peer tables are in [the sourcing check, section 8](abc_sourcing_check.md#8-event-day-market-and-peer-moves-inputs-only), committed in `b041714`. This report uses that fund-exclusion map, consecutive-session return convention, market-adjusted correlations, 250-session history and 200-pair minimum. It does not revise item 2. Revised 19 October 2026: item 2's session calendar was fixed (P8-093, commit `b72f913`), so item 2's tables and this report's sections 3 and 4 were regenerated; see the note at the start of section 3. The pre-fix tables are kept in the appendix.
 
 ## 3. B: successive exclusions from catalogue down events
+
+**Regenerated 19 October 2026 (Claude), after the P8-093 fix.**
+
+**What the fix changed.** Item 2's session calendar now admits only sessions with at least one EQ bar known on their own day, whatever dates a run requests (commit `b72f913`; see section 3i). Before the fix, 13 late-published sessions entered as empty sessions. The market move on the session after each was unknown, and those 192 down events were removed at step 8 as unknown peers.
+
+Tables 3a-3h and section 4 are regenerated. The earlier tables are kept unchanged in the appendix at the end of this report.
+
+**What changed.** In the table, "before → after" marks a change and a single number means unchanged. The lookback is 5 sessions unless stated.
+
+| Year | Market unknown | Peers unknown | Step 1 removed | Step 8 removed | Left: 09:00 next session | Left: 18:00 on D | Left: 23:59 on D | Left: 09:00, lookback 1 | Left: 09:00, lookback 10 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2020 | 1 → 0 | 2,153 → 2,150 | 1,841 | 230 → 228 | 28 → 30 | 29 → 31 | 29 → 31 | 54 → 56 | 18 → 19 |
+| 2021 | 18 → 0 | 197 → 186 | 296 | 54 → 52 | 172 | 183 | 174 | 266 → 268 | 120 → 119 |
+| 2022 | 26 → 0 | 404 → 357 | 1,103 → 1,109 | 41 → 36 | 74 → 77 | 82 → 86 | 75 → 78 | 136 → 140 | 45 → 48 |
+| 2023 | 14 → 0 | 266 → 249 | 776 | 82 → 80 | 295 → 297 | 311 → 313 | 302 → 304 | 480 → 485 | 181 → 182 |
+| 2024 | 133 → 0 | 490 → 369 | 1,077 → 1,195 | 158 → 96 | 178 | 186 | 181 | 313 → 317 | 109 |
+| 2025 | 0 | 518 → 516 | 670 | 151 | 268 | 291 | 274 | 493 → 494 | 160 |
+| All | 192 → 0 | 4,028 → 3,827 | 5,763 → 5,887 | 716 → 643 | 1,015 → 1,022 | 1,082 → 1,090 | 1,035 → 1,042 | 1,742 → 1,760 | 633 → 637 |
+
+Most of the change is in 2024:
+
+- The 133 events with an unknown market move (109 of them on 23 January 2024) now have one.
+- 118 of them fell on days when the market fell more than 2%, so step 1 removes 118 more events and step 8 removes 62 fewer.
+- The 2024 end count stays 178.
+
+In 2022, 6 of the 26 such events move to step 1. Elsewhere the end counts change by -1 to +5 events per year, mostly through step 8: the empty sessions no longer shorten peer histories, so fewer peers are UNKNOWN.
+
+3b, 3c, 3g and 3h are unchanged. 3d, 3e and 3f change as above. In 3e, turnover bands differ only in the rows whose counts differ.
 
 The starting population is the negative `return_1d` label in the stored catalogue, not a newly recomputed direction. The catalogue has no separately named direction column. The tables count events; distinct symbols are reported as counts only. A remaining event is not proof that no explanation exists.
 
@@ -35,8 +63,8 @@ of that year's down events. Dates and symbols are distinct counts among the even
 | 5. No filing in the 90 days before D | 85 | 285 | 104 | 238 | 233 |
 | 6. 2022 results-route gap | 0 | 285 | 104 | 238 | 0 |
 | 7. Likely ex-dividend day | 3 | 282 | 104 | 236 | 5 |
-| 8. Peers share at least half, or peers UNKNOWN | 230 | 52 | 38 | 50 | 2,215 |
-| 9. G3 structure window or G5 failure | 24 | 28 | 23 | 28 | 741 |
+| 8. Peers share at least half, or peers UNKNOWN | 228 | 54 | 40 | 52 | 2,213 |
+| 9. G3 structure window or G5 failure | 24 | 30 | 25 | 30 | 741 |
 
 **2021**
 
@@ -50,23 +78,23 @@ of that year's down events. Dates and symbols are distinct counts among the even
 | 5. No filing in the 90 days before D | 66 | 265 | 126 | 223 | 92 |
 | 6. 2022 results-route gap | 0 | 265 | 126 | 223 | 0 |
 | 7. Likely ex-dividend day | 4 | 261 | 123 | 220 | 14 |
-| 8. Peers share at least half, or peers UNKNOWN | 54 | 207 | 108 | 174 | 217 |
-| 9. G3 structure window or G5 failure | 35 | 172 | 96 | 146 | 191 |
+| 8. Peers share at least half, or peers UNKNOWN | 52 | 209 | 110 | 177 | 207 |
+| 9. G3 structure window or G5 failure | 37 | 172 | 96 | 147 | 191 |
 
 **2022**
 
 | Step | Removed | Left | Dates left | Symbols left | Removes on its own |
 | --- | --- | --- | --- | --- | --- |
 | Down events (start) | — | 2,249 | 220 | 1,203 | — |
-| 1. Down-market day (market mean below -2%) | 1,103 | 1,146 | 202 | 781 | 1,103 |
-| 2. Material filing in window | 288 | 858 | 190 | 644 | 448 |
-| 3. Unclear filing in window | 501 | 357 | 148 | 296 | 1,166 |
+| 1. Down-market day (market mean below -2%) | 1,109 | 1,140 | 201 | 779 | 1,109 |
+| 2. Material filing in window | 284 | 856 | 189 | 643 | 448 |
+| 3. Unclear filing in window | 499 | 357 | 148 | 296 | 1,166 |
 | 4. Linked SEBI order | 0 | 357 | 148 | 296 | 0 |
 | 5. No filing in the 90 days before D | 67 | 290 | 132 | 248 | 147 |
 | 6. 2022 results-route gap | 156 | 134 | 65 | 125 | 785 |
 | 7. Likely ex-dividend day | 0 | 134 | 65 | 125 | 18 |
-| 8. Peers share at least half, or peers UNKNOWN | 41 | 93 | 56 | 85 | 533 |
-| 9. G3 structure window or G5 failure | 19 | 74 | 45 | 67 | 401 |
+| 8. Peers share at least half, or peers UNKNOWN | 36 | 98 | 59 | 90 | 487 |
+| 9. G3 structure window or G5 failure | 21 | 77 | 47 | 70 | 401 |
 
 **2023**
 
@@ -80,22 +108,22 @@ of that year's down events. Dates and symbols are distinct counts among the even
 | 5. No filing in the 90 days before D | 103 | 499 | 170 | 416 | 142 |
 | 6. 2022 results-route gap | 0 | 499 | 170 | 416 | 0 |
 | 7. Likely ex-dividend day | 7 | 492 | 170 | 414 | 20 |
-| 8. Peers share at least half, or peers UNKNOWN | 82 | 410 | 158 | 349 | 388 |
-| 9. G3 structure window or G5 failure | 115 | 295 | 136 | 255 | 446 |
+| 8. Peers share at least half, or peers UNKNOWN | 80 | 412 | 159 | 351 | 376 |
+| 9. G3 structure window or G5 failure | 115 | 297 | 137 | 257 | 446 |
 
 **2024**
 
 | Step | Removed | Left | Dates left | Symbols left | Removes on its own |
 | --- | --- | --- | --- | --- | --- |
 | Down events (start) | — | 2,456 | 228 | 1,313 | — |
-| 1. Down-market day (market mean below -2%) | 1,077 | 1,379 | 214 | 922 | 1,077 |
-| 2. Material filing in window | 680 | 699 | 192 | 553 | 996 |
-| 3. Unclear filing in window | 301 | 398 | 154 | 341 | 1,542 |
-| 4. Linked SEBI order | 0 | 398 | 154 | 341 | 0 |
-| 5. No filing in the 90 days before D | 43 | 355 | 142 | 316 | 72 |
-| 6. 2022 results-route gap | 0 | 355 | 142 | 316 | 0 |
-| 7. Likely ex-dividend day | 6 | 349 | 139 | 312 | 17 |
-| 8. Peers share at least half, or peers UNKNOWN | 158 | 191 | 113 | 171 | 694 |
+| 1. Down-market day (market mean below -2%) | 1,195 | 1,261 | 212 | 860 | 1,195 |
+| 2. Material filing in window | 649 | 612 | 190 | 483 | 996 |
+| 3. Unclear filing in window | 276 | 336 | 152 | 287 | 1,542 |
+| 4. Linked SEBI order | 0 | 336 | 152 | 287 | 0 |
+| 5. No filing in the 90 days before D | 43 | 293 | 140 | 262 | 72 |
+| 6. 2022 results-route gap | 0 | 293 | 140 | 262 | 0 |
+| 7. Likely ex-dividend day | 6 | 287 | 137 | 257 | 17 |
+| 8. Peers share at least half, or peers UNKNOWN | 96 | 191 | 113 | 171 | 585 |
 | 9. G3 structure window or G5 failure | 13 | 178 | 106 | 162 | 144 |
 
 **2025**
@@ -148,22 +176,22 @@ Results" clarification variants.
 
 | Year | Lookback | Step 2 removed | Step 3 removed | Left after step 3 | Left at the end |
 | --- | --- | --- | --- | --- | --- |
-| 2020 | 1 | 230 | 150 | 546 | 54 |
-| 2020 | 5 | 322 | 234 | 370 | 28 |
-| 2020 | 10 | 408 | 247 | 271 | 18 |
-| 2021 | 1 | 380 | 126 | 470 | 266 |
+| 2020 | 1 | 230 | 150 | 546 | 56 |
+| 2020 | 5 | 322 | 234 | 370 | 30 |
+| 2020 | 10 | 408 | 247 | 271 | 19 |
+| 2021 | 1 | 380 | 126 | 470 | 268 |
 | 2021 | 5 | 454 | 191 | 331 | 172 |
-| 2021 | 10 | 497 | 227 | 252 | 120 |
-| 2022 | 1 | 226 | 379 | 541 | 136 |
-| 2022 | 5 | 288 | 501 | 357 | 74 |
-| 2022 | 10 | 337 | 555 | 254 | 45 |
-| 2023 | 1 | 701 | 255 | 884 | 480 |
-| 2023 | 5 | 853 | 385 | 602 | 295 |
-| 2023 | 10 | 970 | 434 | 436 | 181 |
-| 2024 | 1 | 557 | 223 | 599 | 313 |
-| 2024 | 5 | 680 | 301 | 398 | 178 |
-| 2024 | 10 | 747 | 354 | 278 | 109 |
-| 2025 | 1 | 341 | 697 | 927 | 493 |
+| 2021 | 10 | 497 | 227 | 252 | 119 |
+| 2022 | 1 | 223 | 378 | 539 | 140 |
+| 2022 | 5 | 284 | 499 | 357 | 77 |
+| 2022 | 10 | 333 | 553 | 254 | 48 |
+| 2023 | 1 | 701 | 255 | 884 | 485 |
+| 2023 | 5 | 853 | 385 | 602 | 297 |
+| 2023 | 10 | 970 | 434 | 436 | 182 |
+| 2024 | 1 | 538 | 212 | 511 | 317 |
+| 2024 | 5 | 649 | 276 | 336 | 178 |
+| 2024 | 10 | 712 | 316 | 233 | 109 |
+| 2025 | 1 | 341 | 697 | 927 | 494 |
 | 2025 | 5 | 500 | 903 | 562 | 268 |
 | 2025 | 10 | 578 | 999 | 388 | 160 |
 
@@ -174,34 +202,34 @@ with 60 observations on D, Q1 lowest. No event left has an unknown band.
 
 | Cut-off | Lookback | Year | Events | Dates | Symbols | Q1 | Q2 | Q3 | Q4 | Q5 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 09:00 next session | 5 | 2020 | 28 | 23 | 28 | 0 | 3 | 10 | 6 | 9 |
-| 09:00 next session | 5 | 2021 | 172 | 96 | 146 | 4 | 32 | 36 | 47 | 53 |
-| 09:00 next session | 5 | 2022 | 74 | 45 | 67 | 2 | 13 | 14 | 12 | 33 |
-| 09:00 next session | 5 | 2023 | 295 | 136 | 255 | 6 | 67 | 65 | 75 | 82 |
+| 09:00 next session | 5 | 2020 | 30 | 25 | 30 | 0 | 3 | 11 | 6 | 10 |
+| 09:00 next session | 5 | 2021 | 172 | 96 | 147 | 4 | 32 | 35 | 47 | 54 |
+| 09:00 next session | 5 | 2022 | 77 | 47 | 70 | 3 | 14 | 14 | 13 | 33 |
+| 09:00 next session | 5 | 2023 | 297 | 137 | 257 | 6 | 67 | 66 | 75 | 83 |
 | 09:00 next session | 5 | 2024 | 178 | 106 | 162 | 18 | 31 | 38 | 37 | 54 |
 | 09:00 next session | 5 | 2025 | 268 | 121 | 232 | 12 | 64 | 72 | 66 | 54 |
-| 18:00 on D | 5 | 2020 | 29 | 24 | 29 | 0 | 3 | 10 | 7 | 9 |
-| 18:00 on D | 5 | 2021 | 183 | 98 | 155 | 4 | 34 | 37 | 51 | 57 |
-| 18:00 on D | 5 | 2022 | 82 | 47 | 74 | 2 | 15 | 17 | 13 | 35 |
-| 18:00 on D | 5 | 2023 | 311 | 139 | 268 | 7 | 69 | 73 | 76 | 86 |
+| 18:00 on D | 5 | 2020 | 31 | 26 | 31 | 0 | 3 | 11 | 7 | 10 |
+| 18:00 on D | 5 | 2021 | 183 | 98 | 156 | 4 | 34 | 36 | 51 | 58 |
+| 18:00 on D | 5 | 2022 | 86 | 49 | 78 | 3 | 16 | 18 | 14 | 35 |
+| 18:00 on D | 5 | 2023 | 313 | 140 | 270 | 7 | 69 | 74 | 76 | 87 |
 | 18:00 on D | 5 | 2024 | 186 | 109 | 170 | 19 | 33 | 40 | 39 | 55 |
 | 18:00 on D | 5 | 2025 | 291 | 128 | 251 | 12 | 68 | 75 | 74 | 62 |
-| 23:59 on D | 5 | 2020 | 29 | 24 | 29 | 0 | 3 | 10 | 7 | 9 |
-| 23:59 on D | 5 | 2021 | 174 | 97 | 147 | 4 | 32 | 36 | 48 | 54 |
-| 23:59 on D | 5 | 2022 | 75 | 45 | 68 | 2 | 14 | 14 | 12 | 33 |
-| 23:59 on D | 5 | 2023 | 302 | 138 | 261 | 7 | 67 | 68 | 76 | 84 |
+| 23:59 on D | 5 | 2020 | 31 | 26 | 31 | 0 | 3 | 11 | 7 | 10 |
+| 23:59 on D | 5 | 2021 | 174 | 97 | 148 | 4 | 32 | 35 | 48 | 55 |
+| 23:59 on D | 5 | 2022 | 78 | 47 | 71 | 3 | 15 | 14 | 13 | 33 |
+| 23:59 on D | 5 | 2023 | 304 | 139 | 263 | 7 | 67 | 69 | 76 | 85 |
 | 23:59 on D | 5 | 2024 | 181 | 107 | 165 | 19 | 32 | 38 | 38 | 54 |
 | 23:59 on D | 5 | 2025 | 274 | 123 | 235 | 12 | 66 | 72 | 68 | 56 |
-| 09:00 next session | 1 | 2020 | 54 | 41 | 53 | 0 | 5 | 15 | 12 | 22 |
-| 09:00 next session | 1 | 2021 | 266 | 123 | 215 | 4 | 47 | 55 | 72 | 88 |
-| 09:00 next session | 1 | 2022 | 136 | 60 | 121 | 3 | 23 | 23 | 32 | 55 |
-| 09:00 next session | 1 | 2023 | 480 | 171 | 392 | 9 | 96 | 107 | 122 | 146 |
-| 09:00 next session | 1 | 2024 | 313 | 140 | 267 | 28 | 48 | 65 | 61 | 111 |
-| 09:00 next session | 1 | 2025 | 493 | 163 | 406 | 20 | 94 | 132 | 128 | 119 |
-| 09:00 next session | 10 | 2020 | 18 | 15 | 18 | 0 | 3 | 6 | 2 | 7 |
-| 09:00 next session | 10 | 2021 | 120 | 74 | 100 | 1 | 26 | 26 | 32 | 35 |
-| 09:00 next session | 10 | 2022 | 45 | 29 | 44 | 2 | 7 | 8 | 6 | 22 |
-| 09:00 next session | 10 | 2023 | 181 | 97 | 162 | 4 | 47 | 41 | 44 | 45 |
+| 09:00 next session | 1 | 2020 | 56 | 43 | 55 | 0 | 5 | 16 | 12 | 23 |
+| 09:00 next session | 1 | 2021 | 268 | 123 | 217 | 4 | 47 | 54 | 74 | 89 |
+| 09:00 next session | 1 | 2022 | 140 | 62 | 125 | 4 | 24 | 23 | 33 | 56 |
+| 09:00 next session | 1 | 2023 | 485 | 172 | 395 | 9 | 97 | 108 | 123 | 148 |
+| 09:00 next session | 1 | 2024 | 317 | 141 | 271 | 28 | 49 | 66 | 61 | 113 |
+| 09:00 next session | 1 | 2025 | 494 | 163 | 407 | 20 | 95 | 132 | 128 | 119 |
+| 09:00 next session | 10 | 2020 | 19 | 16 | 19 | 0 | 3 | 6 | 2 | 8 |
+| 09:00 next session | 10 | 2021 | 119 | 73 | 100 | 1 | 26 | 25 | 32 | 35 |
+| 09:00 next session | 10 | 2022 | 48 | 31 | 47 | 3 | 8 | 8 | 7 | 22 |
+| 09:00 next session | 10 | 2023 | 182 | 98 | 163 | 4 | 47 | 42 | 44 | 45 |
 | 09:00 next session | 10 | 2024 | 109 | 81 | 102 | 12 | 23 | 26 | 21 | 27 |
 | 09:00 next session | 10 | 2025 | 160 | 84 | 148 | 10 | 44 | 39 | 38 | 29 |
 
@@ -209,12 +237,12 @@ with 60 observations on D, Q1 lowest. No event left has an unknown band.
 
 | Year | Down events | Market unknown | Peers unknown | Unstable peer ratio | G3 fail | G3 unknown | G5 fail | G5 unknown | ASM active | GSM unknown |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 2020 | 2,767 | 1 | 2,153 | 49 | 9 | 0 | 732 | 7 | 147 | 2,767 |
-| 2021 | 1,272 | 18 | 197 | 18 | 6 | 0 | 186 | 6 | 116 | 1,272 |
-| 2022 | 2,249 | 26 | 404 | 104 | 8 | 0 | 393 | 16 | 116 | 2,249 |
-| 2023 | 2,616 | 14 | 266 | 85 | 7 | 0 | 439 | 10 | 138 | 2,616 |
-| 2024 | 2,456 | 133 | 490 | 110 | 8 | 0 | 136 | 6 | 169 | 2,456 |
-| 2025 | 2,635 | 0 | 518 | 23 | 26 | 0 | 440 | 14 | 96 | 2,625 |
+| 2020 | 2,767 | 0 | 2,150 | 49 | 9 | 0 | 732 | 7 | 147 | 2,767 |
+| 2021 | 1,272 | 0 | 186 | 18 | 6 | 0 | 186 | 6 | 116 | 1,272 |
+| 2022 | 2,249 | 0 | 357 | 105 | 8 | 0 | 393 | 16 | 116 | 2,249 |
+| 2023 | 2,616 | 0 | 249 | 85 | 7 | 0 | 439 | 10 | 138 | 2,616 |
+| 2024 | 2,456 | 0 | 369 | 133 | 8 | 0 | 136 | 6 | 169 | 2,456 |
+| 2025 | 2,635 | 0 | 516 | 23 | 26 | 0 | 440 | 14 | 96 | 2,625 |
 
 Among the events left at the end (main setting): G5 unknown 2020 1, 2021 0, 2022 1, 2023 0, 2024 0, 2025 0; G3 unknown 0 in every year; unstable peer ratio 2020 0, 2021 0, 2022 0, 2023 0, 2024 0, 2025 2.
 
@@ -244,23 +272,12 @@ GSM entries in 2025: 94 entry checks for 23 distinct stocks. G5 on the entry day
 
 ### 3i. Reproduction and limits found while finishing the count
 
-First run: `python -B scripts/abc_followup_counts.py funnel` (all years, 9 min 12 s) and `... notes`. Second run: one
-`--years` piece per year (26 s to 4 min 34 s each) and `notes` again. Per-year digests of the steps, sensitivities,
-final counts, diagnostics and dividends (rulebook 4feb5d1f0d1f, cost config 8670e2e48632)
-are identical between the two runs for every year, and the two `notes` outputs are byte-identical.
+Regenerated 19 October 2026 after the P8-093 fix. First pass: one `--years` piece per year. Each piece streams from October 2019 up to its last year, so a piece took from 30 s (2020) to 4 min 36 s (2025). Second pass: pieces for 2020–2022, 2023–2024 and 2025. Per-year digests cover the steps, sensitivities, final counts, diagnostics and dividends (rulebook 4feb5d1f0d1f, cost config 8670e2e48632). They are identical between the two passes for every year. `notes` does not use the calendar, and its output is byte-identical to the pre-fix run. The pre-fix runs are described in the appendix.
 
-- **P8-093.** Item 2's session calendar admits a session only if its bars are known by the next requested event date.
-  Thirteen sessions whose bars were known one to three days late (weekend specials and a few weekdays) therefore enter
-  the history as empty sessions, and five sessions known months later are skipped. Item 2's tables and this funnel's
-  full run admit the same thirteen. A per-year piece first disagreed with the full run for 2024 (one more admitted
-  session, 1 Aug 2023), so pieces now request the same dates as the full run. One effect stays in both item 2 and these
-  tables: on the session after each admitted empty session no consecutive return exists, so the market move is unknown
-  (2020 1, 2021 18, 2022 26, 2023 14, 2024 133 events; 109 of the 2024 ones on 23 Jan 2024, after Saturday 20 Jan) and
-  those events are removed at step 8 as unknown peers. Changing that would change item 2, which was out of scope.
-- Peers are UNKNOWN for most of 2020 (2,153 of 2,767 events) because the history starts in October 2019 and the main
-  setting needs 200 sessions; step 8 therefore removes most of 2020 on its own.
-- GSM status is UNKNOWN for nearly every event (no stored GSM transition for the stock); ASM is active for 96-169 events
-  a year. Neither removes an event.
+- **P8-093 (fixed 19 October 2026).** Before the fix, item 2's session calendar admitted a session if any of its bars was known by the next requested event date. Thirteen sessions whose bars were known one to three days late therefore entered the history as empty sessions. On the session after each, no consecutive return existed and the market move was unknown. That affected 2020 1, 2021 18, 2022 26, 2023 14 and 2024 133 down events, 109 of the 2024 ones on 23 January 2024; those events were removed at step 8 as unknown peers. Now the calendar holds only sessions with at least one EQ bar known on their own day, whatever the requests. Those 13 sessions are left out, like the five known 10 days to over four years later, and the next session's return runs from the last close then known. No down event now has an unknown market move.
+- The funnel's own calendar for finding D's previous and next sessions (filing windows, cut-offs, G3/G5) is a fixed list of every stored EQ session up to 10 January 2026. It does not depend on the requests and was not changed. It still contains the 18 late-published sessions as dates; that is a calendar convention, not a price read. The same holds for `notes` and section 4.
+- Peers are UNKNOWN for most of 2020 (2,150 of 2,767 events), because the history starts in October 2019 and the main setting needs 200 sessions. Step 8 therefore removes most of 2020 on its own.
+- GSM status is UNKNOWN for nearly every event (no stored GSM transition for the stock); ASM is active for 96-169 events a year. Neither removes an event.
 
 ### Parsing and interpretation limits
 
@@ -273,6 +290,15 @@ Reproduction: `python -B scripts/abc_followup_counts.py funnel [--years 2024]` a
 Changed on review (Claude, 19 October): the per-year `--years` option and the separate `notes` part (so a run can be split into foreground pieces), with the stream fix of P8-093; step tables for the 1- and 10-session lookbacks; two extra diagnostic Unclear sub-counts (generic and financial-results clarifications) and the `Outcome of Board Meeting-XBRL` spelling in the board group; the four tests above. None of Codex's nine removal conditions or its listed decisions was changed.
 
 ## 4. A: events with company news between the previous close and the open
+
+**Regenerated 19 October 2026 (Claude), after the P8-093 fix.** The market move on D comes from item 2's calendar, so this table changed with it. Before → after:
+
+- Unknown market moves among all events: 638 → 0 (inside the pool, 41 → 0).
+- Material filings left out because the market moved over 2% the same way: 361 → 375.
+- Pool: 3,402 → 3,388. By year: 2020 up -1, 2021 up -1, 2022 down -2, 2023 up -3, 2024 down -7.
+- Events that would join with Board Outcome or Press Release: 1,446 → 1,443.
+
+Events with a Material filing overnight (3,763) and every 2025 row are unchanged. The pre-fix table is in the appendix.
 
 Counting convention only, not a strategy rule. All catalogue events 2020-2025 (`return_1d` above zero is up, below
 zero is down). An event is in the pool if the same symbol has a Material news filing (the 279-category draft map)
@@ -288,29 +314,29 @@ D's close; nothing after D's close is read.
 | Year | Direction | Events | Material filing overnight | Left out: market moved over 2% the same way | Pool | Previous evening | Closure bridge | Before open | Pool dates | Pool symbols | Pool with market unknown | Would join with Board Outcome or Press Release |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 2020 | down | 2,767 | 171 | 36 | 135 | 125 | 11 | 2 | 58 | 128 | 0 | 12 |
-| 2020 | up | 7,144 | 244 | 19 | 225 | 198 | 24 | 5 | 103 | 204 | 1 | 61 |
-| 2021 | down | 1,272 | 246 | 7 | 239 | 192 | 49 | 3 | 85 | 202 | 4 | 23 |
-| 2021 | up | 7,691 | 267 | 11 | 256 | 210 | 43 | 4 | 119 | 218 | 1 | 74 |
-| 2022 | down | 2,249 | 199 | 56 | 143 | 115 | 26 | 7 | 65 | 132 | 2 | 156 |
-| 2022 | up | 7,055 | 243 | 11 | 232 | 187 | 40 | 9 | 112 | 209 | 2 | 212 |
-| 2023 | down | 2,616 | 442 | 25 | 417 | 345 | 69 | 3 | 94 | 353 | 3 | 44 |
-| 2023 | up | 9,280 | 439 | 2 | 437 | 376 | 59 | 3 | 126 | 372 | 3 | 116 |
-| 2024 | down | 2,456 | 432 | 81 | 351 | 303 | 48 | 0 | 90 | 297 | 15 | 35 |
-| 2024 | up | 8,135 | 405 | 8 | 397 | 341 | 51 | 7 | 139 | 347 | 10 | 102 |
+| 2020 | up | 7,144 | 244 | 20 | 224 | 197 | 24 | 5 | 102 | 203 | 0 | 61 |
+| 2021 | down | 1,272 | 246 | 7 | 239 | 192 | 49 | 3 | 85 | 202 | 0 | 23 |
+| 2021 | up | 7,691 | 267 | 12 | 255 | 210 | 42 | 4 | 118 | 217 | 0 | 74 |
+| 2022 | down | 2,249 | 199 | 58 | 141 | 113 | 26 | 6 | 64 | 130 | 0 | 156 |
+| 2022 | up | 7,055 | 243 | 11 | 232 | 187 | 40 | 9 | 112 | 209 | 0 | 212 |
+| 2023 | down | 2,616 | 442 | 25 | 417 | 345 | 69 | 3 | 94 | 353 | 0 | 44 |
+| 2023 | up | 9,280 | 439 | 5 | 434 | 374 | 58 | 3 | 125 | 371 | 0 | 116 |
+| 2024 | down | 2,456 | 432 | 88 | 344 | 301 | 43 | 0 | 89 | 295 | 0 | 32 |
+| 2024 | up | 8,135 | 405 | 8 | 397 | 341 | 51 | 7 | 139 | 347 | 0 | 102 |
 | 2025 | down | 2,635 | 298 | 78 | 220 | 197 | 24 | 3 | 85 | 205 | 0 | 270 |
 | 2025 | up | 7,394 | 377 | 27 | 350 | 304 | 37 | 13 | 147 | 306 | 0 | 341 |
 
-Totals 2020-2025: 3,402 events in the pool; 1,446 more would join if Outcome of Board Meeting and
+Totals 2020-2025: 3,388 events in the pool; 1,443 more would join if Outcome of Board Meeting and
 Press Release filings counted (both stored spellings of each: "Outcome of Board Meeting" and "...-XBRL", "Press
 Release" and "Press Release (Revised)"), under the same window and market rule. The joiners' bins:
-2020 down 9/1/2, 2020 up 50/5/6, 2021 down 17/4/2, 2021 up 56/12/8, 2022 down 103/52/6, 2022 up 134/70/11, 2023 down 36/2/6, 2023 up 85/20/13, 2024 down 29/5/1, 2024 up 73/18/12, 2025 down 217/54/6, 2025 up 286/45/17 (previous evening / closure bridge / before open).
+2020 down 9/1/2, 2020 up 50/5/6, 2021 down 17/4/2, 2021 up 56/12/8, 2022 down 103/52/6, 2022 up 134/70/11, 2023 down 36/2/6, 2023 up 85/20/13, 2024 down 28/3/1, 2024 up 73/18/12, 2025 down 217/54/6, 2025 up 286/45/17 (previous evening / closure bridge / before open).
 
-Unknown market moves among all events: 2020 down 1, 2020 up 78, 2021 down 18, 2021 up 159, 2022 down 26, 2022 up 130, 2023 down 14, 2023 up 20, 2024 down 133, 2024 up 59, 2025 down 0, 2025 up 0. Most of the down-side ones are the P8-093 sessions (section 3i).
+Unknown market moves among all events: none in any year since the P8-093 fix (638 before: 2020 down 1, 2020 up 78, 2021 down 18, 2021 up 159, 2022 down 26, 2022 up 130, 2023 down 14, 2023 up 20, 2024 down 133, 2024 up 59).
 
 Limits: a Material category is a label from the draft map, not a finding that the filing moved the price; stored
 times are taken as IST publication times, which were not verified as first publication; special-session closing
 times were not reconstructed (15:30 is used for every session). Reproduction: `python -B scripts/abc_followup_counts.py
-clean_pool` (3 min); two runs gave byte-identical output (sha256 f9c4cbb7...). Tests: the bin edges (15:29:59 and
+clean_pool` (3 min); after the P8-093 fix, two runs gave byte-identical output (sha256 b88b4af8...; f9c4cbb7... before the fix). Tests: the bin edges (15:29:59 and
 09:15:00 excluded), a whole run on a store that raises if any bar after D is read, a filing at 09:15:00 that adds
 nothing while one at 09:14:59 does, and the same-direction market rule.
 
@@ -534,3 +560,275 @@ download budget for any dataset chosen. None of that was done.
 | 11:35:30 | pib.gov.in | https://www.pib.gov.in/PressReleasePage.aspx?PRID=2022466 | UNREADABLE (HTTP 403) |
 
 Pages opened per site: federalreserve.gov 3, indiabudget.gov.in 1, lseg.com 1, msci.com 2, niftyindices.com 1, nseindia.com 3, pib.gov.in 1, rbi.org.in 1, sebi.gov.in 2. Searches are listed for transparency; they are not page reads.
+
+## Appendix. Section 3 and 4 tables before the P8-093 fix (superseded 19 October 2026)
+
+Kept unchanged for comparison; use the tables in sections 3 and 4. These were generated on 19 October 2026 before item 2's calendar was fixed (commit `b72f913`). Headings are prefixed "Before the fix".
+
+#### Before the fix: 3a. Sequential funnel, cut-off 09:00 IST next EQ session, 5-session filing window
+
+Each step removes events still present after the steps above it. "Removes on its own" applies the step alone to all
+of that year's down events. Dates and symbols are distinct counts among the events left.
+
+**2020**
+
+| Step | Removed | Left | Dates left | Symbols left | Removes on its own |
+| --- | --- | --- | --- | --- | --- |
+| Down events (start) | — | 2,767 | 193 | 1,131 | — |
+| 1. Down-market day (market mean below -2%) | 1,841 | 926 | 176 | 647 | 1,841 |
+| 2. Material filing in window | 322 | 604 | 153 | 461 | 495 |
+| 3. Unclear filing in window | 234 | 370 | 125 | 296 | 1,152 |
+| 4. Linked SEBI order | 0 | 370 | 125 | 296 | 0 |
+| 5. No filing in the 90 days before D | 85 | 285 | 104 | 238 | 233 |
+| 6. 2022 results-route gap | 0 | 285 | 104 | 238 | 0 |
+| 7. Likely ex-dividend day | 3 | 282 | 104 | 236 | 5 |
+| 8. Peers share at least half, or peers UNKNOWN | 230 | 52 | 38 | 50 | 2,215 |
+| 9. G3 structure window or G5 failure | 24 | 28 | 23 | 28 | 741 |
+
+**2021**
+
+| Step | Removed | Left | Dates left | Symbols left | Removes on its own |
+| --- | --- | --- | --- | --- | --- |
+| Down events (start) | — | 1,272 | 210 | 820 | — |
+| 1. Down-market day (market mean below -2%) | 296 | 976 | 198 | 667 | 296 |
+| 2. Material filing in window | 454 | 522 | 177 | 411 | 501 |
+| 3. Unclear filing in window | 191 | 331 | 141 | 272 | 737 |
+| 4. Linked SEBI order | 0 | 331 | 141 | 272 | 0 |
+| 5. No filing in the 90 days before D | 66 | 265 | 126 | 223 | 92 |
+| 6. 2022 results-route gap | 0 | 265 | 126 | 223 | 0 |
+| 7. Likely ex-dividend day | 4 | 261 | 123 | 220 | 14 |
+| 8. Peers share at least half, or peers UNKNOWN | 54 | 207 | 108 | 174 | 217 |
+| 9. G3 structure window or G5 failure | 35 | 172 | 96 | 146 | 191 |
+
+**2022**
+
+| Step | Removed | Left | Dates left | Symbols left | Removes on its own |
+| --- | --- | --- | --- | --- | --- |
+| Down events (start) | — | 2,249 | 220 | 1,203 | — |
+| 1. Down-market day (market mean below -2%) | 1,103 | 1,146 | 202 | 781 | 1,103 |
+| 2. Material filing in window | 288 | 858 | 190 | 644 | 448 |
+| 3. Unclear filing in window | 501 | 357 | 148 | 296 | 1,166 |
+| 4. Linked SEBI order | 0 | 357 | 148 | 296 | 0 |
+| 5. No filing in the 90 days before D | 67 | 290 | 132 | 248 | 147 |
+| 6. 2022 results-route gap | 156 | 134 | 65 | 125 | 785 |
+| 7. Likely ex-dividend day | 0 | 134 | 65 | 125 | 18 |
+| 8. Peers share at least half, or peers UNKNOWN | 41 | 93 | 56 | 85 | 533 |
+| 9. G3 structure window or G5 failure | 19 | 74 | 45 | 67 | 401 |
+
+**2023**
+
+| Step | Removed | Left | Dates left | Symbols left | Removes on its own |
+| --- | --- | --- | --- | --- | --- |
+| Down events (start) | — | 2,616 | 228 | 1,373 | — |
+| 1. Down-market day (market mean below -2%) | 776 | 1,840 | 222 | 1,129 | 776 |
+| 2. Material filing in window | 853 | 987 | 215 | 724 | 912 |
+| 3. Unclear filing in window | 385 | 602 | 181 | 478 | 1,417 |
+| 4. Linked SEBI order | 0 | 602 | 181 | 478 | 0 |
+| 5. No filing in the 90 days before D | 103 | 499 | 170 | 416 | 142 |
+| 6. 2022 results-route gap | 0 | 499 | 170 | 416 | 0 |
+| 7. Likely ex-dividend day | 7 | 492 | 170 | 414 | 20 |
+| 8. Peers share at least half, or peers UNKNOWN | 82 | 410 | 158 | 349 | 388 |
+| 9. G3 structure window or G5 failure | 115 | 295 | 136 | 255 | 446 |
+
+**2024**
+
+| Step | Removed | Left | Dates left | Symbols left | Removes on its own |
+| --- | --- | --- | --- | --- | --- |
+| Down events (start) | — | 2,456 | 228 | 1,313 | — |
+| 1. Down-market day (market mean below -2%) | 1,077 | 1,379 | 214 | 922 | 1,077 |
+| 2. Material filing in window | 680 | 699 | 192 | 553 | 996 |
+| 3. Unclear filing in window | 301 | 398 | 154 | 341 | 1,542 |
+| 4. Linked SEBI order | 0 | 398 | 154 | 341 | 0 |
+| 5. No filing in the 90 days before D | 43 | 355 | 142 | 316 | 72 |
+| 6. 2022 results-route gap | 0 | 355 | 142 | 316 | 0 |
+| 7. Likely ex-dividend day | 6 | 349 | 139 | 312 | 17 |
+| 8. Peers share at least half, or peers UNKNOWN | 158 | 191 | 113 | 171 | 694 |
+| 9. G3 structure window or G5 failure | 13 | 178 | 106 | 162 | 144 |
+
+**2025**
+
+| Step | Removed | Left | Dates left | Symbols left | Removes on its own |
+| --- | --- | --- | --- | --- | --- |
+| Down events (start) | — | 2,635 | 235 | 1,438 | — |
+| 1. Down-market day (market mean below -2%) | 670 | 1,965 | 218 | 1,233 | 670 |
+| 2. Material filing in window | 500 | 1,465 | 205 | 1,017 | 724 |
+| 3. Unclear filing in window | 903 | 562 | 164 | 450 | 1,711 |
+| 4. Linked SEBI order | 0 | 562 | 164 | 450 | 0 |
+| 5. No filing in the 90 days before D | 28 | 534 | 162 | 431 | 38 |
+| 6. 2022 results-route gap | 0 | 534 | 162 | 431 | 0 |
+| 7. Likely ex-dividend day | 8 | 526 | 159 | 425 | 38 |
+| 8. Peers share at least half, or peers UNKNOWN | 151 | 375 | 140 | 309 | 540 |
+| 9. G3 structure window or G5 failure | 107 | 268 | 121 | 232 | 459 |
+
+#### Before the fix: 3b. When the step-2 material filings appeared (all down events, 09:00 cut-off, 5-session window)
+
+Events with at least one material filing in each bin (filings in brackets). Bins: D's close (15:30) to 18:00;
+after 18:00 to midnight; the next EQ session's morning up to 09:00; and the closure bridge (calendar days between
+D and the next session, i.e. weekends and holidays). Earlier filings in the window are not in these bins.
+
+| Year | Close to 18:00 | After 18:00 | Next morning to 09:00 | Weekend/holiday bridge |
+| --- | --- | --- | --- | --- |
+| 2020 | 20 (24) | 15 (15) | 3 (3) | 0 (0) |
+| 2021 | 13 (13) | 16 (21) | 0 (0) | 2 (2) |
+| 2022 | 12 (16) | 23 (34) | 1 (1) | 2 (2) |
+| 2023 | 22 (29) | 13 (15) | 2 (2) | 1 (2) |
+| 2024 | 26 (29) | 22 (26) | 0 (0) | 3 (3) |
+| 2025 | 46 (53) | 39 (45) | 0 (0) | 8 (12) |
+
+#### Before the fix: 3c. Unclear filings in the step-3 window, by kind (all down events)
+
+Events with at least one such filing (filings in brackets); one event can appear in several columns. "News and
+rumour" is News Verification (both stored spellings), News Clarification and Rumour Verification - Regulation
+30(11). Shown separately: the generic Clarification and Reply to Clarification Sought, and the four "Financial
+Results" clarification variants.
+
+| Year | News and rumour | Clarification (generic) | Clarification (financial results) | Price movement / Spurt in Volume | Outcome of Board Meeting | SEBI Takeover disclosure |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2020 | 15 (29) | 37 (59) | 11 (11) | 57 (101) | 224 (232) | 53 (104) |
+| 2021 | 10 (13) | 22 (34) | 8 (9) | 41 (72) | 272 (294) | 65 (106) |
+| 2022 | 14 (25) | 23 (27) | 15 (19) | 55 (95) | 520 (546) | 32 (70) |
+| 2023 | 26 (43) | 8 (10) | 25 (33) | 60 (105) | 528 (584) | 59 (79) |
+| 2024 | 37 (59) | 3 (4) | 15 (17) | 54 (89) | 636 (697) | 70 (88) |
+| 2025 | 29 (50) | 0 (0) | 27 (27) | 47 (79) | 1,007 (1,386) | 37 (48) |
+
+#### Before the fix: 3d. Lookback sensitivity (steps 2-3 only; the SEBI-order window stays at five sessions)
+
+| Year | Lookback | Step 2 removed | Step 3 removed | Left after step 3 | Left at the end |
+| --- | --- | --- | --- | --- | --- |
+| 2020 | 1 | 230 | 150 | 546 | 54 |
+| 2020 | 5 | 322 | 234 | 370 | 28 |
+| 2020 | 10 | 408 | 247 | 271 | 18 |
+| 2021 | 1 | 380 | 126 | 470 | 266 |
+| 2021 | 5 | 454 | 191 | 331 | 172 |
+| 2021 | 10 | 497 | 227 | 252 | 120 |
+| 2022 | 1 | 226 | 379 | 541 | 136 |
+| 2022 | 5 | 288 | 501 | 357 | 74 |
+| 2022 | 10 | 337 | 555 | 254 | 45 |
+| 2023 | 1 | 701 | 255 | 884 | 480 |
+| 2023 | 5 | 853 | 385 | 602 | 295 |
+| 2023 | 10 | 970 | 434 | 436 | 181 |
+| 2024 | 1 | 557 | 223 | 599 | 313 |
+| 2024 | 5 | 680 | 301 | 398 | 178 |
+| 2024 | 10 | 747 | 354 | 278 | 109 |
+| 2025 | 1 | 341 | 697 | 927 | 493 |
+| 2025 | 5 | 500 | 903 | 562 | 268 |
+| 2025 | 10 | 578 | 999 | 388 | 160 |
+
+#### Before the fix: 3e. What is left at the end, by cut-off, lookback, year and turnover band
+
+Turnover bands: quintiles of the 60-session average traded value (close times quantity) across all EQ stocks
+with 60 observations on D, Q1 lowest. No event left has an unknown band.
+
+| Cut-off | Lookback | Year | Events | Dates | Symbols | Q1 | Q2 | Q3 | Q4 | Q5 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 09:00 next session | 5 | 2020 | 28 | 23 | 28 | 0 | 3 | 10 | 6 | 9 |
+| 09:00 next session | 5 | 2021 | 172 | 96 | 146 | 4 | 32 | 36 | 47 | 53 |
+| 09:00 next session | 5 | 2022 | 74 | 45 | 67 | 2 | 13 | 14 | 12 | 33 |
+| 09:00 next session | 5 | 2023 | 295 | 136 | 255 | 6 | 67 | 65 | 75 | 82 |
+| 09:00 next session | 5 | 2024 | 178 | 106 | 162 | 18 | 31 | 38 | 37 | 54 |
+| 09:00 next session | 5 | 2025 | 268 | 121 | 232 | 12 | 64 | 72 | 66 | 54 |
+| 18:00 on D | 5 | 2020 | 29 | 24 | 29 | 0 | 3 | 10 | 7 | 9 |
+| 18:00 on D | 5 | 2021 | 183 | 98 | 155 | 4 | 34 | 37 | 51 | 57 |
+| 18:00 on D | 5 | 2022 | 82 | 47 | 74 | 2 | 15 | 17 | 13 | 35 |
+| 18:00 on D | 5 | 2023 | 311 | 139 | 268 | 7 | 69 | 73 | 76 | 86 |
+| 18:00 on D | 5 | 2024 | 186 | 109 | 170 | 19 | 33 | 40 | 39 | 55 |
+| 18:00 on D | 5 | 2025 | 291 | 128 | 251 | 12 | 68 | 75 | 74 | 62 |
+| 23:59 on D | 5 | 2020 | 29 | 24 | 29 | 0 | 3 | 10 | 7 | 9 |
+| 23:59 on D | 5 | 2021 | 174 | 97 | 147 | 4 | 32 | 36 | 48 | 54 |
+| 23:59 on D | 5 | 2022 | 75 | 45 | 68 | 2 | 14 | 14 | 12 | 33 |
+| 23:59 on D | 5 | 2023 | 302 | 138 | 261 | 7 | 67 | 68 | 76 | 84 |
+| 23:59 on D | 5 | 2024 | 181 | 107 | 165 | 19 | 32 | 38 | 38 | 54 |
+| 23:59 on D | 5 | 2025 | 274 | 123 | 235 | 12 | 66 | 72 | 68 | 56 |
+| 09:00 next session | 1 | 2020 | 54 | 41 | 53 | 0 | 5 | 15 | 12 | 22 |
+| 09:00 next session | 1 | 2021 | 266 | 123 | 215 | 4 | 47 | 55 | 72 | 88 |
+| 09:00 next session | 1 | 2022 | 136 | 60 | 121 | 3 | 23 | 23 | 32 | 55 |
+| 09:00 next session | 1 | 2023 | 480 | 171 | 392 | 9 | 96 | 107 | 122 | 146 |
+| 09:00 next session | 1 | 2024 | 313 | 140 | 267 | 28 | 48 | 65 | 61 | 111 |
+| 09:00 next session | 1 | 2025 | 493 | 163 | 406 | 20 | 94 | 132 | 128 | 119 |
+| 09:00 next session | 10 | 2020 | 18 | 15 | 18 | 0 | 3 | 6 | 2 | 7 |
+| 09:00 next session | 10 | 2021 | 120 | 74 | 100 | 1 | 26 | 26 | 32 | 35 |
+| 09:00 next session | 10 | 2022 | 45 | 29 | 44 | 2 | 7 | 8 | 6 | 22 |
+| 09:00 next session | 10 | 2023 | 181 | 97 | 162 | 4 | 47 | 41 | 44 | 45 |
+| 09:00 next session | 10 | 2024 | 109 | 81 | 102 | 12 | 23 | 26 | 21 | 27 |
+| 09:00 next session | 10 | 2025 | 160 | 84 | 148 | 10 | 44 | 39 | 38 | 29 |
+
+#### Before the fix: 3f. Unknown and unstable inputs, and the notes that remove nothing (all down events, main setting)
+
+| Year | Down events | Market unknown | Peers unknown | Unstable peer ratio | G3 fail | G3 unknown | G5 fail | G5 unknown | ASM active | GSM unknown |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2020 | 2,767 | 1 | 2,153 | 49 | 9 | 0 | 732 | 7 | 147 | 2,767 |
+| 2021 | 1,272 | 18 | 197 | 18 | 6 | 0 | 186 | 6 | 116 | 1,272 |
+| 2022 | 2,249 | 26 | 404 | 104 | 8 | 0 | 393 | 16 | 116 | 2,249 |
+| 2023 | 2,616 | 14 | 266 | 85 | 7 | 0 | 439 | 10 | 138 | 2,616 |
+| 2024 | 2,456 | 133 | 490 | 110 | 8 | 0 | 136 | 6 | 169 | 2,456 |
+| 2025 | 2,635 | 0 | 518 | 23 | 26 | 0 | 440 | 14 | 96 | 2,625 |
+
+Among the events left at the end (main setting): G5 unknown 2020 1, 2021 0, 2022 1, 2023 0, 2024 0, 2025 0; G3 unknown 0 in every year; unstable peer ratio 2020 0, 2021 0, 2022 0, 2023 0, 2024 0, 2025 2.
+
+#### Before the fix: 3g. Dividend parsing (step 7)
+
+Per event year, distinct Dividend, Record Date and Book Closure filings examined (one filing can be examined in
+several years). "Matched" = its parsed record or book-closure date is D or the EQ session before D.
+
+| Year | Not about a dividend | Dividend, date not parsed | Dividend, date parsed | Amount parsed (any) | Matched to an event | Matched with amount and pre-D close | Matched, amount at least 2% |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 2020 | 348 | 1,188 | 79 | 170 | 6 | 0 | 0 |
+| 2021 | 735 | 1,720 | 388 | 211 | 14 | 0 | 0 |
+| 2022 | 1,646 | 3,734 | 1,085 | 884 | 17 | 0 | 0 |
+| 2023 | 2,477 | 5,813 | 1,976 | 1,518 | 20 | 0 | 0 |
+| 2024 | 2,807 | 7,215 | 2,716 | 1,880 | 17 | 0 | 0 |
+| 2025 | 3,608 | 8,325 | 3,737 | 2,289 | 44 | 0 | 0 |
+
+The zero in the last column is not evidence that the dividends were small: across all such filings from October
+2019 to 2025, only 6 of 5,604 with a parsed record date also have a parsed amount (a typical miss is "Dividend of Rs.
+4.50/- (@ 225%) per share", where the bracket sits between the amount and "per"). No matched filing had an amount.
+
+#### Before the fix: 3h. SEBI orders and the 2025 GSM entry check
+
+SEBI orders in scope: 71 orders (71 rows) known in 2020, 71 without a symbol. None is linked to a stock, so step 4 removes nothing; no link was inferred from company names.
+
+GSM entries in 2025: 94 entry checks for 23 distinct stocks. G5 on the entry day: PASS 1, FAIL 18, UNKNOWN 75 (stocks with at least one pass: 1). The 75 UNKNOWN checks have no usable screening plan, which is not a liquidity pass: 39 had no bar at all on the entry day, 34 traded only in the trade-for-trade BE (22) or BZ (12) series, and 2 had an EQ bar but fewer than the 21 sessions the plan needs.
+
+#### Before the fix: 3i. Reproduction and limits
+
+First run: `python -B scripts/abc_followup_counts.py funnel` (all years, 9 min 12 s) and `... notes`. Second run: one
+`--years` piece per year (26 s to 4 min 34 s each) and `notes` again. Per-year digests of the steps, sensitivities,
+final counts, diagnostics and dividends (rulebook 4feb5d1f0d1f, cost config 8670e2e48632)
+are identical between the two runs for every year, and the two `notes` outputs are byte-identical.
+
+- **P8-093.** Item 2's session calendar admits a session only if its bars are known by the next requested event date.
+  Thirteen sessions whose bars were known one to three days late (weekend specials and a few weekdays) therefore enter
+  the history as empty sessions, and five sessions known months later are skipped. Item 2's tables and this funnel's
+  full run admit the same thirteen. A per-year piece first disagreed with the full run for 2024 (one more admitted
+  session, 1 Aug 2023), so pieces now request the same dates as the full run. One effect stays in both item 2 and these
+  tables: on the session after each admitted empty session no consecutive return exists, so the market move is unknown
+  (2020 1, 2021 18, 2022 26, 2023 14, 2024 133 events; 109 of the 2024 ones on 23 Jan 2024, after Saturday 20 Jan) and
+  those events are removed at step 8 as unknown peers. Changing that would change item 2, which was out of scope.
+- Peers are UNKNOWN for most of 2020 (2,153 of 2,767 events) because the history starts in October 2019 and the main
+  setting needs 200 sessions; step 8 therefore removes most of 2020 on its own.
+- GSM status is UNKNOWN for nearly every event (no stored GSM transition for the stock); ASM is active for 96-169 events
+  a year. Neither removes an event.
+
+#### Before the fix: section 4 table
+
+| Year | Direction | Events | Material filing overnight | Left out: market moved over 2% the same way | Pool | Previous evening | Closure bridge | Before open | Pool dates | Pool symbols | Pool with market unknown | Would join with Board Outcome or Press Release |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2020 | down | 2,767 | 171 | 36 | 135 | 125 | 11 | 2 | 58 | 128 | 0 | 12 |
+| 2020 | up | 7,144 | 244 | 19 | 225 | 198 | 24 | 5 | 103 | 204 | 1 | 61 |
+| 2021 | down | 1,272 | 246 | 7 | 239 | 192 | 49 | 3 | 85 | 202 | 4 | 23 |
+| 2021 | up | 7,691 | 267 | 11 | 256 | 210 | 43 | 4 | 119 | 218 | 1 | 74 |
+| 2022 | down | 2,249 | 199 | 56 | 143 | 115 | 26 | 7 | 65 | 132 | 2 | 156 |
+| 2022 | up | 7,055 | 243 | 11 | 232 | 187 | 40 | 9 | 112 | 209 | 2 | 212 |
+| 2023 | down | 2,616 | 442 | 25 | 417 | 345 | 69 | 3 | 94 | 353 | 3 | 44 |
+| 2023 | up | 9,280 | 439 | 2 | 437 | 376 | 59 | 3 | 126 | 372 | 3 | 116 |
+| 2024 | down | 2,456 | 432 | 81 | 351 | 303 | 48 | 0 | 90 | 297 | 15 | 35 |
+| 2024 | up | 8,135 | 405 | 8 | 397 | 341 | 51 | 7 | 139 | 347 | 10 | 102 |
+| 2025 | down | 2,635 | 298 | 78 | 220 | 197 | 24 | 3 | 85 | 205 | 0 | 270 |
+| 2025 | up | 7,394 | 377 | 27 | 350 | 304 | 37 | 13 | 147 | 306 | 0 | 341 |
+
+Totals 2020-2025: 3,402 events in the pool; 1,446 more would join if Outcome of Board Meeting and
+Press Release filings counted (both stored spellings of each: "Outcome of Board Meeting" and "...-XBRL", "Press
+Release" and "Press Release (Revised)"), under the same window and market rule. The joiners' bins:
+2020 down 9/1/2, 2020 up 50/5/6, 2021 down 17/4/2, 2021 up 56/12/8, 2022 down 103/52/6, 2022 up 134/70/11, 2023 down 36/2/6, 2023 up 85/20/13, 2024 down 29/5/1, 2024 up 73/18/12, 2025 down 217/54/6, 2025 up 286/45/17 (previous evening / closure bridge / before open).
+
+Unknown market moves among all events: 2020 down 1, 2020 up 78, 2021 down 18, 2021 up 159, 2022 down 26, 2022 up 130, 2023 down 14, 2023 up 20, 2024 down 133, 2024 up 59, 2025 down 0, 2025 up 0. Most of the down-side ones are the P8-093 sessions (section 3i).

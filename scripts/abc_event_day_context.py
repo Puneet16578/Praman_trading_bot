@@ -198,11 +198,14 @@ def _bucket(value: float | None) -> str:
 
 def calculate_repaired(conn: sqlite3.Connection, isin_map: dict[str, str],
                        catalogue: Path = CATALOGUE,
-                       sanity_date: str | None = SANITY_DATE) -> dict:
+                       sanity_date: str | None = SANITY_DATE, years=None) -> dict:
     """Calculate requested fund-free, consecutive-session market and peer descriptions.
 
     Every market-data SQL query is bounded at the session currently being processed.
     Returns contain inputs through D only; there are no outcome-window reads.
+    `years` (Claude, 2026-10-19): report only those event years. Every session is still streamed
+    and every event date still requested, so a one-year run gives the same rows for its year as
+    the all-years run, and the same identity universe and sanity check.
     """
     events = _events(catalogue)
     eligible = {symbol for symbol, isin in isin_map.items() if isin and not isin.startswith("INF")}
@@ -275,7 +278,7 @@ def calculate_repaired(conn: sqlite3.Connection, isin_map: dict[str, str],
             if 2020 <= session_year <= 2025:
                 market_by_year[session_year]["used_returns"] += len(current_returns)
                 market_by_year[session_year]["gap_dropped_returns"] += stale_drops
-            if day in event_dates and day in events:
+            if day in event_dates and day in events and (years is None or int(day[:4]) in years):
                 year = int(day[:4])
                 summary = market_by_year[year]
                 summary["catalogue_event_days"] += 1
@@ -360,7 +363,8 @@ def calculate_repaired(conn: sqlite3.Connection, isin_map: dict[str, str],
 
         # If D is a special catalogue date absent from EQ calendar, keep every event
         # in the population and report the market/peer input as unavailable.
-        if requested_day in events and requested_day not in new_sessions:
+        if (requested_day in events and requested_day not in new_sessions
+                and (years is None or int(requested_day[:4]) in years)):
             year = int(requested_day[:4])
             market_by_year[year]["catalogue_event_days"] += 1
             market_by_year[year]["unknown_market_events"] += len(events[requested_day])
@@ -372,6 +376,8 @@ def calculate_repaired(conn: sqlite3.Connection, isin_map: dict[str, str],
 
     market_rows = []
     for year, row in sorted(market_by_year.items()):
+        if years is not None and year not in years:
+            continue
         event_dates_count = row["event_dates"]
         market_rows.append({
             "year": year,
@@ -391,6 +397,8 @@ def calculate_repaired(conn: sqlite3.Connection, isin_map: dict[str, str],
         })
     peer_rows = []
     for (year, direction, minimum), row in sorted(peer_by_key.items()):
+        if years is not None and year not in years:
+            continue
         peer_rows.append({
             "year": year, "direction": direction, "minimum_overlap": minimum,
             "events": row["events"], "focal_valid": row["focal_valid"], "unknown": row["unknown"],
@@ -537,11 +545,13 @@ def main() -> None:
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--repaired", action="store_true", help="produce the follow-up market/peer convention tables")
+    parser.add_argument("--years", help="comma-separated event years for --repaired (default: all)")
     args = parser.parse_args()
+    years = {int(y) for y in args.years.split(",")} if args.years else None
     with open_readonly(Path(get_settings().database_path)) as conn:
         if args.repaired:
             isin_path = ROOT / "data" / "raw" / "nse_symbol_isin_current.json"
-            result = calculate_repaired(conn, load_isin_map(isin_path))
+            result = calculate_repaired(conn, load_isin_map(isin_path), years=years)
         else:
             market, peers = calculate(conn)
             result = {"market": market, "peers": peers}

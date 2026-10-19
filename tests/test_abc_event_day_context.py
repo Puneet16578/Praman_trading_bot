@@ -108,6 +108,47 @@ class AbcEventDayContextReadOnlyTest(unittest.TestCase):
             self.assertTrue(repaired_selects)
             self.assertTrue(all("2024-01-03" not in sql for sql in repaired_selects))
 
+    def test_a_one_year_repaired_run_gives_the_full_run_rows_for_that_year(self):
+        """`--years` (2026-10-19): a one-year run streams every session, so its rows for that year, the
+        identity universe and the sanity check equal the all-years run's."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            db_path = root / "fixture.sqlite"
+            catalogue = root / "events.csv"
+            conn = sqlite3.connect(db_path)
+            try:
+                conn.execute("CREATE TABLE bhavcopy (row_id INTEGER, symbol TEXT, series TEXT, event_date TEXT, knowledge_date TEXT, close_price REAL)")
+                conn.execute("CREATE TABLE corporate_actions (row_id INTEGER, symbol TEXT, action_type TEXT, event_date TEXT, knowledge_date TEXT, ratio_numerator REAL, ratio_denominator REAL)")
+                days = ["2023-12-27", "2023-12-28", "2023-12-29", "2024-01-01", "2024-01-02"]
+                prices = {"FOCAL": [100, 98, 95, 97, 92], "PEER": [200, 199, 196, 198, 195], "OTHER": [50, 51, 50, 52, 51]}
+                conn.executemany(
+                    "INSERT INTO bhavcopy VALUES (?, ?, 'EQ', ?, ?, ?)",
+                    [(i * 10 + j, symbol, day, day, float(close)) for j, (symbol, closes) in enumerate(prices.items())
+                     for i, (day, close) in enumerate(zip(days, closes))],
+                )
+                conn.commit()
+            finally:
+                conn.close()
+            with catalogue.open("w", newline="", encoding="utf-8") as stream:
+                writer = csv.DictWriter(stream, fieldnames=["symbol", "event_date", "return_1d"])
+                writer.writeheader()
+                writer.writerow({"symbol": "FOCAL", "event_date": "2023-12-29", "return_1d": -0.03})
+                writer.writerow({"symbol": "FOCAL", "event_date": "2024-01-02", "return_1d": -0.05})
+            identities = {"FOCAL": "INE000000001", "PEER": "INE000000002", "OTHER": "INE000000003"}
+            conn = sqlite3.connect(f"file:{db_path.as_posix()}?mode=ro", uri=True)
+            conn.row_factory = sqlite3.Row
+            try:
+                full = calculate_repaired(conn, identities, catalogue, sanity_date="2024-01-02")
+                one = calculate_repaired(conn, identities, catalogue, sanity_date="2024-01-02", years={2024})
+            finally:
+                conn.close()
+            self.assertEqual({row["year"] for row in full["market"]}, {2023, 2024})
+            self.assertEqual(one["market"], [row for row in full["market"] if row["year"] == 2024])
+            self.assertEqual(one["peers"], [row for row in full["peers"] if row["year"] == 2024])
+            self.assertTrue(one["peers"])
+            for key in ("identity_universe", "sanity", "sanity_date"):
+                self.assertEqual(one[key], full[key])
+
     def test_adjustment_uses_only_visible_point_in_time_action(self):
         from scripts.abc_event_day_context import _return
 

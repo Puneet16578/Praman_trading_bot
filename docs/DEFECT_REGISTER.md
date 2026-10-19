@@ -2963,8 +2963,10 @@ screening rule, firewall, seal, or outcome code was changed.
 
 ## P8-093 - Item 2's A/B/C session calendar depends on which dates are requested
 
-**Severity / priority.** Low (research-count diagnostics). **Status.** Open for item 2's tables; the
-funnel's per-year runs fixed 2026-10-19 (Claude, while finishing item 3).
+**Severity / priority.** Low (research-count diagnostics). **Status.** Fixed 2026-10-19 (Claude):
+calendar fixed in `b72f913`; item 2's tables, the B funnel and A's clean pool regenerated (see "Fix"
+at the end of this entry). Earlier the same day the funnel's per-year runs were made consistent with
+its full run (while finishing item 3).
 `scripts/abc_event_day_context.py` `_calendar(after, through)` lists sessions with any EQ bar known by
 `through`, the next requested event date, while `_bars_for_day` keeps only bars known by their own day.
 So a session whose bars were known late is in the history or not depending on where the requests
@@ -2987,3 +2989,22 @@ Also on review of the funnel (no removal condition changed): `--years` and a sep
 tables for the 1- and 10-session lookbacks, two diagnostic clarification sub-counts and the
 `Outcome of Board Meeting-XBRL` spelling, and end-to-end tests that no bar after D is read and that a
 late filing or SEBI order cannot remove an event.
+**Fix (2026-10-19, Claude).** `_calendar` now lists only sessions with at least one EQ bar known on
+their own day (`knowledge_date<=event_date`), so membership depends only on the store and the
+point-in-time rule, never on the requests. Callers: `calculate` (item 1's default mode) and
+`calculate_repaired` (item 2) in `scripts/abc_event_day_context.py`, and `event_inputs` in
+`scripts/abc_followup_counts.py` (B funnel and A clean pool); nothing else in the repository imports
+it. All 18 late-published sessions (the 13 above and the five known 10 days to over four years later)
+are now left out alike, so the following session's return runs from the last close then known and
+spans two exchange sessions there. Test: tests/test_abc_event_day_context.py
+`CalendarIndependentOfRequestsTest` (fails on the old code). Regenerated, each twice with matching
+per-year digests: item 2 (`--repaired`, new `--years` option) - events with no market move
+638 -> 0, stale returns dropped 22,703 -> 4,074, UNKNOWN peers (main setting) 15,495 -> 14,711, most
+sanity-check pairs 242 -> 250 paired sessions; B funnel - market unknown 192 -> 0, step 8 removals
+716 -> 643, events left at 09:00 next session 1,015 -> 1,022 (2024: step 1 +118, step 8 -62, end
+count unchanged at 178); A clean pool 3,402 -> 3,388. The old tables are kept in the reports
+(docs/desk/abc_sourcing_check.md section 8, docs/desk/abc_followup_check.md appendix). Not rerun:
+item 1's default mode (over 10 minutes, not requested), whose original-convention tables were
+already superseded. Found while regenerating: the pre-fix sensitivity table (120 sessions) in the
+sourcing check repeats the main setting's known/UNKNOWN columns for 2022-2025, and its buckets exceed
+its known count for 2023-2025; it looks miscopied, and the earlier output was not kept to check.

@@ -135,9 +135,9 @@ def asm_active(state):
 def event_inputs(conn, events, *, peers=True, report_years=None):
     """Stream D-bounded inputs, reusing item 2's return/correlation functions.
 
-    `events` drives the calendar requests (item 2's `_calendar`, whose session list depends on the
-    requested dates: P8-093), so a per-year run passes every down-event date and reports only
-    `report_years`; it then streams exactly as the all-years run does."""
+    `events` drives the calendar requests (item 2's `_calendar`). Since the P8-093 fix (2026-10-19)
+    its session list no longer depends on the requested dates; a per-year run still passes every
+    down-event date and reports only `report_years`, so it streams exactly as the all-years run does."""
     identities = load_isin_map(ROOT / 'data/raw/nse_symbol_isin_current.json')
     eligible = {s for s, isin in identities.items() if isin and not isin.startswith('INF')}
     previous = {}
@@ -293,8 +293,8 @@ def funnel(conn, years=YEARS):
     run be split into foreground pieces)."""
     years = tuple(sorted(years))
     mapping = draft_map()
-    # Every down-event date up to the last requested year drives the stream (P8-093); only the
-    # requested years are evaluated and reported.
+    # Every down-event date up to the last requested year drives the stream (kept after the P8-093
+    # fix); only the requested years are evaluated and reported.
     stream = {d: [r for r in rows if r['return_1d'] < 0] for d, rows in _events(CATALOGUE).items()
               if int(d[:4]) <= max(years)}
     stream = {d: rows for d, rows in stream.items() if rows}

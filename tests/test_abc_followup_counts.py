@@ -183,9 +183,10 @@ class FunnelEndToEndTest(unittest.TestCase):
             conn.close()
 
     def test_a_one_year_run_streams_the_same_sessions_as_a_longer_run_despite_a_late_session(self):
-        """P8-093: a session whose bars were known late enters item 2's calendar only if a request
-        reaches its knowledge date. A one-year run must request the same dates, so it reads the same
-        sessions, in the same order, and reports the same counts for its year."""
+        """P8-093: a session whose bars were known late must not enter item 2's calendar, however the
+        run is split (before the 2026-10-19 fix it entered once a request reached its knowledge date).
+        A one-year run reads the same sessions, in the same order, and reports the same counts for its
+        year as a longer run."""
         from scripts import abc_followup_counts as script
         conn, days, event_day = funnel_store(260, '2024-01-02 09:00:01')
         try:
