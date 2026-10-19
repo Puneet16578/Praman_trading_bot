@@ -1,3 +1,26 @@
+## 2026-10-19 (Claude, from about 11:50): A/B/C small follow-up, items 1-5
+
+- Item 1 b72f913: P8-093 fixed. Item 2's `_calendar` keeps only sessions with an EQ bar known on
+  their own day, independent of the requested dates. Callers: item 2's script (default mode and
+  `--repaired`) and abc_followup_counts.py `event_inputs` (B funnel, A clean pool); nothing in the
+  desk, nightly, T1 or forensic pipeline imports it. The new test fails on the old code.
+- Item 2 ebf79a8: regenerated item 2 (`--repaired --years`, new), the B funnel and the clean pool,
+  each run twice in capped foreground pieces with matching per-year digests. Dated notes give the
+  before -> after sizes, and the pre-fix tables are kept in both reports. Key changes: market
+  unknown 638 -> 0 events; funnel 09:00 end counts 2020-2025 now 30, 172, 77, 297, 178, 268; pool
+  3,402 -> 3,388. Not rerun: item 1's default mode (over 10 min). Found: the pre-fix 120-session
+  sensitivity table looks miscopied (noted in the report and in P8-093; can't be checked, as the
+  old output wasn't kept).
+- Item 3 8a0cc90: March 2020 and March 2021 results coverage with a 125-day window beside 75
+  days: 88.2% and 89.5% (28.6% and 56.9% at 75). 272 and 31 symbols are covered only by filings
+  after 30 June, which may be June-quarter results. SEBI's actual deadlines were not checked.
+- Item 4 8fd9ba0: largest number of B survivors on one date per year and cut-off (section 3e).
+- Item 5: read-only quotes for B's registration given in the session report; no edits.
+- End-of-session suite: 1,073 tests in 244.374 s, OK (14:34-14:38). Nothing stashed.
+- An item 1 default-mode run exceeded 10 min and was auto-moved to the background. I stopped it at
+  once; later runs were capped with `timeout` in the foreground. No store, rule, firewall, seal,
+  Windows task, cost config or pre-registration change; no downloads; no NSE pages.
+
 ## 2026-10-19 (Claude, from 10:10): A/B/C follow-up items 3-6 finished after Codex stopped
 
 - Start: no Python process running; tree had 4 changed files, not the 5 described
