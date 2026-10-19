@@ -53,13 +53,18 @@ def _events(path: Path) -> dict[str, list[dict]]:
 
 
 def _calendar(conn: sqlite3.Connection, after: str, through: str) -> list[str]:
-    # Both bounds are deliberately on the source query; no post-D dates are read.
+    """EQ sessions after `after` up to `through` that have at least one EQ bar known on its own
+    day: the point-in-time rule `_bars_for_day` applies to the bars themselves. Membership depends
+    only on the store, never on which dates a run requests (P8-093, fixed 2026-10-19; before, a
+    session was admitted if any bar was known by `through`, so late-published sessions entered as
+    empty sessions or not depending on the requests). Both bounds are on the source query; no
+    post-D dates are read."""
     return [row[0] for row in _rows_asof(
         conn,
         "SELECT DISTINCT event_date FROM bhavcopy "
         "WHERE series='EQ' AND event_date>=? AND event_date>? AND event_date<=? "
-        "AND knowledge_date<=? ORDER BY event_date",
-        (START, after, through, through),
+        "AND knowledge_date<=event_date ORDER BY event_date",
+        (START, after, through),
     )]
 
 

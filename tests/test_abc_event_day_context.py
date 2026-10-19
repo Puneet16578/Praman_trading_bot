@@ -8,7 +8,31 @@ from pathlib import Path
 
 import numpy as np
 
-from scripts.abc_event_day_context import calculate, calculate_repaired, _bucket, _repaired_correlations
+from scripts.abc_event_day_context import calculate, calculate_repaired, _bucket, _repaired_correlations, _calendar
+
+
+class CalendarIndependentOfRequestsTest(unittest.TestCase):
+    """P8-093: a session is in the calendar only if an EQ bar is known on its own day, whatever
+    dates a run requests. On the old code, a session published two days late entered the calendar
+    once a request reached its knowledge date."""
+
+    def test_a_late_published_session_is_never_admitted_whatever_the_request(self):
+        conn = sqlite3.connect(':memory:')
+        try:
+            conn.execute('CREATE TABLE bhavcopy (symbol TEXT, series TEXT, event_date TEXT, knowledge_date TEXT)')
+            days = ['2024-01-01', '2024-01-02', '2024-01-03', '2024-01-04', '2024-01-05', '2024-01-08']
+            rows = [(s, 'EQ', d, d) for d in days for s in ('A', 'B') if d != '2024-01-03']
+            rows += [('A', 'EQ', '2024-01-03', '2024-01-05'), ('B', 'EQ', '2024-01-03', '2024-01-08')]   # known late
+            conn.executemany('INSERT INTO bhavcopy VALUES (?,?,?,?)', rows)
+            expected = ['2024-01-01', '2024-01-02', '2024-01-04', '2024-01-05', '2024-01-08']
+            for through in ('2024-01-03', '2024-01-04', '2024-01-05', '2024-01-08', '2030-01-01'):
+                with self.subTest(through=through):
+                    self.assertEqual(_calendar(conn, '', through), [d for d in expected if d <= through])
+            chunked = _calendar(conn, '', '2024-01-02') + _calendar(conn, '2024-01-02', '2024-01-04') + \
+                _calendar(conn, '2024-01-04', '2024-01-08')
+            self.assertEqual(chunked, expected)                       # any chunking gives the same list
+        finally:
+            conn.close()
 
 
 class AbcEventDayContextReadOnlyTest(unittest.TestCase):
