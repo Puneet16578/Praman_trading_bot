@@ -1,3 +1,28 @@
+## 2026-10-19 (Codex): S1 / idea B registration drafts only
+
+- Started on clean master at 2d83e28c5d1d094fd1ee0be65b77a36f2355cb2e; ingestion task Ready.
+- Read the governing rules, corrected A/B/C reports, S0 execution/cost sources and T1 protocol.
+  No new data counts, outcome calculations, downloads, store writes or implementation.
+- Unregistered drafts are outside the repository in
+  C:/Users/VICTUS/AppData/Local/Temp/praman_s1_draft_20261019_2d83e28/:
+  s1_preregistration_DRAFT.md and trading_research_registry_DRAFT.md.
+  Full draft text is also in the session report; temporary files are not durable registration.
+- Unresolved conflicts: current identity map versus PIT; using 2025 GSM inputs to justify a
+  strategy choice; proposed horizons versus blueprint scope; funnel calendar versus T1's
+  weekend exclusion (T1-specific); fixed 1 June release if read as overriding binding evaluation.
+  The proposed metric list also omits parts of the blueprint's minimum economics/tail-risk audit.
+- Open definitions include quantity/slippage (active S0 limit fills apply no extra slippage),
+  bootstrap blocks/seed, missingness, entry-day stops, delayed exits, known GSM and timing.
+  No fix or rule exception was selected. S0 stop/holding rules differ from the proposed S1 rules;
+  importing S0's entry model does not import its complete strategy.
+- Registry draft preserves T1 failures, S0 versions, shadow attempts and forensic exposure;
+  D/E/F have no descriptions established in the inspected committed documents.
+- Session-start suite: 1,073 tests in 250.711 s, OK. End-suite result is recorded in this note's
+  commit message. Existing SQLite ResourceWarnings (P8-088) remain unchanged.
+- Only this HANDOFF note is committed. Registration approval, implementation and evaluation
+  remain separate future steps; nothing here authorises them. Firewall, seal, task, rules,
+  costs and all existing preregistrations are unchanged.
+
 ## 2026-10-19 (Claude, from about 11:50): A/B/C small follow-up, items 1-5
 
 - Item 1 b72f913: P8-093 fixed. Item 2's `_calendar` keeps only sessions with an EQ bar known on
