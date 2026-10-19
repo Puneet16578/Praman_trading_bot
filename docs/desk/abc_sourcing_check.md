@@ -523,43 +523,123 @@ For the results-filing investigation, three documents were opened on `nsearchive
 7. https://www.eci.gov.in/general-elections/ (HTML).
 8. https://www.nseindia.com/static/products-services/equity-derivatives-individual-securities (HTML).
 
-## 8. Event-day market and peer moves (input description)
+## 8. Event-day market and peer moves (inputs only)
 
-This extension reads close-price inputs only through each event date. The equal-weight market move is the arithmetic mean of that day's available EQ close-to-close returns. Each stock return is compared with its previous EQ close and adjusted for bonus/split actions known by the current date; a return crossing a stored unadjustable structural break is omitted. Only stocks with an EQ close on the day and a prior EQ close contribute. The daily market mean is then associated with each catalogue event on that date. Counts below are **event counts**, so a market day with many catalogue events contributes each event.
+The read-only calculation uses EQ bars only through each event date D. A stock return is eligible for the market and peer inputs only when its previous EQ close is from the immediately preceding market session. Returns spanning a missing session are omitted: 22,703 otherwise-valid returns were dropped, as shown by year below. Bonus and split factors are applied only when their corporate-action rows were known by the return date; a stored unadjustable break makes that return unavailable. Up/down event direction follows the stored catalogue `return_1d` sign. Market and peer ratios use the recalculated valid return for D.
 
-For each event stock, Pearson correlations use its and each other stored EQ symbol's daily returns on matching EQ dates in the 250 global EQ sessions strictly before D. Daily returns in the correlation history use closes available by each bar's own date and corporate actions known by that return date. The event stock is excluded from its peer set. Valid correlations require two paired, non-constant observations (no stronger overlap cutoff was imposed); ties rank by greater overlap, then symbol. The first 20 are selected where available. The average peer move is the equal-weight mean of selected peers with a valid event-day return. Ratio = signed peer average / event-stock event-day return. A negative ratio is counted separately as counter-direction; nonnegative ratios are bucketed as [0,25%), [25,50%), [50,75%] and >75%. This descriptive convention is not a screening rule.
+The eligible EQ universe follows `desk scan`: a symbol must have a mapped ISIN and an ISIN not beginning `INF`. The merged ISIN map used by scan was applied consistently to the historical dates. Of 2,983 observed EQ symbols, 401 fund-ISIN symbols and 56 unresolved symbols were excluded, leaving 2,526. This applies the existing map across the history as a descriptive assumption; the nine stored snapshot pairs showed no change in equity/fund status. No later price or outcome input was used for an event.
 
-The EQ store contains 2,983 distinct symbols over this period, including instruments that may not be operating companies. Therefore these are EQ-series peers, not an ISIN-verified peer-company universe. Short/unequal histories are material: yearly mean paired observations among selected peers are reported below and can be small. Correlation ranks, especially early in the period, are exploratory and should not be treated as stable peer relationships. No individual symbols or moves are disclosed here.
+For each event date, the market mean is the arithmetic mean of eligible stock returns and its median is the cross-sectional median of those same returns. Annual mean/median columns below summarize the daily measures over distinct catalogue event dates. Threshold columns count catalogue events on dates where the daily mean or daily median exceeded ±2%; dates with no valid market basket are listed separately. “Returns used” and “stale returns dropped” count eligible EQ observations across all sessions in that calendar year, including sessions without catalogue events.
 
-### Equal-weight EQ market move by year
+### Market summary by year
 
-| Year | Catalogue events | Events on days market > +2% | Events on days market < -2% | Events on days beyond either threshold |
-|---|---:|---:|---:|---:|
-| 2020 | 9,911 | 1,496 | 2,013 | 3,509 |
-| 2021 | 8,963 | 280 | 407 | 687 |
-| 2022 | 9,304 | 584 | 1,253 | 1,837 |
-| 2023 | 11,896 | 194 | 750 | 944 |
-| 2024 | 10,591 | 608 | 1,168 | 1,776 |
-| 2025 | 10,029 | 679 | 747 | 1,426 |
-| Total | 60,694 | 3,841 | 6,338 | 10,179 |
+| Year | Events | Event dates | Market unavailable events | EQ returns used | Stale returns dropped | Mean of daily means | Median of daily means | Mean of daily medians | Median of daily medians | Mean >+2% | Mean <-2% | Median >+2% | Median <-2% |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 2020 | 9,911 | 245 | 79 | 347,163 | 2,332 | 0.162% | 0.436% | -0.209% | 0.003% | 1,419 | 1,970 | 547 | 1,987 |
+| 2021 | 8,963 | 245 | 177 | 353,121 | 5,124 | 0.252% | 0.486% | -0.186% | 0.000% | 316 | 407 | 101 | 473 |
+| 2022 | 9,304 | 241 | 156 | 388,228 | 6,830 | 0.076% | 0.278% | -0.219% | 0.000% | 502 | 1,217 | 431 | 1,251 |
+| 2023 | 11,896 | 241 | 34 | 396,422 | 2,046 | 0.180% | 0.303% | -0.114% | 0.000% | 288 | 836 | 160 | 864 |
+| 2024 | 10,591 | 245 | 192 | 403,346 | 5,664 | 0.157% | 0.348% | -0.173% | -0.029% | 647 | 1,176 | 489 | 1,214 |
+| 2025 | 10,029 | 248 | 0 | 464,370 | 707 | -0.023% | 0.057% | -0.231% | -0.142% | 679 | 794 | 679 | 809 |
+| Total | 60,694 | 1,465 | 638 | 2,352,650 | 22,703 | — | — | — | — | 3,851 | 6,400 | 2,407 | 6,598 |
 
-An equal-weight move is computed per event date from all valid EQ returns available that date; threshold counts above count affected catalogue events, not distinct dates. All 60,694 event dates had a market average available.
+The yearly EQ returns-used column sums session-level eligible stock returns; stale returns dropped sum to 22,703. The catalogue's 60,694 events span 1,465 distinct dates; on 1,453 dates the market mean and median were available. The 638 events on unavailable dates are not counted in any ±2% column.
 
-### Event move shared by its 20 most correlated EQ peers
+### Peer and market shares
 
-The first publication of this table had no committed calculation script. The read-only rerun added for this report produced the market table exactly but did not reproduce several peer buckets and the overlap mean. This table is corrected to the output of `scripts/abc_event_day_context.py`; the previous peer figures are superseded. The source of the original one-off differences cannot be recovered from the repository.
+For each event with a valid focal EQ return on D, market share is `market move / stock move`. Peer candidates are limited to symbols with a valid EQ return on D. Their ranks use Pearson correlation of market-adjusted returns (stock return minus that session's fund-free market mean) over the 250 market sessions strictly before D. Correlations are ranked by value, then overlap, then symbol; the event stock is excluded. The primary minimum is 200 paired sessions; sensitivity uses 120. If the event stock has fewer than the setting's minimum valid history, or no candidate peer remains, peer status is UNKNOWN. A known group contains 20 peers.
 
-| Year | Events with 20 peers | Events with fewer than 20 | Mean selected peers trading on D per event with an average | Mean paired historical sessions per selected peer | Counter-direction | Under 25% | 25% to <50% | 50% to 75% | Over 75% | Ratio unavailable |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 2020 | 9,911 | 0 | 15.2 | 93.2 | 1,796 | 4,917 | 2,032 | 817 | 349 | 0 |
-| 2021 | 8,960 | 3 | 13.3 | 91.7 | 2,171 | 5,198 | 1,209 | 294 | 87 | 4 |
-| 2022 | 9,300 | 4 | 14.3 | 83.7 | 2,438 | 4,792 | 1,329 | 503 | 236 | 6 |
-| 2023 | 11,889 | 7 | 11.0 | 79.6 | 3,487 | 6,303 | 1,460 | 437 | 193 | 16 |
-| 2024 | 10,582 | 9 | 11.2 | 40.5 | 2,742 | 5,278 | 1,582 | 651 | 321 | 17 |
-| 2025 | 10,019 | 10 | 12.2 | 59.8 | 3,043 | 5,017 | 1,405 | 370 | 177 | 17 |
-| Total | 60,661 | 33 | 12.8 | 74.2 | 15,677 | 31,505 | 9,017 | 3,072 | 1,363 | 60 |
+Shares use the signed buckets: counter-direction (<0), under 25% ([0,25%), 25–50% ([25,50%)), 50–75% ([50,75%]) and over 75% (>75%). Peer share is `(peer average move - market move) / (stock move - market move)`. Market share is `market move / stock move`. An absolute market-adjusted stock move below 1 percentage point is reported as unstable; it is counted separately and omitted from peer-share buckets. The unstable count can overlap either known or UNKNOWN peer status. Market-share buckets still include unstable cases because their denominator is the raw stock move.
 
-For events with peer ratios unavailable, reasons were fewer than 20 mathematically valid historical correlations, no selected peer return on D, or no valid event-stock move. A selected peer need not trade every event date; the average uses peers with a stored valid return. Across the selected peer/event pairs, the overlap varies widely; table means show the thin history directly. Correlation cutoffs based on minimum history would change the available peer count and must be fixed before using this for a strategy. This calculation neither inspects nor computes any return after D.
+#### Main setting: 200 paired sessions
+
+| Year | Direction | Events | Peer status known | UNKNOWN | Adjusted move <1% | Peer counter | Peer <25% | Peer 25–50% | Peer 50–75% | Peer >75% |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 2020 | Down | 2,767 | 614 | 2,153 | 218 | 179 | 236 | 88 | 38 | 24 |
+| 2020 | Up | 7,144 | 3,066 | 4,078 | 11 | 1,330 | 1,542 | 166 | 16 | 7 |
+| 2021 | Down | 1,272 | 1,075 | 197 | 18 | 390 | 553 | 94 | 17 | 3 |
+| 2021 | Up | 7,691 | 6,455 | 1,236 | 6 | 2,829 | 3,190 | 349 | 64 | 17 |
+| 2022 | Down | 2,249 | 1,845 | 404 | 111 | 634 | 775 | 203 | 66 | 63 |
+| 2022 | Up | 7,055 | 5,489 | 1,566 | 15 | 2,400 | 2,710 | 278 | 59 | 27 |
+| 2023 | Down | 2,616 | 2,350 | 266 | 89 | 854 | 1,063 | 226 | 78 | 44 |
+| 2023 | Up | 9,280 | 8,091 | 1,189 | 14 | 3,657 | 3,906 | 362 | 96 | 56 |
+| 2024 | Down | 2,456 | 1,966 | 490 | 119 | 693 | 766 | 193 | 90 | 114 |
+| 2024 | Up | 8,135 | 6,413 | 1,722 | 15 | 2,984 | 3,025 | 288 | 71 | 30 |
+| 2025 | Down | 2,635 | 2,117 | 518 | 23 | 906 | 1,065 | 101 | 15 | 7 |
+| 2025 | Up | 7,394 | 5,718 | 1,676 | 12 | 2,456 | 2,854 | 309 | 61 | 26 |
+
+#### Sensitivity: 120 paired sessions
+
+| Year | Direction | Events | Peer status known | UNKNOWN | Adjusted move <1% | Peer counter | Peer <25% | Peer 25–50% | Peer 50–75% | Peer >75% |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 2020 | Down | 2,767 | 735 | 2,032 | 218 | 255 | 291 | 86 | 32 | 20 |
+| 2020 | Up | 7,144 | 5,008 | 2,136 | 11 | 2,029 | 2,641 | 282 | 37 | 11 |
+| 2021 | Down | 1,272 | 1,181 | 91 | 18 | 475 | 582 | 85 | 15 | 6 |
+| 2021 | Up | 7,691 | 7,259 | 432 | 6 | 2,987 | 3,755 | 405 | 89 | 17 |
+| 2022 | Down | 2,249 | 1,845 | 404 | 111 | 634 | 775 | 203 | 66 | 63 |
+| 2022 | Up | 7,055 | 5,489 | 1,566 | 15 | 2,400 | 2,710 | 278 | 59 | 27 |
+| 2023 | Down | 2,616 | 2,350 | 266 | 89 | 989 | 1,103 | 211 | 80 | 37 |
+| 2023 | Up | 9,280 | 8,091 | 1,189 | 14 | 3,959 | 4,424 | 408 | 96 | 60 |
+| 2024 | Down | 2,456 | 1,966 | 490 | 119 | 793 | 872 | 217 | 91 | 101 |
+| 2024 | Up | 8,135 | 6,413 | 1,722 | 15 | 3,426 | 3,733 | 320 | 87 | 28 |
+| 2025 | Down | 2,635 | 2,117 | 518 | 23 | 1,039 | 1,242 | 123 | 16 | 8 |
+| 2025 | Up | 7,394 | 5,718 | 1,676 | 12 | 2,981 | 3,558 | 321 | 62 | 27 |
+
+#### Market-share buckets (same for both peer settings)
+
+| Year | Direction | Events | Valid focal return | UNKNOWN focal | Market counter | Market <25% | Market 25–50% | Market 50–75% | Market >75% |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| 2020 | Down | 2,767 | 2,726 | 41 | 320 | 586 | 655 | 711 | 454 |
+| 2020 | Up | 7,144 | 7,034 | 110 | 1,328 | 4,865 | 771 | 59 | 11 |
+| 2021 | Down | 1,272 | 1,219 | 53 | 387 | 490 | 249 | 72 | 21 |
+| 2021 | Up | 7,691 | 7,501 | 190 | 1,347 | 5,780 | 347 | 24 | 3 |
+| 2022 | Down | 2,249 | 2,192 | 57 | 502 | 611 | 542 | 333 | 204 |
+| 2022 | Up | 7,055 | 6,888 | 167 | 1,544 | 4,801 | 468 | 57 | 18 |
+| 2023 | Down | 2,616 | 2,575 | 41 | 946 | 808 | 359 | 345 | 117 |
+| 2023 | Up | 9,280 | 9,199 | 81 | 1,575 | 7,172 | 412 | 33 | 7 |
+| 2024 | Down | 2,456 | 2,261 | 195 | 510 | 662 | 471 | 377 | 241 |
+| 2024 | Up | 8,135 | 8,005 | 130 | 1,677 | 5,603 | 622 | 85 | 18 |
+| 2025 | Down | 2,635 | 2,579 | 56 | 611 | 1,241 | 502 | 193 | 32 |
+| 2025 | Up | 7,394 | 7,360 | 34 | 2,298 | 4,402 | 561 | 86 | 13 |
+
+#### Fixed-date peer sanity check, 1 October 2024
+
+| Focal company | Industry | Rank | Peer | Correlation | Paired sessions |
+|---|---|---:|---|---:|---:|
+| HDFCBANK | Private bank | 1 | ICICIBANK | 0.581 | 242 |
+| HDFCBANK | Private bank | 2 | KOTAKBANK | 0.535 | 242 |
+| HDFCBANK | Private bank | 3 | AXISBANK | 0.489 | 242 |
+| HDFCBANK | Private bank | 4 | INDUSINDBK | 0.482 | 242 |
+| HDFCBANK | Private bank | 5 | ASIANPAINT | 0.459 | 242 |
+| TCS | IT services | 1 | INFY | 0.803 | 242 |
+| TCS | IT services | 2 | HCLTECH | 0.724 | 242 |
+| TCS | IT services | 3 | TECHM | 0.673 | 242 |
+| TCS | IT services | 4 | WIPRO | 0.650 | 242 |
+| TCS | IT services | 5 | LTIM | 0.633 | 242 |
+| SUNPHARMA | Pharma | 1 | DRREDDY | 0.603 | 242 |
+| SUNPHARMA | Pharma | 2 | CIPLA | 0.593 | 242 |
+| SUNPHARMA | Pharma | 3 | BRITANNIA | 0.566 | 242 |
+| SUNPHARMA | Pharma | 4 | APOLLOHOSP | 0.549 | 242 |
+| SUNPHARMA | Pharma | 5 | ABBOTINDIA | 0.548 | 242 |
+| ULTRACEMCO | Cement | 1 | KESORAMIND | 0.751 | 215 |
+| ULTRACEMCO | Cement | 2 | GRASIM | 0.553 | 241 |
+| ULTRACEMCO | Cement | 3 | BAJAJFINSV | 0.478 | 242 |
+| ULTRACEMCO | Cement | 4 | SHREECEM | 0.472 | 242 |
+| ULTRACEMCO | Cement | 5 | RELIANCE | 0.466 | 242 |
+| MARUTI | Carmaker | 1 | EICHERMOT | 0.509 | 242 |
+| MARUTI | Carmaker | 2 | NESTLEIND | 0.477 | 242 |
+| MARUTI | Carmaker | 3 | ITC | 0.472 | 242 |
+| MARUTI | Carmaker | 4 | TVSMOTOR | 0.464 | 242 |
+| MARUTI | Carmaker | 5 | ASIANPAINT | 0.457 | 242 |
+| IOC | Oil marketer | 1 | BPCL | 0.776 | 242 |
+| IOC | Oil marketer | 2 | HINDPETRO | 0.734 | 242 |
+| IOC | Oil marketer | 3 | ONGC | 0.458 | 242 |
+| IOC | Oil marketer | 4 | PETRONET | 0.410 | 242 |
+| IOC | Oil marketer | 5 | GAIL | 0.408 | 242 |
+
+The private bank's top five includes four other private banks; the fifth is from a different industry. The IT firm has five IT-services peers. Three of the pharma focal's five are pharma companies; three of the cement focal's five are cement companies. The carmaker has two vehicle makers among its five. The oil marketer has two other oil marketers; the remaining three are broader oil/gas businesses. This single-date check is descriptive, not a sector model or strategy rule.
+
+The earlier unfiltered raw-return peer table is superseded by these market-adjusted counts. The canonical calculations are in `scripts/abc_event_day_context.py` (`--repaired` for these tables). It reads no price later than the session currently being processed and writes no store or output file.
 
 ## 9. Scheduled-event calendars in the store
 
@@ -574,6 +654,8 @@ These are documentation sources only; none was downloaded or added to Praman. Th
 
 ## Validation and unresolved limits
 
-The announcement backfill resume limitation is already logged as open defect P8-021; no ingestion fix is part of this report. `scripts/abc_event_day_context.py` reproduces the corrected section 8 tables from read-only store queries. Two full-store invocations were byte-identical (SHA-256 `9df3f7f87dcb2212620e9a4bcbaa34e0effdd8c89a623cc6d2743dcac728e8fb`; 2,029 output bytes). Item 1 full suite: 1,051 tests in 243.446 seconds, OK. Existing SQLite ResourceWarnings remain unchanged.
+The announcement backfill resume limitation is already logged as open defect P8-021; no ingestion fix is part of this report. In item 1, the default mode of `scripts/abc_event_day_context.py` reproduced the corrected original section 8 tables twice byte-for-byte (SHA-256 `9df3f7f87dcb2212620e9a4bcbaa34e0effdd8c89a623cc6d2743dcac728e8fb`; 2,029 output bytes). Item 2 added the `--repaired` mode and generated the market/peer tables above from read-only store queries. Item 1 full suite: 1,051 tests in 243.446 seconds, OK. Item 2 suite result will be recorded with its commit. Existing SQLite ResourceWarnings remain unchanged.
+
+Item 2 verification: 1,053 tests passed in 187.265 seconds. Two complete `--repaired` invocations produced identical output (PowerShell UTF-16 output files: 27,996 bytes each; SHA-256 `2138084c0a969984c5eeda5e991bda8d7f2b029ad7f3f206380f7b912a747d97`).
 
 The report cannot verify causal explanation, complete historic announcement capture, true first-public timestamp semantics, an initial surveillance roster plus uninterrupted history, or next-session execution availability. These are sourcing limits, not failed strategy tests. No strategy verdict, trade list or outcome statistic is produced. Stores, strategy rules, registrations, firewall, seal and Windows task remain unchanged.
