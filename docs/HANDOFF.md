@@ -1,3 +1,26 @@
+## 2026-10-19 (Codex): S1 draft revisions; documents only
+
+- User's latest decisions replace the earlier S1 proposals; final text still awaits separate approval.
+- Revised the same two files outside Git in
+  C:/Users/VICTUS/AppData/Local/Temp/praman_s1_draft_20261019_2d83e28/:
+  s1_preregistration_DRAFT.md and trading_research_registry_DRAFT.md.
+  Saved text was read back and matched the prepared revisions exactly.
+- C1-C6 incorporated: dated identity assumptions throughout; no GSM research filter;
+  one-/three-session horizons; separate weekday execution/bootstrap calendar; binding-evaluation
+  firewall; descriptive audit metrics. S0 entry/sizing/stop quotes, costs, data gaps, boundaries,
+  minimums and bootstrap decisions incorporated. D/E/F now use the user's intraday definitions;
+  S1 horizons 5/10 recorded as not attempted. Existing attempt/exposure inventory retained.
+- Remaining definition gaps: MAE and descriptive-path endpoints, benchmark/metric conventions,
+  interior missing bars and post-missing position status, historical operational-switch scope.
+  Relevant potentially conflicting texts are quoted; no fix selected. The old next-open entry
+  sensitivity is superseded by the user's same-execution instruction.
+- No code, new research counts, outcome computation, data download, store write, rule/configuration,
+  preregistration, firewall, seal or task change. The draft files are not staged or committed.
+- Started on clean master at 0cd41bc4cf3ef5d3f26e841b5c6288b8ca854bfd. Ingestion Ready;
+  existing Claude process's last session entries were end_turn, with no active Python process.
+  Start suite: Ran 1073 tests in 243.126s, OK, Python exit 0. Existing P8-088 SQLite
+  ResourceWarnings persist. End suite result will be recorded in this note's commit message.
+- Only this session-rule handoff note is committed. This note authorises no next action.
 ## 2026-10-19 (Codex): S1 / idea B registration drafts only
 
 - Started on clean master at 2d83e28c5d1d094fd1ee0be65b77a36f2355cb2e; ingestion task Ready.
