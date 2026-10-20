@@ -2874,7 +2874,7 @@ tests in 263.863 seconds, OK. P8-088 warnings recur and remain unfixed.
 
 ## P8-088 - Test suite emits unclosed SQLite connection ResourceWarnings
 
-**Severity / priority.** Low. **Status.** Open, logged 2026-10-18 at the user's request.
+**Severity.** Low. **Status.** Open, logged 2026-10-18 at the user's request.
 The full suite at `dea07c7` passed 1,029 tests in 231.224 seconds (exit 0), but Python
 3.13 emitted `ResourceWarning: unclosed database in <sqlite3.Connection ...>`.
 Warnings surfaced during garbage collection in unittest.mock, bitemporal guards,
