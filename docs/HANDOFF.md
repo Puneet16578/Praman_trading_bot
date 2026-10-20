@@ -1,3 +1,18 @@
+## 2026-10-20 (Codex): S1 implementation planning only
+
+- Read the registered S1 protocol and research registry, frozen A/B/C funnel, T1
+  identity/calendar/bootstrap/rehearsal, S0 execution/sizing/locks, outcome readers,
+  firewall and active costs. Implementation plan presented in the session response.
+- No implementation, S1 counts, outcome computation, downloads or store writes.
+  Protected rules, registrations, costs, firewall, S0 seal and task are unchanged.
+- Unresolved: S1 next-open retry versus S0 rechecking a blocked stop; scheduled-only
+  overlap is not necessarily an upper bound on actual skips when exits are delayed;
+  binding-evaluation release condition versus the shared firewall's date-only check.
+  No resolution selected. Implementation and development evaluation await approval.
+- Started clean at 82ebd31. Start suite: Ran 1073 tests in 212.828s, OK, exit 0.
+  On resume, ingestion task Ready and tree clean. End-suite evidence is recorded in
+  this handoff commit message. Existing P8-088 ResourceWarnings remain.
+- This handoff is context only and authorises no further action.
 ## 2026-10-19 (Codex): S1 and trading research registry registered; documents only
 
 - Approved by the user in their message of 19 October 2026; registered 19 October 2026
