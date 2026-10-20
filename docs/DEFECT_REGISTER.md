@@ -2961,6 +2961,18 @@ Regulation 30(11) Rumour Verification category in diagnostic subcounts.
 The report is generated only from a rerun of the corrected script. No store, live
 screening rule, firewall, seal, or outcome code was changed.
 
+## P8-098 - S1 scheduled boundary classification followed position occupancy
+
+**Severity / priority.** Low, pre-evaluation reporting order. **Status.** Resolved
+20 October 2026. Review found that
+the runner checked an earlier position before the scheduled boundary rule, so an
+event outside the horizon's period could be counted as a position skip instead of
+the required scheduled purge/censor. Scheduled boundaries now precede occupancy,
+without reading prices. Detailed reason counts separate scheduled and delayed
+boundary censoring. No input population or real outcome was changed or accessed.
+Re-verification: all 30 execution/statistics/evaluation/rehearsal tests pass,
+including a pending-position case whose later event crosses the period boundary.
+
 ## P8-097 - S1 dividend diagnostic assumed an uningested action type
 
 **Severity / priority.** Low, descriptive coverage. **Status.** Resolved,

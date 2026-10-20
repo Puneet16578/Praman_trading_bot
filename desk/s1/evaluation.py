@@ -3,7 +3,6 @@
 This module opens no store and has no command-line entry point. Rehearsal passes
 a synthetic reader. Descriptive states/labels never enter population or verdicts.
 """
-from copy import deepcopy
 from collections import Counter
 from desk.s1 import execution as E, statistics as S
 from desk.s1.inputs import GROUPS, HORIZONS, DEV_END, END
@@ -53,7 +52,10 @@ def omit_crowded_dates(records):
 
 def sensitivity_inputs(artifact, variant):
     """Only frozen input variants may change the population; never outcome-based selection."""
-    out = deepcopy(artifact)
+    # Provenance and plans are immutable inputs. Copy only the event containers
+    # and exclusion lists this sensitivity can change, not the large audit trail.
+    out = dict(artifact, records=[dict(r, exclusions={g: list(v) for g, v in r["exclusions"].items()})
+                                  for r in artifact["records"]])
     if variant == "omit_crowded_dates":
         out["records"], out["omitted_dates"] = omit_crowded_dates(out["records"])
     elif variant == "include_unstable":

@@ -58,6 +58,14 @@ class ExecutionTest(unittest.TestCase):
         self.assertEqual((result["reason"], result["exit_price"], result["closed_on"]), ("STOP", 105, self.c[3]))
         self.assertEqual(result["circuit_delays"], [self.c[2]])
 
+    def test_pending_time_exit_and_locks_do_not_use_missing_bar_cap(self):
+        for d in self.c[2:17]:
+            self.bars[d] = Bar(100, 100, 100, 100, blocks_sell=True)
+        self.bars[self.c[17]] = Bar(105, 106, 80, 100)
+        result = trade(record(), 1, self.c, FakeReader(self.bars), self.costs)
+        self.assertEqual((result["status"], result["reason"], result["closed_on"], result["exit_price"]),
+                         ("VALID", "TIME", self.c[17], 105))
+
     def test_time_stop_priority_uses_only_open(self):
         self.bars[self.c[2]] = Bar(89, 110, 88, 100)
         result = trade(record(), 1, self.c, FakeReader(self.bars), self.costs)
@@ -97,6 +105,16 @@ class ExecutionTest(unittest.TestCase):
         self.assertEqual(trade(r, 1, c, reader, self.costs)["status"], "CENSORED")
         self.assertEqual(reader.calls, [])
 
+    def test_scheduled_purge_precedes_outcome_dependent_occupancy(self):
+        c = ["2024-12-27", "2024-12-30", "2024-12-31", "2025-01-01"]
+        first = record(day=c[0], entry=c[1], scheduled=c[2])
+        later = record(day=c[1], entry=c[2], scheduled=c[3])
+        reader = FakeReader({c[1]: Bar(100, 102, 99, 101),
+                             c[2]: Bar(80, 80, 80, 80, blocks_sell=True)}, [c[3]])
+        result = run([first, later], c, reader, self.costs)
+        self.assertEqual([r["reason"] for r in result if r["day"] == c[1]],
+                         ["SCHEDULED_BOUNDARY", "SCHEDULED_BOUNDARY"])
+
     def test_path_stop_first_both_touch_and_scheduled_open_only(self):
         self.bars[self.c[2]] = Bar(100, 112, 89, 100)
         reader = FakeReader(self.bars)
@@ -116,6 +134,35 @@ class ExecutionTest(unittest.TestCase):
         conn.execute.assert_not_called()
         with self.assertRaises(OutcomeReadRefused):
             RealReader(conn, conn, "2024-12-31").market_members("2024-01-01")
+
+    def test_real_reader_query_path_on_synthetic_sqlite_only(self):
+        import sqlite3
+        from contextlib import closing
+        from desk.paper.locks import LockCheck, Limits, NOT_LOCKED
+        with closing(sqlite3.connect(":memory:")) as c:
+            c.row_factory = sqlite3.Row
+            c.executescript("""
+                CREATE TABLE prices(row_id,symbol,event_date,knowledge_date,series,price);
+                INSERT INTO prices VALUES(1,'A','2024-01-01','2024-01-01','EQ',100);
+                INSERT INTO prices VALUES(2,'A','2024-01-02','2024-01-02','EQ',60);
+                INSERT INTO prices VALUES(3,'A','2025-01-01','2024-01-01','EQ',999);
+                CREATE VIEW bhavcopy AS SELECT *,CASE WHEN event_date>'2024-12-31' THEN forbidden()
+                    ELSE price END open_price, price high_price, price low_price, price close_price FROM prices;
+                CREATE TABLE corporate_actions(row_id,symbol,event_date,knowledge_date,action_type,ratio_numerator,ratio_denominator);
+                INSERT INTO corporate_actions VALUES(1,'A','2024-01-02','2024-01-01','SPLIT',2,1);
+                CREATE TABLE corporate_announcements(symbol,event_date,knowledge_date,category,description,sort_timestamp);
+            """)
+            def forbidden():
+                raise AssertionError("Next-period price accessed")
+            c.create_function("forbidden", 0, forbidden)
+            reader = RealReader(c, Mock(), "2024-12-31", authorized=True)
+            with patch("desk.s1.reader.lock_state", return_value=LockCheck(NOT_LOCKED, Limits())):
+                bar = reader.bar("2024-01-01", "A", "2024-01-02")
+            self.assertEqual((bar.opening, bar.factor), (120, 2))
+            self.assertIsNone(bar.dividend)
+            self.assertEqual(reader.benchmark_open("2024-01-01", "A", "2024-01-02", "2024-01-02"), 60)
+            with self.assertRaises(OutcomeReadRefused):
+                reader.benchmark_open("2024-01-01", "A", "2025-01-01", "2024-01-02")
 
     def test_actual_occupancy_early_exit_and_separate_groups_horizons(self):
         a, b = record(), record(day=self.c[2], entry=self.c[3], scheduled=self.c[4])

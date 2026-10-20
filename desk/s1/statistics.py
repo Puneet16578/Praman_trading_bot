@@ -28,7 +28,8 @@ def describe(rows):
     maes = [r["mae"] for r in valid if r.get("mae") is not None]
     relative = [r["benchmark"]["relative"] for r in valid
                 if r.get("benchmark", {}).get("relative") is not None]
-    return dict(status_counts=dict(Counter(r["status"] for r in rows)), valid=len(valid),
+    return dict(status_counts=dict(Counter(r["status"] for r in rows)),
+        reason_counts=dict(Counter(r.get("reason", r["status"]) for r in rows)), valid=len(valid),
         distinct_dates=len({r["day"] for r in valid}), missing=missing, filled_denominator=denominator,
         missing_rate=missing/denominator if denominator else None,
         mean=float(values.mean()) if len(values) else None,

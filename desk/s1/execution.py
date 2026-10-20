@@ -112,6 +112,13 @@ def run(records, calendar, reader, costs, *, slippage=.0015):
                 day, symbol = record["day"], record["symbol"]
                 period = "development" if day <= DEV_END else "2025"
                 key = period, symbol
+                # Scheduled purging is inputs-only and precedes actual occupancy.
+                # Otherwise the same boundary event can be misreported as a
+                # position skip depending on an earlier trade's outcome.
+                if boundary(day, record["scheduled_exits"][str(h)]):
+                    result = trade(record, h, calendar, reader, costs, slippage=slippage)
+                    output.append(result | dict(group=group))
+                    continue
                 if key in occupied and occupied[key] > day:
                     output.append(dict(day=day, symbol=symbol, group=group, horizon=h,
                                        status="POSITION_SKIPPED", filled=False, net_return=None))
