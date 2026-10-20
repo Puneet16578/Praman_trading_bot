@@ -2,7 +2,7 @@ import unittest
 from datetime import date, timedelta
 from unittest.mock import Mock, patch
 
-from desk.s1.reader import Bar, RealReader, OutcomeReadRefused, seal_real_reads
+from desk.s1.reader import Bar, RealReader, OutcomeReadRefused, seal_real_reads, dividend_record_evidence
 from desk.s1.execution import trade, run, path_label, benchmark
 from desk.lib.costs import load_active_cost_config
 
@@ -30,6 +30,8 @@ class FakeReader:
         return self.bars.get((symbol, day), self.bars.get(day))
     def market_members(self, event):
         return ["M", "MISSING"]
+    def market_states(self, event, symbol):
+        return dict(V1=False, V2=False, V3=True)
     def benchmark_open(self, event, symbol, day, fill):
         return None if symbol == "MISSING" else (100 if day == fill else 101)
 
@@ -137,3 +139,11 @@ class ExecutionTest(unittest.TestCase):
     def test_fixed_horizons(self):
         with self.assertRaises(ValueError):
             trade(record(), 5, self.c, FakeReader(self.bars), self.costs)
+
+    def test_absent_dividend_source_is_unknown_and_parser_is_unchanged(self):
+        self.assertIsNone(dividend_record_evidence([], self.c[1], self.c))
+        row = dict(category="Dividend", description="Dividend record date 02-Jan-2024",
+                   sort_timestamp="2024-01-01 16:00:00", knowledge_date="2024-01-01")
+        self.assertTrue(dividend_record_evidence([row], "2024-01-02", self.c))
+        result = trade(record(), 1, self.c, FakeReader(self.bars), self.costs)
+        self.assertEqual(result["dividend_unknown_sessions"], self.c[1:3])

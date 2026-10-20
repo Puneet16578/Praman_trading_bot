@@ -1,5 +1,6 @@
 import sqlite3
 import unittest
+from contextlib import closing
 from datetime import datetime
 from unittest.mock import patch
 
@@ -16,7 +17,7 @@ class S1InputsTest(unittest.TestCase):
         self.assertEqual(S.eligible_at(snapshots, "2020-01-06"), {"A", "B"})
 
     def test_stream_never_reads_post_D_even_if_misdated_known(self):
-        with sqlite3.connect(":memory:") as c:
+        with closing(sqlite3.connect(":memory:")) as c:
             c.row_factory = sqlite3.Row
             def forbidden():
                 raise AssertionError("post-D price")

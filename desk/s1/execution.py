@@ -21,7 +21,7 @@ def trade(record, horizon, calendar, reader, costs, *, slippage=.0015):
     result = dict(day=day, symbol=symbol, horizon=horizon, scheduled_exit=scheduled,
                   turnover_band=record["turnover_band"], zscore_60d=record["zscore_60d"],
                   status="CENSORED", filled=False, net_return=None, closed_on=None,
-                  missing_sessions=[], circuit_delays=[], dividend_sessions=[])
+                  missing_sessions=[], circuit_delays=[], dividend_sessions=[], dividend_unknown_sessions=[])
     if boundary(day, scheduled):
         result["reason"] = "SCHEDULED_BOUNDARY"
         return result
@@ -45,6 +45,8 @@ def trade(record, horizon, calendar, reader, costs, *, slippage=.0015):
                   atr20=plan["atr20"], entry_kind=fill["status"], entry_factor=bar.factor)
     if bar.dividend:
         result["dividend_sessions"].append(entry)
+    if bar.dividend is None:
+        result["dividend_unknown_sessions"].append(entry)
     # Prices/quantity are on the decision basis. Economic turnover and ad-valorem
     # charges are invariant under corporate-action share-basis changes.
     buy_cost = round_trip_cost_inr(price, qty, costs, "buy")
@@ -68,6 +70,8 @@ def trade(record, horizon, calendar, reader, costs, *, slippage=.0015):
             continue
         if bar.dividend:
             result["dividend_sessions"].append(session)
+        if bar.dividend is None:
+            result["dividend_unknown_sessions"].append(session)
         if pending:
             reason, exit_price = pending, bar.opening
         elif session >= scheduled:

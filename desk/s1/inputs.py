@@ -219,8 +219,11 @@ def summarize(records):
                 usable = [r for r in retained if not boundary(r["day"], r["scheduled_exits"][str(h)])]
                 standalone, combinations = Counter(), Counter()
                 for r in rows:
-                    standalone.update(r["exclusions"][group])
-                    combinations[" + ".join(sorted(r["exclusions"][group])) or "RETAINED"] += 1
+                    detail = list(r["exclusions"][group])
+                    if "peer_explained_or_unknown" in detail:
+                        detail.append("peer_unknown" if r.get("peer_status") == "UNKNOWN" else "peer_explained")
+                    standalone.update(detail)
+                    combinations[" + ".join(sorted(detail)) or "RETAINED"] += 1
                 cells.append(dict(year=year, group=group, horizon=h, catalogue=len(rows),
                     retained=len(retained), scheduled_boundary_removed=len(retained)-len(usable),
                     inputs_eligible=len(usable), distinct_dates=len({r["day"] for r in usable}),

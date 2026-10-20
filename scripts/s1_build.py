@@ -41,6 +41,7 @@ def main():
     source_paths += sorted((ROOT/"config").glob("*.yaml"))
     source_paths += [ROOT/"config/COSTS_ACTIVE", ROOT/"docs/desk/abc_sourcing_check.md",
                     ROOT/"docs/desk/s1_unexplained_drop_prereg.md"]
+    source_paths += [ROOT/"rulebook/ACTIVE", ROOT/"rulebook"/rb.version_file]
     source_paths += [p for p in (ROOT/"data/raw/isin_snapshots").glob("cm_*")
                      if p.name[3:13] <= S.END]
     manifest = {str(p.relative_to(ROOT)).replace("\\", "/"): sha256(p) for p in source_paths}
@@ -60,6 +61,7 @@ def main():
     audit = timing_audit((ROOT/"logs/weekly_ingest.log").read_text(encoding="utf-8").splitlines(), cal["s1"])
     summary = S.summarize(records)
     meta = dict(code_commit=commit, version=S.VERSION, manifest=manifest,
+                rulebook_sha256=rb.sha256, cost_config_sha256=costs.sha256,
                 index_source_hashes=sorted({r["source_sha256"] for series in indices.values() for r in series.values()}),
                 category_map=S.A.draft_map(), timing_audit=audit,
                 outcomes="not read", knowledge_rule="D 18:00 IST; EQ same-day assumption; dated ISIN strictly before D")

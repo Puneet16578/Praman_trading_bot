@@ -2961,6 +2961,42 @@ Regulation 30(11) Rumour Verification category in diagnostic subcounts.
 The report is generated only from a rerun of the corrected script. No store, live
 screening rule, firewall, seal, or outcome code was changed.
 
+## P8-097 - S1 dividend diagnostic assumed an uningested action type
+
+**Severity / priority.** Low, descriptive coverage. **Status.** Resolved,
+20 October 2026. Source review found the draft
+S1 reader looked for corporate-action type DIVIDEND, but this ingestion pipeline
+does not store dividends. That would silently report absence rather than unknown.
+The reader now reuses the unchanged frozen filing parser to flag parsed dividend
+record/book-closure days and explicitly reports UNKNOWN coverage otherwise.
+This is not a complete ex-dividend calendar; no actual dividend-bearing population
+is asserted from missing evidence. No parser, ingestion or return-credit rule
+changed, and no real S1 outcome was read.
+Re-verification: 27 execution/statistics/evaluation/rehearsal tests pass, including
+an explicit absent-source UNKNOWN case and a frozen-parser record-date case.
+
+## P8-096 - Initial S1 input artifact omitted explicit active-rulebook hashes
+
+**Severity / priority.** Low, input provenance only. **Status.** Fix implemented;
+completed-artifact verification pending, 20 October 2026. The first input build
+hashed `config/*.yaml` and the cost pointer but the active rulebook lives under
+`rulebook/`. Its code commit identifies the unchanged tracked rulebook, but its
+files were absent from the explicit manifest. The build now includes the active
+pointer/version and normalized rulebook/cost hashes. Sensitivity enrichment checks
+the rulebook against the primary build commit before adding these hashes to a new
+immutable artifact. The original artifact/report remain preserved; populations,
+tercile boundaries and all research rules are unchanged. No S1 outcome accessed.
+
+## P8-095 - S1 draft statistics import and synthetic-test assertion
+
+**Severity / priority.** Low, uncommitted implementation only. **Status.** Resolved
+20 October 2026 before any S1 outcome access. The first isolated statistics test
+run caught a missing closing parenthesis; corrected before integration. The next
+run caught a test expecting all 2,000 draws to be usable, although resampling can
+produce fewer than 30 distinct original dates. Corrected the test to assert the
+registered 1,900 minimum; the bootstrap and minimum were not changed to satisfy
+the assertion. Re-verification: all seven synthetic statistics tests pass.
+
 ## P8-094 - Shared outcome firewall does not enforce the binding-evaluation condition
 
 **Severity / priority.** High; fix before 1 June 2027. **Status.** OPEN, 20 October 2026.
