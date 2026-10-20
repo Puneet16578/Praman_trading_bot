@@ -94,3 +94,8 @@ This inventory is based on committed records and the existing exposure register.
 For each version: hypothesis; registration/approval date; protocol link; periods and exposure disclosure; all variants and sensitivities; family correction; code commit and input/configuration hashes; rehearsal record; locked results; per-test verdict and failure/inconclusive reasons; supersession history; and any separately approved forward evaluation.
 
 S1 v1 is registered on 19 October 2026, not implemented and not evaluated. Do not remove failed attempts, rewrite locked results, or open S0's seal. Approval of this document alone would not authorise an evaluation.
+
+S1 v1 addendum: **Addendum 1 (20 October 2026): blocked exits**, approved before any
+S1 outcome was seen, clarifies that a triggered stop or time exit remains pending
+through selling locks and retries at the next available S1-session open, subject
+to missing bars and the period boundary. It changes no other rule; S0 is unchanged.

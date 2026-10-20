@@ -118,6 +118,16 @@ Documented slippage model: no slippage on limit entries. On market-type exits, i
 
 Data gaps: no bar on the fill session is a fill FAILURE, not a normal untouched-limit no-fill. A session with no bar inside a hold is skipped. Checks resume at the next available bar, open first, so a gap-through-stop is caught there. No bar on an exit session carries that exit to the next available open, subject to circuits and period boundaries. If an exit cannot execute within 10 S1-calendar sessions after its scheduled exit session because the stock has no bars, the outcome is MISSING and counted. No later price is used. Locked circuits keep retrying as S0 does, subject to the period boundary, because those losses are real and must stay in. An unadjustable corporate action during the hold makes the outcome MISSING. A MISSING outcome closes the position for the one-position rule at the session it became missing: the cap session or the action's ex-date. Dividends inside the hold are not credited. Count every case, including dividend-bearing holds, and report overlapping reasons separately. Never replace a missing return with zero.
 
+### Addendum 1 (20 October 2026): blocked exits
+
+Approved by the user before any S1 outcome was seen. Once a stop or time exit
+triggers and selling is blocked by a lock, the exit stays pending and executes at
+the open of the next S1-calendar session not locked for selling, subject to missing
+bars and the period boundary. S1 does not clear or re-arm a triggered stop as S0's
+current implementation does. "As S0 does" means only that S1 keeps trying through
+locks, subject to the period boundary. S0's code remains unchanged. This addendum
+changes no other rule.
+
 ## 6. Outcomes and descriptive measures
 
 Primary outcome: net percentage return per valid filled trade after execution, fees and slippage, divided by invested entry value. Trades have equal weight in group means. A hit is net return strictly above zero; exactly zero is not a hit.
