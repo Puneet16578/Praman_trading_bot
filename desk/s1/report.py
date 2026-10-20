@@ -30,8 +30,13 @@ def timing_audit(lines, study_dates):
             day = started.date().isoformat()
             if day == done.date().isoformat():
                 completions.setdefault(day, []).append(done.isoformat())
+    by18 = sum(any(datetime.fromisoformat(t) <= datetime.fromisoformat(day+"T18:00:00+05:30")
+                   for t in times) for day, times in completions.items())
     return dict(study_dates=len(study_dates), study_dates_with_step_metadata=sum(d in completions for d in study_dates),
         confirmed_matching_D_file_by_1800=0, availability_unknown=len(study_dates),
+        logged_dates_with_successful_step=len(completions), logged_dates_with_step_completed_by_1800=by18,
+        logged_dates_with_only_later_step_completions=len(completions)-by18,
+        logged_matching_file_availability_unknown=len(completions),
         successful_step_completions=completions,
         limitation="Step headers do not certify the ingested file's own date. No matching-file timestamp evidence "
         "was extracted; by-18:00 availability is UNKNOWN, not zero availability. Late completion and absent logs "
@@ -55,6 +60,11 @@ def markdown(summary, meta, artifact):
               f"Study dates: {meta['timing_audit']['study_dates']}; dates with step metadata: "
               f"{meta['timing_audit']['study_dates_with_step_metadata']}; availability unknown: "
               f"{meta['timing_audit']['availability_unknown']}.", "",
+              f"Across the available nightly log: {meta['timing_audit']['logged_dates_with_successful_step']} "
+              f"dates have successful-step timestamps; "
+              f"{meta['timing_audit']['logged_dates_with_step_completed_by_1800']} completed by 18:00 and "
+              f"{meta['timing_audit']['logged_dates_with_only_later_step_completions']} have only later completions. "
+              "These are step timestamps, not confirmed matching-D file availability.", "",
               meta["timing_audit"]["limitation"], "",
               "## Limitations", "",
               "Dated snapshots and same-day bhavcopy availability remain assumptions. Catalogue identity stitching "

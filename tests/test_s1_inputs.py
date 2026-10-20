@@ -71,3 +71,5 @@ class S1InputsTest(unittest.TestCase):
                                "status=OK completed=2024-01-01T18:01:00+05:30 ==="], ["2024-01-01"])
         self.assertEqual(result["availability_unknown"], 1)
         self.assertEqual(result["study_dates_with_step_metadata"], 1)
+        self.assertEqual(result["logged_dates_with_step_completed_by_1800"], 0)
+        self.assertEqual(result["logged_dates_with_only_later_step_completions"], 1)

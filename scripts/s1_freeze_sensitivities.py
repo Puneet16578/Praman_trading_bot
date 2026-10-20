@@ -9,7 +9,7 @@ from contextlib import closing
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from desk.s1.sensitivities import enrich
-from desk.s1.report import sha256, markdown
+from desk.s1.report import sha256, markdown, timing_audit
 from desk.s1.inputs import summarize
 from desk.t1.panel import snapshot_identities
 from desk.t1.read_guard import holdout_reads
@@ -58,6 +58,8 @@ def main():
     if artifact["summary"]["tercile_boundaries"] != summary["tercile_boundaries"]:
         raise AssertionError("Sensitivity enrichment changed frozen terciles.")
     artifact["summary"] = summary
+    with (ROOT/"logs/weekly_ingest.log").open(encoding="utf-8") as log:
+        artifact["meta"]["timing_audit"] = timing_audit(log, artifact["calendars"]["s1"])
     for relative, digest in artifact["meta"]["manifest"].items():
         if sha256(ROOT/relative) != digest:
             raise ValueError("Primary input source changed during enrichment: "+relative)
