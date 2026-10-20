@@ -1,3 +1,26 @@
+## 2026-10-21 (Codex): S1 implementation complete through sealed rehearsal
+
+- Completed approved items 1-5; real development and 2025 evaluations remain
+  unrun. Separate user approval is still required for development evaluation.
+- Phase report: `docs/desk/s1_implementation_20261021.md`. Complete inputs:
+  `docs/desk/s1_inputs_complete_20261020.{md,json}`; local immutable artifact
+  `data/s1/inputs_complete_20261020_v1.json`, SHA-256
+  c0d88d62719f090d1bde5430e9801ddad57d03715555f37914d2d6c3597bb309.
+- Sealed rehearsal ran once from clean b539e7e, seed 20261020, exit 0, 10.14s.
+  Reports: `docs/desk/s1_rehearsal_20261021.{md,json}`. Real reader block verified,
+  zero real outcome reads. Primary plus eight sensitivities each had 2,000 usable
+  draws for (a)/(b) at h1/h3. All post-entry data and labels were synthetic.
+- S1 addendum committed first (dc009f1); implementation commits and their full
+  suites are listed in the phase report. Final session-suite evidence is in this
+  handoff commit message. Existing SQLite ResourceWarnings P8-088 remain.
+- P8-094 open, due before 1 June 2027: shared date-only firewall lacks binding
+  evaluation evidence. No firewall change. P8-099 logs the severity-heading
+  mismatch observed in the nightly brief; no operational code changed.
+- No downloads, background jobs or production-store writes. Protected files
+  unchanged except approved S1 addendum/registry mention. Commit or stash before
+  stopping and before weekday 17:40; see the two skipped runs below.
+- This note supplies context only and authorises no evaluation or other work.
+
 ## 2026-10-21 (Codex): S1 restored work and nightly review
 
 - User reported stashing the pending S1 changes with `git stash push -u`, then
