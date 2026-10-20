@@ -2961,6 +2961,19 @@ Regulation 30(11) Rumour Verification category in diagnostic subcounts.
 The report is generated only from a rerun of the corrected script. No store, live
 screening rule, firewall, seal, or outcome code was changed.
 
+## P8-094 - Shared outcome firewall does not enforce the binding-evaluation condition
+
+**Severity / priority.** High; fix before 1 June 2027. **Status.** OPEN, 20 October 2026.
+Source review before S1 implementation found that `desk/outcome_firewall.py`
+permits protected events once its fixed date, 2027-06-01, arrives. CLAUDE.md D7
+requires the binding evaluation to have run, which can be later. Root cause:
+the guard checks calendar time only and has no binding-evaluation evidence.
+No firewall code changed. S1 has a separate hard end at 2025-12-31 and grants
+no forward access. Any future forward-book registration must require evidence
+that the binding evaluation has run. Fix and re-verification remain pending;
+the eventual guard must reject access after the fixed date while that evidence
+is absent. This entry authorises no firewall change.
+
 ## P8-093 - Item 2's A/B/C session calendar depends on which dates are requested
 
 **Severity / priority.** Low (research-count diagnostics). **Status.** Fixed 2026-10-19 (Claude):
