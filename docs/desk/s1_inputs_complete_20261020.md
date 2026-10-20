@@ -1,0 +1,55 @@
+# S1 v1 inputs-only coverage
+
+**No fills, outcomes or development evaluation.**
+Code: `2e1df0828fc7d39c74dae27a3d4dfb2dd84d187a`. Artifact: `data\s1\inputs_complete_20261020_v1.json`.
+
+Scheduled-overlap count, not a bound: delayed exits can add exclusions and early stops can remove them. Actual one-position exclusions are evaluation-only.
+
+| Year | Group | h | Funnel retained | Boundary removed | Inputs eligible | Dates | Scheduled overlap |
+|---|---|---|---|---|---|---|---|
+| 2019 | unexplained | 1 | 0 | 0 | 0 | 0 | 0 |
+| 2020 | unexplained | 1 | 20 | 0 | 20 | 18 | 0 |
+| 2021 | unexplained | 1 | 168 | 0 | 168 | 92 | 4 |
+| 2022 | unexplained | 1 | 82 | 0 | 82 | 47 | 2 |
+| 2023 | unexplained | 1 | 279 | 0 | 279 | 132 | 3 |
+| 2024 | unexplained | 1 | 163 | 7 | 156 | 101 | 3 |
+| 2025 | unexplained | 1 | 245 | 6 | 239 | 116 | 2 |
+| 2019 | unexplained | 3 | 0 | 0 | 0 | 0 | 0 |
+| 2020 | unexplained | 3 | 20 | 0 | 20 | 18 | 0 |
+| 2021 | unexplained | 3 | 168 | 0 | 168 | 92 | 5 |
+| 2022 | unexplained | 3 | 82 | 0 | 82 | 47 | 3 |
+| 2023 | unexplained | 3 | 279 | 0 | 279 | 132 | 9 |
+| 2024 | unexplained | 3 | 163 | 9 | 154 | 99 | 4 |
+| 2025 | unexplained | 3 | 245 | 10 | 235 | 114 | 4 |
+| 2019 | explained | 1 | 0 | 0 | 0 | 0 | 0 |
+| 2020 | explained | 1 | 37 | 0 | 37 | 19 | 2 |
+| 2021 | explained | 1 | 331 | 0 | 331 | 105 | 17 |
+| 2022 | explained | 1 | 154 | 0 | 154 | 51 | 7 |
+| 2023 | explained | 1 | 625 | 0 | 625 | 120 | 27 |
+| 2024 | explained | 1 | 493 | 3 | 490 | 103 | 20 |
+| 2025 | explained | 1 | 319 | 3 | 316 | 105 | 7 |
+| 2019 | explained | 3 | 0 | 0 | 0 | 0 | 0 |
+| 2020 | explained | 3 | 37 | 0 | 37 | 19 | 2 |
+| 2021 | explained | 3 | 331 | 0 | 331 | 105 | 18 |
+| 2022 | explained | 3 | 154 | 0 | 154 | 51 | 8 |
+| 2023 | explained | 3 | 625 | 0 | 625 | 120 | 32 |
+| 2024 | explained | 3 | 493 | 4 | 489 | 102 | 23 |
+| 2025 | explained | 3 | 319 | 5 | 314 | 104 | 12 |
+
+Development pooled absolute-z tercile boundaries (type 7; upper ties): `[2.8669916004097815, 3.5713588405696233]`.
+
+The companion JSON records every standalone exclusion, exact overlap combination, turnover band and metadata audit. The immutable input artifact retains every candidate and both calendars.
+
+## Bhavcopy timing metadata
+
+Study dates: 1545; dates with step metadata: 0; availability unknown: 1545.
+
+Across the available nightly log: 12 dates have successful-step timestamps; 1 completed by 18:00 and 11 have only later completions. These are step timestamps, not confirmed matching-D file availability.
+
+Step headers do not certify the ingested file's own date. No matching-file timestamp evidence was extracted; by-18:00 availability is UNKNOWN, not zero availability. Late completion and absent logs do not prove public unavailability. No outcome payload inspected.
+
+## Limitations
+
+Dated snapshots and same-day bhavcopy availability remain assumptions. Catalogue identity stitching is inherited. Fund exclusion changes the old turnover population. Weekday special hours are not reconstructed; weekend sessions inside holds are not monitored. GSM is not a research filter. These input counts are not valid-trade counts or evidence that outcome minimums are met.
+
+Input sensitivities frozen at `59216ad126068f929b6d5230491bbd8018dcdbfa`. Primary counts and tercile boundaries are unchanged; peer-unknown and peer-explained reasons are now also split in the companion JSON.

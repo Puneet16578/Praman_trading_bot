@@ -2989,8 +2989,8 @@ an explicit absent-source UNKNOWN case and a frozen-parser record-date case.
 
 ## P8-096 - Initial S1 input artifact omitted explicit active-rulebook hashes
 
-**Severity / priority.** Low, input provenance only. **Status.** Fix implemented;
-completed-artifact verification pending, 20 October 2026. The first input build
+**Severity / priority.** Low, input provenance only. **Status.** Resolved;
+completed-artifact verification passed, 21 October 2026. The first input build
 hashed `config/*.yaml` and the cost pointer but the active rulebook lives under
 `rulebook/`. Its code commit identifies the unchanged tracked rulebook, but its
 files were absent from the explicit manifest. The build now includes the active
@@ -2998,6 +2998,22 @@ pointer/version and normalized rulebook/cost hashes. Sensitivity enrichment chec
 the rulebook against the primary build commit before adding these hashes to a new
 immutable artifact. The original artifact/report remain preserved; populations,
 tercile boundaries and all research rules are unchanged. No S1 outcome accessed.
+Re-verification: completed artifact SHA-256
+`c0d88d62719f090d1bde5430e9801ddad57d03715555f37914d2d6c3597bb309`
+matches its report; its parent hash matches the original freeze. Primary counts,
+dates, overlaps, bands and terciles match; active rulebook and cost hashes verify.
+
+## P8-099 - Defect severity parser does not recognize combined heading
+
+**Severity.** Low. **Status.** Open, 21 October 2026.
+Read-only review of the 20 October 22:00 ingestion brief found P8-088 classified
+as unknown severity despite its explicit Low classification. Root cause:
+`desk/readiness.py:open_defects` recognizes `**Severity.**`, while P8-088 uses
+`**Severity / priority.**`. A direct read-only call returns no high defects and
+unclassified P8-088 and P8-094 on the restored tree. This is fail-closed for
+readiness, but misreports severity; P8-094 is explicitly High in the register.
+The brief's operational gate is active. No parser, switch, store or existing
+severity heading changed. Fix deferred to a separate task; not re-verified as fixed.
 
 ## P8-095 - S1 draft statistics import and synthetic-test assertion
 

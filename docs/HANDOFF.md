@@ -1,3 +1,31 @@
+## 2026-10-21 (Codex): S1 restored work and nightly review
+
+- User reported stashing the pending S1 changes with `git stash push -u`, then
+  restoring them with `git stash pop`. Restored status and source diffs match the
+  recorded pending changes: evaluation/execution/statistics, execution tests,
+  P8-098 and the completed input-report pair. No pre-stash byte manifest exists.
+- `logs/weekly_ingest.log` confirms the 20 October 18:00 and 20:00 runs skipped
+  because uncommitted S1 source files and DEFECT_REGISTER were present; no steps
+  ran. Leaving that tree dirty caused the skips. Commit tested work or stash
+  unfinished work before stopping, and before 17:40 on weekdays.
+- The 22:00 retry finished at 23:58:44, backups OK, overall WARN, no failed step.
+  User reports exit 0. Task independently checked Ready before tests.
+  Bhavcopy gap after six attempts and ISIN HTTP 404 are logged; existing map kept.
+  User identifies 20 October as Dussehra/NSE holiday. No new trading session was
+  expected; the brief correctly refers to latest stored session 19 October.
+- Brief review: the in-progress ingestion status was written before backup
+  completion. Existing battery gaps (15/16 October) and incomplete disclosure
+  date (13 October) remain visible. OPEN_CRITICAL_DEFECT is active for unclassified
+  P8-088; parser heading mismatch logged as P8-099, no operational fix attempted.
+- Session-start/full suite: Ran 1109 tests in 216.204s, OK, exit 0; existing P8-088
+  ResourceWarnings remain. Restored source fixes committed as a1e041c.
+- Completed inputs verified by artifact/parent hashes and unchanged primary
+  populations/terciles. P8-096 resolved. Frozen reports preserve pre-nightly
+  provenance; no attempt to rebuild against the subsequently updated live stores.
+- User explicitly approved continued implementation and sealed rehearsal in chat.
+  Real development evaluation remains unrun and requires separate approval.
+  This handoff is context, not authorization.
+
 ## 2026-10-20 (Codex): S1 implementation planning only
 
 - Read the registered S1 protocol and research registry, frozen A/B/C funnel, T1
