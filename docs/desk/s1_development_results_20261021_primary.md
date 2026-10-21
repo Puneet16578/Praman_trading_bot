@@ -39,3 +39,11 @@ No dedicated run log was found among the stash contents; terminal-session output
 The eight registered sensitivities will run as a separate, sensitivities-only invocation, whatever the primary verdict.
 
 The primary took approximately 3 hours 30 minutes, from its marker timestamp to the observed saved-file modification time; this is an elapsed-time estimate, not an instrumented phase duration. No sensitivities or 2025 evaluation were launched in this locking session.
+
+## Correction - 21 October 2026
+
+The earlier cause line was wrong. The usage-limit message came after the 08:56 check, but the primary was saved at 12:06:06, so the limit did not end the process. It ended between 12:06 and 13:36; the exact time and cause are unknown.
+
+The evaluation ran as a separate process that the session polled, not as a foreground command.
+
+The recorded SHA-256, `2d3c312399d8fa5083f73a4a46eeab17b594f89ef0204f59bcddcde61c6cf354`, covers the committed Git blob (8,310,313 bytes), identical to the stash blob used for the lock. It does not cover the earlier CRLF-converted working copy. The S1 development JSON attribute disables line-ending conversion for primary and future sensitivity outputs. A fresh checkout through Git checkout-index with that attribute produced the recorded SHA-256.

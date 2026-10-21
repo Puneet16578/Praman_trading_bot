@@ -8,3 +8,6 @@
 rulebook/* text eol=lf
 config/* text eol=lf
 docs/desk/*.md text eol=lf
+
+# Locked S1 development JSON bytes, including sensitivity outputs.
+docs/desk/s1_development_results_*.json -text
