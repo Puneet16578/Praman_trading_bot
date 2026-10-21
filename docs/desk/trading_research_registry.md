@@ -40,7 +40,7 @@ The S0 seal, Windows task, live gates and cost configuration are unchanged. No s
 
 | Idea / ID | Description | Status and record |
 |---|---|---|
-| B / S1 v1 | Rebounds over the next one to three sessions after an unexplained catalogue drop; LONG-only delivery research. | REGISTERED; not implemented, not evaluated. h=1 and h=3 specified for separate verdicts. C1–C6 and the former section 11's definitions resolved by the user's decisions. [S1 protocol](s1_unexplained_drop_prereg.md). Sourcing: [A/B/C](D:/Agentic_ai_project/praman/docs/desk/abc_sourcing_check.md), [corrected funnel](D:/Agentic_ai_project/praman/docs/desk/abc_followup_check.md). |
+| B / S1 v1 | Rebounds over the next one to three sessions after an unexplained catalogue drop; LONG-only delivery research. | Development recorded 21 October 2026: FAIL at h=1 and h=3 because (a) and (c) failed; LABEL SHOWN at both. Sensitivities, full report and 2025 pending; 2025 needs separate user approval. [Primary lock note](s1_development_results_20261021_primary.md). C1–C6 and the former section 11's definitions resolved by the user's decisions. [S1 protocol](s1_unexplained_drop_prereg.md). Sourcing: [A/B/C](D:/Agentic_ai_project/praman/docs/desk/abc_sourcing_check.md), [corrected funnel](D:/Agentic_ai_project/praman/docs/desk/abc_followup_check.md). |
 | S1 h=5 and h=10 | Longer horizons in the blueprint's T2 programme. | NOT ATTEMPTED for S1; outside its three-session scheduled holding limit. No result or failure implied. |
 | A | Follow catalogue events explained by material company announcements. | NOT REGISTERED. Input sourcing/counts only; same A/B/C reports. |
 | C | Follow a strong first reaction to quarterly results. | NOT REGISTERED. Input sourcing/counts only; same A/B/C reports. |
@@ -93,7 +93,7 @@ This inventory is based on committed records and the existing exposure register.
 
 For each version: hypothesis; registration/approval date; protocol link; periods and exposure disclosure; all variants and sensitivities; family correction; code commit and input/configuration hashes; rehearsal record; locked results; per-test verdict and failure/inconclusive reasons; supersession history; and any separately approved forward evaluation.
 
-S1 v1 is registered on 19 October 2026, not implemented and not evaluated. Do not remove failed attempts, rewrite locked results, or open S0's seal. Approval of this document alone would not authorise an evaluation.
+S1 v1 was registered on 19 October 2026. Development recorded 21 October 2026: FAIL at h=1 and h=3 because (a) and (c) failed; LABEL SHOWN at both. Sensitivities, full report and 2025 are pending; 2025 requires separate user approval. [Primary lock note](s1_development_results_20261021_primary.md). Do not remove failed attempts, rewrite locked results, or open S0's seal. Approval of this document alone would not authorise an evaluation.
 
 S1 v1 addendum: **Addendum 1 (20 October 2026): blocked exits**, approved before any
 S1 outcome was seen, clarifies that a triggered stop or time exit remains pending
