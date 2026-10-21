@@ -1,3 +1,37 @@
+## 2026-10-21 (Codex): operations fixes and health audit
+
+- User requested four operations items before separately approving S1 development.
+  S1 evaluation remains unrun. Started clean at 6a4f7ea; task Ready, last retry
+  20 October 22:00 finished with result 0. On morning resume at 08:16, task still
+  Ready and no Python/Claude process present. No nightly was launched here.
+- 485d1d9: changed only P8-088's `Severity / priority` heading to `Severity`.
+  Its documented Low severity and Open status remain. Pure read-only gate check
+  changes unclassified IDs from [P8-088, P8-094] to [P8-094]; the gate DOES NOT
+  clear. P8-094 is documented High and remains untouched. No gate code/reset or
+  stored switch change. Quotes and details: operations_gate_20261021.md in docs/desk.
+- 254e311: ISIN audit, operations_isin_20261021.md. Latest checksum-verified map
+  snapshot/build is 19 October; current age zero, five additional stored trading
+  sessions within limit, rejects at age six without refresh. 20 October holiday
+  attempt returned final HTTP 404; intermediate fallback causes not logged.
+  Three documentation URLs attempted individually and listed; two inaccessible.
+  No new official same-file address established; downloader unchanged.
+- ada346c: burn-in audit, operations_burnin_20261021.md. 14/19 October decided;
+  15/16 skipped on battery and recorded as gaps. Band and stop-monitoring catch-ups
+  verified from operational metadata. Gate first active 19 October, but no session
+  entry-blocked by this effect: OPERATIONAL_GATE_FAIL is not in BLOCKS_ENTRIES.
+  Exact retry/skip lines retained. No sealed outcome detail inspected.
+- Disk audit: operations_disk_20261021.md. Pre-market measurement C: 39.12 GiB
+  free, D: 238.46 GiB free. Nightly backs up two databases and logs, not data/s1;
+  no exclusion needed or made. Two S1 artifacts total 1,130,057,549 bytes and are
+  outside that backup policy. Existing backup log reports restore checks OK;
+  no new restore or archive-content verification performed.
+- Full suites, all exit 0 / OK: start 1109 in 230.794s; item 1 1109 in 201.444s;
+  item 2 1109 in 215.791s; item 3 1109 in 229.011s. Final item/end suite evidence
+  is in this handoff's commit message. Existing P8-088 ResourceWarnings persist.
+- Stores read-only; no downloads except documentation-page requests; no background
+  jobs. Firewall, S0 seal, task, rules, costs and registrations unchanged. This
+  note is context only, not authorization for any evaluation or further fix.
+
 ## 2026-10-21 (Codex): S1 implementation complete through sealed rehearsal
 
 - Completed approved items 1-5; real development and 2025 evaluations remain
