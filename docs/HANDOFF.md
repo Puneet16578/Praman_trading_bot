@@ -1,3 +1,31 @@
+## 2026-10-21 (Codex): primary correction, registry and sensitivities wrapper
+
+- Correction supersedes the earlier usage-limit speculation below: the primary
+  was saved at 12:06:06 after the usage-limit message following the 08:56 check.
+  Process ended between 12:06 and 13:36; exact time/cause unknown. The session
+  polled a separate process. Lock note was appended, not rewritten.
+- 215787a: recorded SHA-256 is the committed blob hash; fresh checkout matches.
+  .gitattributes disables line-ending conversion for S1 development result JSONs.
+  Full suite: 1109 tests in 225.877s, OK.
+- 897e6eb: registry records h1/h3 FAIL ((a) and (c) failed), LABEL SHOWN at both;
+  sensitivities/full report/2025 pending; 2025 needs separate approval.
+  Full suite: 1109 tests in 222.925s, OK.
+- New research_runs/s1_development_sensitivities.py: ordered registered variants
+  only, hash preflight, check-only, no-start-after (IST), per-variant attempts,
+  atomic no-overwrite results and explicit interrupted reruns. Recorded cutoff
+  views plus an authorizer wrap the unchanged reader; only rows recorded before
+  08:35:49 IST on 21 October 2026, dated no later than 2024-12-31, are visible.
+- No production invocation, including check-only, was made. Synthetic tests only;
+  production compatibility and cutoff overhead remain unverified. Run guide:
+  docs/desk/s1_sensitivity_wrapper_20261021.md. User will launch the real batch.
+- Frozen S1 code, primary JSON, firewall, S0 seal, task, cost/rule documents and
+  preregistration unchanged. Final full-suite evidence is in this commit message.
+- Resumed at 22:09 IST after the user confirmed the 22:00 retry finished;
+  scheduled task verified Ready. Afternoon final suite passed 1129 tests in
+  192.340s. Repeated the full suite under the session rule before the wrapper
+  commit; its result is in the commit message. Neither real wrapper command ran.
+- This handoff supplies context, not permission to run any evaluation.
+
 ## 2026-10-21 (Codex): interrupted S1 primary locked without rerun
 
 - One authorised development invocation saved its complete primary phase, then
