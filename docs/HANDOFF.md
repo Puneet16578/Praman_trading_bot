@@ -1,3 +1,20 @@
+## 2026-10-21 (Codex): interrupted S1 primary locked without rerun
+
+- One authorised development invocation saved its complete primary phase, then
+  disappeared before any sensitivity result was saved. Cause unverified; session
+  usage limit is the suspected cause. Preparation about 08:31 IST; attempt marker
+  start 08:35:49 IST; primary file saved about 12:06 IST.
+- User clarified observed minimum fields and requested a byte-preserving primary
+  lock before any outcome disclosure. All requested fields are present; rules
+  checked against b539e7e. No recomputation or outcome-store reads in this session.
+- Result: docs/desk/s1_development_results_20261021_primary.json and short note.
+  Original STARTED envelope retained. Wrapper under docs/desk/provenance matches
+  embedded source. Ignored attempt marker contents preserved in the note.
+- Sensitivities remain incomplete and require a separately reviewed wrapper that
+  never calls primary. None implemented or run here. 2025 remains unrun.
+- Full protocol report deferred until sensitivities. Full suite evidence is in
+  the locking commit message. This note is context, not authorisation.
+
 ## 2026-10-21 (Codex): operations fixes and health audit
 
 - User requested four operations items before separately approving S1 development.
